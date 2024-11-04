@@ -13,6 +13,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
 
   String? selectedSpecialty;
   String? selectedTitle;
+  List<String> selectedLocations = [];
 
   // List of specialties and titles
   final List<String> specialties = [
@@ -37,6 +38,23 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'DPM Fellow',
   ];
 
+  // List to hold locations fetched from Firestore
+  List<String> locations = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchLocations();
+  }
+
+  // Fetch locations from Firestore
+  Future<void> fetchLocations() async {
+    final snapshot = await _firestore.collection('locations').get();
+    setState(() {
+      locations = snapshot.docs.map((doc) => doc['name'] as String).toList();
+    });
+  }
+
   // Method to save the provider information to Firebase
   Future<void> saveProvider() async {
     final firstName = firstNameController.text.trim();
@@ -44,7 +62,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     final specialty = selectedSpecialty;
     final title = selectedTitle;
 
-    if (firstName.isNotEmpty && lastName.isNotEmpty && specialty != null && title != null) {
+    if (firstName.isNotEmpty && lastName.isNotEmpty && specialty != null && title != null && selectedLocations.isNotEmpty) {
       // Query Firestore to check for duplicates
       final querySnapshot = await _firestore.collection('providers')
           .where('firstName', isEqualTo: firstName)
@@ -63,6 +81,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
           'lastName': lastName,
           'specialty': specialty,
           'title': title,
+          'locations': selectedLocations,  // Save multiple locations as a list
           'waitTime': null,  // Initialize wait time as null
         });
 
@@ -71,6 +90,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
         lastNameController.clear();
         selectedSpecialty = null;
         selectedTitle = null;
+        selectedLocations = [];
 
         // Navigate back after saving
         Navigator.pop(context);
@@ -86,8 +106,12 @@ class _AddProviderPageState extends State<AddProviderPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Container(
-        alignment:Alignment.center, child:  Text('Add Provider'))),
+      appBar: AppBar(
+        title: Container(
+          alignment: Alignment.center,
+          child: Text('Add Provider'),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -134,6 +158,27 @@ class _AddProviderPageState extends State<AddProviderPage> {
                 });
               },
               hint: Text('Select Title'),
+            ),
+            SizedBox(height: 16),
+            // Multi-select Location List
+            Text('Select Locations'),
+            Wrap(
+              spacing: 8.0,
+              children: locations.map((location) {
+                return FilterChip(
+                  label: Text(location),
+                  selected: selectedLocations.contains(location),
+                  onSelected: (selected) {
+                    setState(() {
+                      if (selected) {
+                        selectedLocations.add(location);
+                      } else {
+                        selectedLocations.remove(location);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
             ),
             SizedBox(height: 16),
             ElevatedButton(
