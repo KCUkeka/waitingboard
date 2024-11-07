@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:waitingboard/screens/fullscreendashboard.dart';
+import 'package:waitingboard/screens/login_page.dart';
 import 'screens/landing_page.dart';
 import 'screens/home_page.dart';
 import 'screens/dashboard_page.dart';
@@ -35,9 +37,11 @@ class WaitingApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => LandingPage(),
+        '/': (context) => LandingPage(), 
+        // to start at landing page, use the LandingPage() and LoginPage() method for login page
         '/home': (context) => HomePage(),
         '/dashboard': (context) => DashboardPage(),
+        '/fullscreendashboard': (context) => FullScreenDashboardPage(),
       },
     );
   }

@@ -1,35 +1,9 @@
+import 'dart:html' as html; // For web-specific functionality
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:waitingboard/screens/fullscreendashboard.dart';
-
-class ProviderInfo {
-  final String firstName;
-  final String lastName;
-  final String specialty;
-  final String title;
-  int? waitTime;
-
-  ProviderInfo({
-    required this.firstName,
-    required this.lastName,
-    required this.specialty,
-    required this.title,
-    this.waitTime,
-  });
-
-  factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return ProviderInfo(
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      specialty: data['specialty'] ?? '',
-      title: data['title'] ?? '',
-      waitTime: data['waitTime'],
-    );
-  }
-
-  String get displayName => '$lastName, ${firstName[0]}. | $title';
-}
+import 'package:url_launcher/url_launcher.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -57,11 +31,30 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             const Text('Dashboard'),
             ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => FullScreenDashboardPage()),
-                );
+
+              // This was to just open up a fullscreen page
+              // onPressed: () {
+              //   Navigator.push(
+              //     context,
+              //     MaterialPageRoute(builder: (context) => FullScreenDashboardPage()),
+              //   );
+              // },
+
+              onPressed: () async {
+                if (kIsWeb) {
+                  // Construct the full URL with route for web-based navigation
+                  final url = Uri.base.origin + '/#/fullscreendashboard';
+
+                  // Open the full screen dashboard in a new browser tab
+                  await launchUrl(Uri.parse(url), webOnlyWindowName: '_blank');
+                } else {
+                  // For non-web, navigate within the app
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => FullScreenDashboardPage()),
+                  );
+                }
               },
               child: const Text('Full Screen'),
             ),
@@ -109,20 +102,23 @@ class _DashboardPageState extends State<DashboardPage> {
                           children: [
                             Text(
                               provider.displayName,
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              provider.specialty, // Display specialty on the second line
+                              provider.specialty,
                               style: const TextStyle(fontSize: 16),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
-                            const Text('Wait Time:', style: TextStyle(fontSize: 16)),
+                            const Text('Wait Time:',
+                                style: TextStyle(fontSize: 16)),
                             Text(
                               '${provider.waitTime} mins',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),

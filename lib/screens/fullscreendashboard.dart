@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart'; // Import to access kIsWeb
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -46,7 +47,11 @@ class FullScreenDashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Wait times'),
+        title: Container(
+          alignment: Alignment.center,
+          child: const Text('Wait times'),
+        ),
+        automaticallyImplyLeading: !kIsWeb, // Hide back button on web platform
       ),
       body: StreamBuilder<List<ProviderInfo>>(
         stream: getProvidersStream(),
