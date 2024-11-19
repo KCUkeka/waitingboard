@@ -18,6 +18,14 @@ class FirebaseService {
     });
   }
 
+  // Method to update the wait time and add the lastChanged timestamp
+  Future<void> updateWaitTime(String providerId, int newWaitTime) async {
+    await _firestore.collection('wait_times').doc(providerId).update({
+      'wait_time': newWaitTime,
+      'lastChanged': FieldValue.serverTimestamp(), // Sets the last changed time
+    });
+  }
+
   // Add new wait time (example)
   Future<void> addWaitTime(String provider, String specialty, String title, String waitTime) async {
     await _firestore.collection('wait_times').add({

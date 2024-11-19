@@ -18,51 +18,44 @@ class _LoginPageState extends State<LoginPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Login function using Firebase Authentication and Firestore to verify username
-  Future<void> _login() async {
-    final username = _usernameController.text;
-    final password = _passwordController.text;
+Future<void> _login() async {
+  final username = _usernameController.text;
+  final password = _passwordController.text;
 
-    try {
-      // Query Firestore to get the user document based on username
-      var userDoc = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username)
-          .limit(1)
-          .get();
+  try {
+    var userDoc = await _firestore
+        .collection('users')
+        .where('username', isEqualTo: username)
+        .limit(1)
+        .get();
 
-      if (userDoc.docs.isEmpty) {
-        // Show error if username doesn't exist
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Username not found")),
-        );
-        return;
-      }
-
-      // Get the user's email from Firestore (since username is unique, this works)
-      String email = userDoc.docs.first['email'];
-
-      // Now use Firebase Authentication to sign in with email and password
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      // Save login state using shared preferences
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-
-      // Navigate to the home page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
-    } catch (e) {
-      // Show an error message if login fails
+    if (userDoc.docs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Invalid username or password")),
+        SnackBar(content: Text("Username not found")),
       );
+      return;
     }
+
+    String email = userDoc.docs.first['email'];
+    UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Invalid username or password")),
+    );
   }
+}
+
 
   // Registration function using Firebase Authentication
   Future<void> _register() async {

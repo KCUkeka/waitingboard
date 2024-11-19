@@ -37,7 +37,7 @@ class WaitingApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => LandingPage(), 
+        '/': (context) => HomePage(), 
         // to start at landing page, use the LandingPage() and LoginPage() method for login page
         '/home': (context) => HomePage(),
         '/dashboard': (context) => DashboardPage(),

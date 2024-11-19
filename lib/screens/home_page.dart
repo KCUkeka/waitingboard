@@ -91,7 +91,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               itemBuilder: (context) => [
                 PopupMenuItem(value: 'Add Provider', child: Text('Add Provider')),
                 PopupMenuItem(value: 'Providers List', child: Text('Providers List')),
-                // PopupMenuItem(value: 'Logout', child: Text('Logout')),  // Added logout option
+                PopupMenuItem(value: 'Logout', child: Text('Logout')),  // Added logout option
               ],
               child: Icon(
                 CupertinoIcons.person_crop_circle_fill_badge_plus,
