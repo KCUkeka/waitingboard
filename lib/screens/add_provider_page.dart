@@ -9,6 +9,7 @@ class AddProviderPage extends StatefulWidget {
 class _AddProviderPageState extends State<AddProviderPage> {
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController newLocationController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   String? selectedSpecialty;
@@ -55,6 +56,28 @@ class _AddProviderPageState extends State<AddProviderPage> {
     });
   }
 
+  // Add a new location to Firestore
+  Future<void> addLocation() async {
+    final newLocation = newLocationController.text.trim();
+    if (newLocation.isNotEmpty) {
+      final existingLocation = locations.contains(newLocation);
+      if (existingLocation) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location already exists')),
+        );
+        return;
+      }
+      await _firestore.collection('locations').add({'name': newLocation});
+      setState(() {
+        locations.add(newLocation); // Update the local list
+      });
+      newLocationController.clear(); // Clear the text field
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Location added successfully')),
+      );
+    }
+  }
+
   // Method to save the provider information to Firebase
   Future<void> saveProvider() async {
     final firstName = firstNameController.text.trim();
@@ -70,7 +93,6 @@ class _AddProviderPageState extends State<AddProviderPage> {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        // Show a message if a duplicate is found
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Provider already listed')),
         );
@@ -81,8 +103,8 @@ class _AddProviderPageState extends State<AddProviderPage> {
           'lastName': lastName,
           'specialty': specialty,
           'title': title,
-          'locations': selectedLocations,  // Save multiple locations as a list
-          'waitTime': null,  // Initialize wait time as null
+          'locations': selectedLocations,
+          'waitTime': null,
         });
 
         // Clear the text fields after saving
@@ -96,7 +118,6 @@ class _AddProviderPageState extends State<AddProviderPage> {
         Navigator.pop(context);
       }
     } else {
-      // Show error if fields are empty
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('All fields are required')),
       );
@@ -114,78 +135,113 @@ class _AddProviderPageState extends State<AddProviderPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: firstNameController,
-              decoration: InputDecoration(labelText: 'First Name'),
-            ),
-            TextField(
-              controller: lastNameController,
-              decoration: InputDecoration(labelText: 'Last Name'),
-            ),
-            SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(labelText: 'Specialty'),
-              value: selectedSpecialty,
-              items: specialties.map((specialty) {
-                return DropdownMenuItem<String>(
-                  value: specialty,
-                  child: Text(specialty),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedSpecialty = value;
-                });
-              },
-              hint: Text('Select Specialty'),
-            ),
-            SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(labelText: 'Title'),
-              value: selectedTitle,
-              items: titles.map((title) {
-                return DropdownMenuItem<String>(
-                  value: title,
-                  child: Text(title),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedTitle = value;
-                });
-              },
-              hint: Text('Select Title'),
-            ),
-            SizedBox(height: 16),
-            // Multi-select Location List
-            Text('Select Locations'),
-            Wrap(
-              spacing: 8.0,
-              children: locations.map((location) {
-                return FilterChip(
-                  label: Text(location),
-                  selected: selectedLocations.contains(location),
-                  onSelected: (selected) {
-                    setState(() {
-                      if (selected) {
-                        selectedLocations.add(location);
-                      } else {
-                        selectedLocations.remove(location);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: saveProvider,
-              child: Text('Save Provider'),
-            ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: firstNameController,
+                decoration: InputDecoration(labelText: 'First Name'),
+              ),
+              TextField(
+                controller: lastNameController,
+                decoration: InputDecoration(labelText: 'Last Name'),
+              ),
+              SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(labelText: 'Specialty'),
+                value: selectedSpecialty,
+                items: specialties.map((specialty) {
+                  return DropdownMenuItem<String>(
+                    value: specialty,
+                    child: Text(specialty),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedSpecialty = value;
+                  });
+                },
+                hint: Text('Select Specialty'),
+              ),
+              SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(labelText: 'Title'),
+                value: selectedTitle,
+                items: titles.map((title) {
+                  return DropdownMenuItem<String>(
+                    value: title,
+                    child: Text(title),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedTitle = value;
+                  });
+                },
+                hint: Text('Select Title'),
+              ),
+              SizedBox(height: 16),
+              Text('Select Locations'),
+              Wrap(
+                spacing: 8.0,
+                children: locations.map((location) {
+                  return FilterChip(
+                    label: Text(location),
+                    selected: selectedLocations.contains(location),
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          selectedLocations.add(location);
+                        } else {
+                          selectedLocations.remove(location);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  // Open dialog to add a new location
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text('Add New Location'),
+                        content: TextField(
+                          controller: newLocationController,
+                          decoration: InputDecoration(hintText: 'Enter location name'),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop(); // Close dialog
+                            },
+                            child: Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              addLocation();
+                              Navigator.of(context).pop(); // Close after adding
+                            },
+                            child: Text('Add'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                child: Text('Add New Location'),
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: saveProvider,
+                child: Text('Save Provider'),
+              ),
+            ],
+          ),
         ),
       ),
     );
