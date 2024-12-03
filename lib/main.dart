@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:waitingboard/screens/login_page.dart';
-import 'screens/landing_page.dart';
 import 'screens/home_page.dart';
 import 'screens/dashboard_page.dart';
 

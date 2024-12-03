@@ -22,6 +22,19 @@ Future<void> _login() async {
   final username = _usernameController.text;
   final password = _passwordController.text;
 
+  // Static check for admin credentials
+  if (username == 'admin' && password == 'password') {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+    );
+    return;
+  }
+  
+  // Existing Firestore and Firebase Auth logic for other users
   try {
     var userDoc = await _firestore
         .collection('users')
