@@ -45,55 +45,134 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _login() async {
-    final password = _passwordController.text;
+Future<void> _login() async {
+  final password = _passwordController.text;
 
-    // Static admin login check
-    if (_selectedUsername == 'admin' && password == 'admin') {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
+  // Static admin login check
+  if (_selectedUsername == 'admin' && password == 'admin') {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // Set the login state and store loginId
+    await prefs.setBool('isLoggedIn', true);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+    String loginId = Timestamp.now().millisecondsSinceEpoch.toString();  // Generate a unique loginId based on timestamp
+
+    // Create the login session in Firestore
+    await _firestore.collection('logins').add({
+      'username': _selectedUsername,
+      'location': _selectedLocation,
+      'login_timestamp': Timestamp.now(),
+      'login_id': loginId,
+      'logout_timestamp': null,
+    });
+
+    // Save the loginId for future reference (e.g., logout)
+    await prefs.setString('loginId', loginId);
+
+    // Navigate to the home page
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+    );
+    return;
+  }
+
+  // Static clinic login check
+  if (_selectedUsername == 'clinic' && password == 'password') {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Set the login state and store loginId
+    await prefs.setBool('isLoggedIn', true);
+
+    String loginId = Timestamp.now().millisecondsSinceEpoch.toString();  // Generate a unique loginId based on timestamp
+
+    // Create the login session in Firestore
+    await _firestore.collection('logins').add({
+      'username': _selectedUsername,
+      'location': _selectedLocation,
+      'login_timestamp': Timestamp.now(),
+      'login_id': loginId,
+      'logout_timestamp': null,
+    });
+
+    // Save the loginId for future reference (e.g., logout)
+    await prefs.setString('loginId', loginId);
+
+    // Navigate to the home page
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+    );
+    return;
+  }
+
+  // Static frontdesk login check
+  if (_selectedUsername == 'frontdesk' && password == 'password') {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Set the login state and store loginId
+    await prefs.setBool('isLoggedIn', true);
+
+    String loginId = Timestamp.now().millisecondsSinceEpoch.toString();  // Generate a unique loginId based on timestamp
+
+    // Create the login session in Firestore
+    await _firestore.collection('logins').add({
+      'username': _selectedUsername,
+      'location': _selectedLocation,
+      'login_timestamp': Timestamp.now(),
+      'login_id': loginId,
+      'logout_timestamp': null,
+    });
+
+    // Save the loginId for future reference (e.g., logout)
+    await prefs.setString('loginId', loginId);
+
+    // Navigate to the home page
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+    );
+    return;
+  }
+
+  // Firebase Firestore and Auth logic for other users (dynamic login)
+  try {
+    var userDoc = await _firestore
+        .collection('users')
+        .where('username', isEqualTo: _selectedUsername)
+        .limit(1)
+        .get();
+
+    if (userDoc.docs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Username not found")),
       );
       return;
     }
 
-    // Firebase Firestore and Auth logic for other users
-    try {
-      var userDoc = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: _selectedUsername)
-          .limit(1)
-          .get();
+    String email = userDoc.docs.first['email'];
+    UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
 
-      if (userDoc.docs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Username not found")),
-        );
-        return;
-      }
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
 
-      String email = userDoc.docs.first['email'];
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Invalid username or password")),
-      );
-    }
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Invalid username or password")),
+    );
   }
+}
+
+
+
+
 
   @override
   Widget build(BuildContext context) {

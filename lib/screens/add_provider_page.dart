@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AddProviderPage extends StatefulWidget {
   @override
@@ -11,12 +12,14 @@ class _AddProviderPageState extends State<AddProviderPage> {
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController newLocationController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String? selectedSpecialty;
   String? selectedTitle;
   List<String> selectedLocations = [];
+  String? currentUserRole; // To store the user's role
 
-  // List of specialties and titles
+// List of specialties and titles
   final List<String> specialties = [
     'Spine',
     'Total Joint',
@@ -39,16 +42,17 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'DPM Fellow',
   ];
 
-  // List to hold locations fetched from Firestore
+// List to hold locations fetched from Firestore
   List<String> locations = [];
 
   @override
   void initState() {
     super.initState();
     fetchLocations();
+    fetchCurrentUserRole();
   }
 
-  // Fetch locations from Firestore
+// Fetch locations from Firestore
   Future<void> fetchLocations() async {
     final snapshot = await _firestore.collection('locations').get();
     setState(() {
@@ -56,7 +60,16 @@ class _AddProviderPageState extends State<AddProviderPage> {
     });
   }
 
-  // Add a new location to Firestore
+  Future<void> fetchCurrentUserRole() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final snapshot = await _firestore.collection('users').doc(user.uid).get();
+      setState(() {
+        currentUserRole = snapshot['role']; // Assuming role is stored in Firestore
+      });
+    }
+  }
+
   Future<void> addLocation() async {
     final newLocation = newLocationController.text.trim();
     if (newLocation.isNotEmpty) {
@@ -78,7 +91,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     }
   }
 
-  // Method to save the provider information to Firebase
+// Method to save the provider information to Firebase
   Future<void> saveProvider() async {
     final firstName = firstNameController.text.trim();
     final lastName = lastNameController.text.trim();
@@ -86,7 +99,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     final title = selectedTitle;
 
     if (firstName.isNotEmpty && lastName.isNotEmpty && specialty != null && title != null && selectedLocations.isNotEmpty) {
-      // Query Firestore to check for duplicates
+// Query Firestore to check for duplicates
       final querySnapshot = await _firestore.collection('providers')
           .where('firstName', isEqualTo: firstName)
           .where('lastName', isEqualTo: lastName)
@@ -97,7 +110,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
           SnackBar(content: Text('Provider already listed')),
         );
       } else {
-        // Add new provider if no duplicate is found
+// Add new provider if no duplicate is found
         await _firestore.collection('providers').add({
           'firstName': firstName,
           'lastName': lastName,
@@ -107,14 +120,14 @@ class _AddProviderPageState extends State<AddProviderPage> {
           'waitTime': null,
         });
 
-        // Clear the text fields after saving
+// Clear the text fields after saving
         firstNameController.clear();
         lastNameController.clear();
         selectedSpecialty = null;
         selectedTitle = null;
         selectedLocations = [];
 
-        // Navigate back after saving
+// Navigate back after saving
         Navigator.pop(context);
       }
     } else {
@@ -131,7 +144,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
         title: Container(
           alignment: Alignment.center,
           child: Text('Add Provider'),
-        ),
+),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -202,39 +215,40 @@ class _AddProviderPageState extends State<AddProviderPage> {
                 }).toList(),
               ),
               SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  // Open dialog to add a new location
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text('Add New Location'),
-                        content: TextField(
-                          controller: newLocationController,
-                          decoration: InputDecoration(hintText: 'Enter location name'),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop(); // Close dialog
-                            },
-                            child: Text('Cancel'),
+              if (currentUserRole == 'admin')
+                ElevatedButton(
+                  onPressed: () {
+// Open dialog to add a new location
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text('Add New Location'),
+                          content: TextField(
+                            controller: newLocationController,
+                            decoration: InputDecoration(hintText: 'Enter location name'),
                           ),
-                          ElevatedButton(
-                            onPressed: () {
-                              addLocation();
-                              Navigator.of(context).pop(); // Close after adding
-                            },
-                            child: Text('Add'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-                child: Text('Add New Location'),
-              ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                addLocation();
+                                Navigator.of(context).pop();
+                              },
+                              child: Text('Add'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  child: Text('Add New Location'),
+                ),
               SizedBox(height: 16),
               ElevatedButton(
                 onPressed: saveProvider,
