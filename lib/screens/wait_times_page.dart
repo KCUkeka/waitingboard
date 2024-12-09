@@ -80,16 +80,19 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     });
   }
 
-  Future<void> saveAllWaitTimes() async {
-    for (var provider in selectedProviders) {
-      if (provider.waitTime != null) {
-        await _firestore.collection('providers').doc(provider.docId).update({'waitTime': provider.waitTime});
-      }
+Future<void> saveAllWaitTimes() async {
+  for (var provider in selectedProviders) {
+    if (provider.waitTime != null) {
+      await _firestore.collection('providers').doc(provider.docId).update({
+        'waitTime': provider.waitTime,
+        'lastChanged': Timestamp.now(), // Add current timestamp
+      });
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Wait times saved successfully')),
-    );
   }
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Wait times saved successfully')),
+  );
+}
 
   void openProviderSelection() async {
     // Filter out providers that already have a wait time from the providerList
@@ -108,21 +111,22 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-  Future<void> removeProvider(ProviderInfo provider) async {
-    setState(() {
-      selectedProviders.remove(provider);
-      provider.waitTime = null; // Set wait time to null in the local state
-    });
+Future<void> removeProvider(ProviderInfo provider) async {
+  setState(() {
+    selectedProviders.remove(provider);
+    provider.waitTime = null; // Set wait time to null in the local state
+  });
 
-    // Update Firestore to set waitTime to null
-    await _firestore.collection('providers').doc(provider.docId).update({
-      'waitTime': FieldValue.delete(), // Removes the field in Firestore
-    });
+  // Update Firestore to remove waitTime and set the lastChanged field
+  await _firestore.collection('providers').doc(provider.docId).update({
+    'waitTime': FieldValue.delete(), // Removes the waitTime field in Firestore
+    'lastChanged': FieldValue.delete(), // delete timestamp
+  });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Wait time removed successfully')),
-    );
-  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Wait time removed and timestamp updated successfully')),
+  );
+}
 
   @override
   Widget build(BuildContext context) {

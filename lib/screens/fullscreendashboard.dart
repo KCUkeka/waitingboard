@@ -1,13 +1,15 @@
 import 'package:flutter/foundation.dart'; // Import to access kIsWeb
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // Import for date formatting
 
 class ProviderInfo {
   final String firstName;
   final String lastName;
   final String specialty;
   final String title;
-  int? waitTime;
+  final int? waitTime;
+  final DateTime? lastChanged; // New field for last updated timestamp
 
   ProviderInfo({
     required this.firstName,
@@ -15,6 +17,7 @@ class ProviderInfo {
     required this.specialty,
     required this.title,
     this.waitTime,
+    this.lastChanged,
   });
 
   factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
@@ -25,6 +28,9 @@ class ProviderInfo {
       specialty: data['specialty'] ?? '',
       title: data['title'] ?? '',
       waitTime: data['waitTime'],
+      lastChanged: data['lastChanged'] != null
+          ? (data['lastChanged'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -33,6 +39,14 @@ class ProviderInfo {
 
 class FullScreenDashboardPage extends StatelessWidget {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Method to format the lastChanged timestamp
+  String formatTimestamp(DateTime? timestamp) {
+    if (timestamp == null) return "N/A";
+
+    final formattedDate = DateFormat('hh:mm a').format(timestamp);
+    return formattedDate;
+  }
 
   Stream<List<ProviderInfo>> getProvidersStream() {
     return _firestore.collection('providers').snapshots().map((snapshot) {
@@ -109,6 +123,13 @@ class FullScreenDashboardPage extends StatelessWidget {
                             Text(
                               '${provider.waitTime} mins',
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text('Last Changed:', style: TextStyle(fontSize: 16)),
+                            Text(
+                              formatTimestamp(provider.lastChanged),
+                              style: const TextStyle(fontSize: 14),
+                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
