@@ -17,7 +17,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
   late TextEditingController lastNameController;
   late String selectedSpecialty;
   late String selectedTitle;
-  late String selectedLocation;
+  List<String> selectedLocations = [];
 
   final List<String> specialties = [
     'Spine', 'Total Joint', 'Upper Extremity', 'Shoulder', 'Knee',
@@ -32,11 +32,15 @@ class _EditProviderPageState extends State<EditProviderPage> {
     super.initState();
     firstNameController = TextEditingController(text: widget.providerData['firstName'] ?? '');
     lastNameController = TextEditingController(text: widget.providerData['lastName'] ?? '');
-    
+
     // Ensure the selected values are valid
-    selectedSpecialty = specialties.contains(widget.providerData['specialty']) ? widget.providerData['specialty'] : specialties.first;
+    selectedSpecialty = specialties.contains(widget.providerData['specialty'])
+        ? widget.providerData['specialty']
+        : specialties.first;
     selectedTitle = titles.contains(widget.providerData['title']) ? widget.providerData['title'] : titles.first;
-    selectedLocation = widget.providerData['location'] ?? ''; // This will be set later if empty
+
+    // Initialize selected locations
+    selectedLocations = List<String>.from(widget.providerData['locations'] ?? []);
     _fetchLocations();
   }
 
@@ -44,15 +48,15 @@ class _EditProviderPageState extends State<EditProviderPage> {
     final querySnapshot = await _firestore.collection('locations').get();
     setState(() {
       locations = querySnapshot.docs.map((doc) => doc['name'] as String).toList();
-      if (selectedLocation.isEmpty && locations.isNotEmpty) {
-        selectedLocation = locations.first; // Set default location if not already set
-      }
     });
   }
 
   Future<void> _updateProvider() async {
-    if (firstNameController.text.isEmpty || lastNameController.text.isEmpty || 
-        selectedSpecialty.isEmpty || selectedTitle.isEmpty || selectedLocation.isEmpty) {
+    if (firstNameController.text.isEmpty ||
+        lastNameController.text.isEmpty ||
+        selectedSpecialty.isEmpty ||
+        selectedTitle.isEmpty ||
+        selectedLocations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('All fields are required')),
       );
@@ -65,7 +69,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
         'lastName': lastNameController.text.trim(),
         'specialty': selectedSpecialty,
         'title': selectedTitle,
-        'location': selectedLocation,
+        'locations': selectedLocations, // Save selected locations as a list
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Provider updated successfully')),
@@ -76,6 +80,30 @@ class _EditProviderPageState extends State<EditProviderPage> {
         SnackBar(content: Text('Failed to update provider: $e')),
       );
     }
+  }
+
+  Widget _buildLocationsMultiSelect() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Locations', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ...locations.map((location) {
+          return CheckboxListTile(
+            title: Text(location),
+            value: selectedLocations.contains(location),
+            onChanged: (isSelected) {
+              setState(() {
+                if (isSelected == true) {
+                  selectedLocations.add(location);
+                } else {
+                  selectedLocations.remove(location);
+                }
+              });
+            },
+          );
+        }).toList(),
+      ],
+    );
   }
 
   @override
@@ -138,23 +166,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
                   }
                 },
               ),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: 'Location'),
-                value: selectedLocation.isEmpty ? null : selectedLocation,
-                items: locations.map((location) {
-                  return DropdownMenuItem(
-                    value: location,
-                    child: Text(location),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      selectedLocation = value;
-                    });
-                  }
-                },
-              ),
+              _buildLocationsMultiSelect(),
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _updateProvider,

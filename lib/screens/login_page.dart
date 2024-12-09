@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';  // FirebaseAuth import
-import 'package:cloud_firestore/cloud_firestore.dart';  // Firestore import
-import 'home_page.dart';  // Home page to navigate after login
+import 'package:firebase_auth/firebase_auth.dart'; // FirebaseAuth import
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore import
+import 'home_page.dart'; // Home page to navigate after login
 
 class LoginPage extends StatefulWidget {
   @override
@@ -10,35 +10,136 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
   // FirebaseAuth instance
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Login function using Firebase Authentication and Firestore to verify username
+  // Dropdown values
+  String? _selectedUsername;
+  String? _selectedLocation; // Updated from _selectedRole to _selectedLocation
+
+  // Example data for usernames
+  final List<String> _usernames = ['admin', 'clinic', 'frontdesk'];
+
+  // Locations fetched from Firestore
+  List<String> _locations = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLocations(); // Fetch locations when the widget initializes
+  }
+
+  Future<void> _fetchLocations() async {
+    try {
+      var snapshot = await _firestore.collection('locations').get();
+      setState(() {
+        _locations = snapshot.docs.map((doc) => doc['name'] as String).toList();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load locations: $e")),
+      );
+    }
+  }
+
 Future<void> _login() async {
-  final username = _usernameController.text;
   final password = _passwordController.text;
 
-  // Static check for admin credentials
-  if (username == 'admin' && password == 'password') {
+  // Static admin login check
+  if (_selectedUsername == 'admin' && password == 'admin') {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // Set the login state and store loginId
     await prefs.setBool('isLoggedIn', true);
 
+    String loginId = Timestamp.now().millisecondsSinceEpoch.toString();  // Generate a unique loginId based on timestamp
+
+    // Create the login session in Firestore
+    await _firestore.collection('logins').add({
+      'username': _selectedUsername,
+      'location': _selectedLocation,
+      'login_timestamp': Timestamp.now(),
+      'login_id': loginId,
+      'logout_timestamp': null,
+    });
+
+    // Save the loginId for future reference (e.g., logout)
+    await prefs.setString('loginId', loginId);
+
+    // Navigate to the home page
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => HomePage()),
     );
     return;
   }
-  
-  // Existing Firestore and Firebase Auth logic for other users
+
+  // Static clinic login check
+  if (_selectedUsername == 'clinic' && password == 'password') {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Set the login state and store loginId
+    await prefs.setBool('isLoggedIn', true);
+
+    String loginId = Timestamp.now().millisecondsSinceEpoch.toString();  // Generate a unique loginId based on timestamp
+
+    // Create the login session in Firestore
+    await _firestore.collection('logins').add({
+      'username': _selectedUsername,
+      'location': _selectedLocation,
+      'login_timestamp': Timestamp.now(),
+      'login_id': loginId,
+      'logout_timestamp': null,
+    });
+
+    // Save the loginId for future reference (e.g., logout)
+    await prefs.setString('loginId', loginId);
+
+    // Navigate to the home page
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+    );
+    return;
+  }
+
+  // Static frontdesk login check
+  if (_selectedUsername == 'frontdesk' && password == 'password') {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Set the login state and store loginId
+    await prefs.setBool('isLoggedIn', true);
+
+    String loginId = Timestamp.now().millisecondsSinceEpoch.toString();  // Generate a unique loginId based on timestamp
+
+    // Create the login session in Firestore
+    await _firestore.collection('logins').add({
+      'username': _selectedUsername,
+      'location': _selectedLocation,
+      'login_timestamp': Timestamp.now(),
+      'login_id': loginId,
+      'logout_timestamp': null,
+    });
+
+    // Save the loginId for future reference (e.g., logout)
+    await prefs.setString('loginId', loginId);
+
+    // Navigate to the home page
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+    );
+    return;
+  }
+
+  // Firebase Firestore and Auth logic for other users (dynamic login)
   try {
     var userDoc = await _firestore
         .collection('users')
-        .where('username', isEqualTo: username)
+        .where('username', isEqualTo: _selectedUsername)
         .limit(1)
         .get();
 
@@ -70,42 +171,8 @@ Future<void> _login() async {
 }
 
 
-  // Registration function using Firebase Authentication
-  Future<void> _register() async {
-    final username = _usernameController.text;
-    final password = _passwordController.text;
 
-    if (username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please fill in both fields")),
-      );
-      return;
-    }
 
-    try {
-      // Create a new user with email and password
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: username + '@example.com', // Use the username as part of the email
-        password: password,
-      );
-
-      // Store the username in Firestore under the user's document
-      await _firestore.collection('users').doc(userCredential.user?.uid).set({
-        'username': username,
-        'email': userCredential.user?.email, // Save email in Firestore
-      });
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Registration successful! Please log in.")),
-      );
-    } catch (e) {
-      // Handle errors like email already in use or weak password
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Registration failed: $e")),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,10 +183,38 @@ Future<void> _login() async {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            TextField(
-              controller: _usernameController,
+            DropdownButtonFormField<String>(
+              value: _selectedUsername,
+              items: _usernames.map((username) {
+                return DropdownMenuItem(
+                  value: username,
+                  child: Text(username),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedUsername = value;
+                });
+              },
               decoration: InputDecoration(labelText: 'Username'),
             ),
+
+            DropdownButtonFormField<String>(
+              value: _selectedLocation,
+              items: _locations.map((location) {
+                return DropdownMenuItem(
+                  value: location,
+                  child: Text(location),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedLocation = value;
+                });
+              },
+              decoration: InputDecoration(labelText: 'Location'),
+            ),
+
             TextField(
               controller: _passwordController,
               obscureText: true,
@@ -127,13 +222,16 @@ Future<void> _login() async {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _login,  // Calls _login function on login button press
+              onPressed: () {
+                if (_selectedUsername != null && _selectedLocation != null) {
+                  _login();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Please select a username and location.")),
+                  );
+                }
+              },
               child: Text('Login'),
-            ),
-            SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _register,  // Calls _register function on sign-up button press
-              child: Text('Sign Up'),
             ),
           ],
         ),

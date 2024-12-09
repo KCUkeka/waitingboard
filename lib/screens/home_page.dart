@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
-import 'login_page.dart';  // Import the LoginPage
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'login_page.dart'; // Import the LoginPage
 import 'wait_times_page.dart';
 import 'add_provider_page.dart';
 import 'providers_list.dart';
@@ -12,8 +13,12 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
+
+  // Firestore instance
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -37,16 +42,42 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   // Log out functionality
-  Future<void> _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', false);
+Future<void> _logout() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? loginId = prefs.getString('loginId');
 
-    // After logging out, navigate back to the login page
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => LoginPage()),
-    );
+  if (loginId != null) {
+    try {
+      // Fetch the document to check if it exists
+      DocumentSnapshot snapshot =
+          await _firestore.collection('logins').doc(loginId).get();
+
+      if (snapshot.exists) {
+        // If the document exists, update the logout timestamp
+        await _firestore.collection('logins').doc(loginId).update({
+          'logout_timestamp': Timestamp.now(),
+        });
+        print('Logout timestamp updated successfully.');
+      } else {
+        print('Document with loginId does not exist.');
+      }
+    } catch (e) {
+      print('Error updating logout timestamp: $e');
+    }
+  } else {
+    print('Login ID not found in SharedPreferences.');
   }
+
+  // Clear session data
+  await prefs.clear();
+
+  // Navigate back to the login page
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (context) => LoginPage()),
+  );
+}
+
 
   @override
   void dispose() {
@@ -85,13 +116,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     MaterialPageRoute(builder: (context) => ProviderListPage()),
                   );
                 } else if (value == 'Logout') {
-                  _logout();  // Call the logout function
+                  _logout(); // Call the logout function
                 }
               },
               itemBuilder: (context) => [
-                PopupMenuItem(value: 'Add Provider', child: Text('Add Provider')),
-                PopupMenuItem(value: 'Providers List', child: Text('Providers List')),
-                PopupMenuItem(value: 'Logout', child: Text('Logout')),  // Added logout option
+                PopupMenuItem(
+                    value: 'Add Provider', child: Text('Add Provider')),
+                PopupMenuItem(
+                    value: 'Providers List', child: Text('Providers List')),
+                PopupMenuItem(
+                    value: 'Logout',
+                    child: Text('Logout')), // Added logout option
               ],
               child: Icon(
                 CupertinoIcons.person_crop_circle_fill_badge_plus,

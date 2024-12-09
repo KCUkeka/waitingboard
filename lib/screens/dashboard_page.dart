@@ -1,9 +1,9 @@
-// import 'dart:html' as html; // For web-specific functionality
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart'; // Import for date formatting
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -13,6 +13,16 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Method to format the lastChanged timestamp
+  String formatTimestamp(Timestamp? timestamp) {
+    if (timestamp == null) return "N/A";
+
+    final dateTime = timestamp.toDate();
+    final formattedDate = DateFormat('hh:mm a').format(dateTime);
+    return formattedDate;
+  }
+
+  // Stream to fetch providers with a non-null wait time
   Stream<List<ProviderInfo>> getProvidersStream() {
     return _firestore.collection('providers').snapshots().map((snapshot) {
       return snapshot.docs
@@ -31,24 +41,13 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             const Text('Dashboard'),
             ElevatedButton(
-
-              // This was to just open up a fullscreen page
-              // onPressed: () {
-              //   Navigator.push(
-              //     context,
-              //     MaterialPageRoute(builder: (context) => FullScreenDashboardPage()),
-              //   );
-              // },
-
               onPressed: () async {
                 if (kIsWeb) {
-                  // Construct the full URL with route for web-based navigation
+                  // Open the fullscreen dashboard in a new browser tab for web
                   final url = Uri.base.origin + '/#/fullscreendashboard';
-
-                  // Open the full screen dashboard in a new browser tab
                   await launchUrl(Uri.parse(url), webOnlyWindowName: '_blank');
                 } else {
-                  // For non-web, navigate within the app
+                  // Navigate within the app for non-web platforms
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -89,7 +88,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   padding: const EdgeInsets.all(16.0),
                   itemCount: providers.length,
-                  
                   itemBuilder: (context, index) {
                     final provider = providers[index];
 
@@ -121,6 +119,14 @@ class _DashboardPageState extends State<DashboardPage> {
                               style: const TextStyle(
                                   fontSize: 18, fontWeight: FontWeight.bold),
                             ),
+                            const SizedBox(height: 8),
+                            const Text('Last Changed:',
+                                style: TextStyle(fontSize: 16)),
+                            Text(
+                              formatTimestamp(provider.lastChanged),
+                              style: const TextStyle(fontSize: 14),
+                              textAlign: TextAlign.center,
+                            ),
                           ],
                         ),
                       ),
@@ -134,4 +140,37 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
+}
+
+// ProviderInfo model
+class ProviderInfo {
+  final String firstName;
+  final String lastName;
+  final String specialty;
+  final String title;
+  final int? waitTime;
+  final Timestamp? lastChanged;
+
+  ProviderInfo({
+    required this.firstName,
+    required this.lastName,
+    required this.specialty,
+    required this.title,
+    this.waitTime,
+    this.lastChanged,
+  });
+
+  factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return ProviderInfo(
+      firstName: data['firstName'] ?? '',
+      lastName: data['lastName'] ?? '',
+      specialty: data['specialty'] ?? '',
+      title: data['title'] ?? '',
+      waitTime: data['waitTime'],
+      lastChanged: data['lastChanged'] as Timestamp?, // Convert from Firestore Timestamp
+    );
+  }
+
+  String get displayName => '$lastName, ${firstName[0]}. | $title';
 }
