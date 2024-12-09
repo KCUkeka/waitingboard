@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:waitingboard/screens/edit_provider.page.dart';
+import 'package:waitingboard/screens/edit_provider_page.dart';
 class ProviderListPage extends StatelessWidget {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
