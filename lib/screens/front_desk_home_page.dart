@@ -1,21 +1,17 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:waitingboard/screens/providers_list.dart';
 import 'login_page.dart'; // Import the LoginPage
-import 'wait_times_page.dart';
 import 'dashboard_page.dart'; // Import DashboardPage
 
-class HomePage extends StatefulWidget {
+class FrontHomePage extends StatefulWidget {
   @override
-  _HomePageState createState() => _HomePageState();
+  _FrontHomePageState createState() => _FrontHomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
+class _FrontHomePageState extends State<FrontHomePage> {
   // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -23,7 +19,6 @@ class _HomePageState extends State<HomePage>
   void initState() {
     super.initState();
     _checkLoginStatus(); // Check login status when the home page is initialized
-    _tabController = TabController(length: 2, vsync: this); // Two tabs
   }
 
   // Check if the user is logged in when the home page is loaded
@@ -41,47 +36,40 @@ class _HomePageState extends State<HomePage>
   }
 
   // Log out functionality
-Future<void> _logout() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  String? loginId = prefs.getString('loginId');
+  Future<void> _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? loginId = prefs.getString('loginId');
 
-  if (loginId != null) {
-    try {
-      // Fetch the document to check if it exists
-      DocumentSnapshot snapshot =
-          await _firestore.collection('logins').doc(loginId).get();
+    if (loginId != null) {
+      try {
+        // Fetch the document to check if it exists
+        DocumentSnapshot snapshot =
+            await _firestore.collection('logins').doc(loginId).get();
 
-      if (snapshot.exists) {
-        // If the document exists, update the logout timestamp
-        await _firestore.collection('logins').doc(loginId).update({
-          'logout_timestamp': Timestamp.now(),
-        });
-        print('Logout timestamp updated successfully.');
-      } else {
-        print('Document with loginId does not exist.');
+        if (snapshot.exists) {
+          // If the document exists, update the logout timestamp
+          await _firestore.collection('logins').doc(loginId).update({
+            'logout_timestamp': Timestamp.now(),
+          });
+          print('Logout timestamp updated successfully.');
+        } else {
+          print('Document with loginId does not exist.');
+        }
+      } catch (e) {
+        print('Error updating logout timestamp: $e');
       }
-    } catch (e) {
-      print('Error updating logout timestamp: $e');
+    } else {
+      print('Login ID not found in SharedPreferences.');
     }
-  } else {
-    print('Login ID not found in SharedPreferences.');
-  }
 
-  // Clear session data
-  await prefs.clear();
+    // Clear session data
+    await prefs.clear();
 
-  // Navigate back to the login page
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (context) => LoginPage()),
-  );
-}
-
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+    // Navigate back to the login page
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
   }
 
   @override
@@ -92,19 +80,12 @@ Future<void> _logout() async {
           alignment: Alignment.center,
           child: const Text('Wait Time Dashboard'),
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Wait Times'),
-            Tab(text: 'Board'),
-          ],
-        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: PopupMenuButton<String>(
               onSelected: (value) {
-                 if (value == 'Providers List') {
+                if (value == 'Providers List') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => ProviderListPage()),
@@ -115,10 +96,13 @@ Future<void> _logout() async {
               },
               itemBuilder: (context) => [
                 PopupMenuItem(
-                    value: 'Providers List', child: Text('Providers List')),
+                  value: 'Providers List',
+                  child: Text('Providers List'),
+                ),
                 PopupMenuItem(
-                    value: 'Logout',
-                    child: Text('Logout')), // Added logout option
+                  value: 'Logout',
+                  child: Text('Logout'),
+                ),
               ],
               child: Icon(
                 CupertinoIcons.person_crop_circle_fill_badge_plus,
@@ -130,13 +114,7 @@ Future<void> _logout() async {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            WaitTimesPage(tabController: _tabController),
-            DashboardPage(), // Replace placeholder with DashboardPage
-          ],
-        ),
+        child: DashboardPage(), // Directly display the DashboardPage
       ),
     );
   }

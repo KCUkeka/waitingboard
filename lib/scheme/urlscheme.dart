@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:waitingboard/screens/clinic_home_page.dart';
 import 'package:waitingboard/screens/dashboard_page.dart';
-import 'package:waitingboard/screens/home_page.dart';
 
 class MyApp extends StatelessWidget {
   @override
@@ -9,7 +9,7 @@ class MyApp extends StatelessWidget {
       title: 'My App',
       initialRoute: '/',
       routes: {
-        '/': (context) => HomePage(),
+        '/': (context) => ClinicHomePage(),
         '/dashboard': (context) => DashboardPage(), // Your DashboardPage
       },
     );
