@@ -103,7 +103,8 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Create Account')),
+      appBar: AppBar(title: Container(
+        alignment: Alignment.center,child: Text('Create Account'))),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

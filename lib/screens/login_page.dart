@@ -39,8 +39,10 @@ class _LoginPageState extends State<LoginPage> {
       var locationsSnapshot = await _firestore.collection('locations').get();
 
       setState(() {
-        _usernames = usersSnapshot.docs.map((doc) => doc['username'] as String).toList();
-        _locations = locationsSnapshot.docs.map((doc) => doc['name'] as String).toList();
+        _usernames =
+            usersSnapshot.docs.map((doc) => doc['username'] as String).toList();
+        _locations =
+            locationsSnapshot.docs.map((doc) => doc['name'] as String).toList();
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -49,125 +51,150 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
- Future<void> _login() async {
-  final password = _passwordController.text.trim();
+  Future<void> _login() async {
+    final password = _passwordController.text.trim();
 
-  try {
-    if (_selectedUsername == null || _selectedLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a username and location.")),
+    try {
+      if (_selectedUsername == null || _selectedLocation == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Please select a username and location.")),
+        );
+        return;
+      }
+
+      // Fetch user document from Firestore based on the selected username
+      var userSnapshot = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: _selectedUsername)
+          .limit(1)
+          .get();
+
+      if (userSnapshot.docs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Username not found.")),
+        );
+        return;
+      }
+
+      var userDoc = userSnapshot.docs.first;
+      String email = userDoc['email'];
+
+      // Use FirebaseAuth to sign in
+      await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
       );
-      return;
-    }
 
-    // Fetch user document from Firestore based on the selected username
-    var userSnapshot = await _firestore
-        .collection('users')
-        .where('username', isEqualTo: _selectedUsername)
-        .limit(1)
-        .get();
+      // Check for the `admin` field in the user document
+      bool isAdmin = userDoc.data().containsKey('admin')
+          ? userDoc['admin'] as bool
+          : false;
 
-    if (userSnapshot.docs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Username not found.")),
+      // Save login state and selected location to SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setString('selectedLocation', _selectedLocation!);
+
+      // Navigate to appropriate page based on admin status
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => isAdmin ? AdminHomePage() : HomePage(),
+        ),
       );
-      return;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Login failed: ${e.toString()}")),
+      );
     }
-
-    var userDoc = userSnapshot.docs.first;
-    String email = userDoc['email'];
-
-    // Use FirebaseAuth to sign in
-    await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    // Check for the `admin` field in the user document
-    bool isAdmin = userDoc.data().containsKey('admin') ? userDoc['admin'] as bool : false;
-
-    // Save login state and selected location to SharedPreferences
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', true);
-    await prefs.setString('selectedLocation', _selectedLocation!);
-
-    // Navigate to appropriate page based on admin status
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => isAdmin ? AdminHomePage() : HomePage(),
-      ),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Login failed: ${e.toString()}")),
-    );
   }
-}
-
-
+  
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Login')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Container(
+        alignment: Alignment.center, // Center the content horizontally
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            DropdownButtonFormField<String>(
-              value: _selectedUsername,
-              items: _usernames.map((username) {
-                return DropdownMenuItem(
-                  value: username,
-                  child: Text(username),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedUsername = value;
-                });
-              },
-              decoration: InputDecoration(labelText: 'Username'),
-            ),
-            DropdownButtonFormField<String>(
-              value: _selectedLocation,
-              items: _locations.map((location) {
-                return DropdownMenuItem(
-                  value: location,
-                  child: Text(location),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedLocation = value;
-                });
-              },
-              decoration: InputDecoration(labelText: 'Location'),
-            ),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: InputDecoration(labelText: 'Password'),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _login,
-              child: Text('Login'),
-            ),
-            SizedBox(height: 10),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => CreateAccountPage()),
-                );
-              },
-              child: Text('Create Account'),
+          children: [
+            Text('Orthoillinois'), // First line of text
+            Padding(
+              padding: EdgeInsets.only(left: 20.0), // Indentation for second line
+              child: Text('Wait Times Login'), // Second line of text
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+    body: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          // Add the image below the title
+          Image.asset(
+            'assets/images/waitboard.png', // Path to your image
+            width: 200, // Adjust width as needed
+            height: 200, // Adjust height as needed
+          ),
+          SizedBox(height: 20), // Add spacing below the image
+          DropdownButtonFormField<String>(
+            value: _selectedUsername,
+            items: _usernames.map((username) {
+              return DropdownMenuItem(
+                value: username,
+                child: Text(username),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedUsername = value;
+              });
+            },
+            decoration: InputDecoration(labelText: 'Username'),
+          ),
+          DropdownButtonFormField<String>(
+            value: _selectedLocation,
+            items: _locations.map((location) {
+              return DropdownMenuItem(
+                value: location,
+                child: Text(location),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedLocation = value;
+              });
+            },
+            decoration: InputDecoration(labelText: 'Location'),
+          ),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            decoration: InputDecoration(labelText: 'Password'),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _login,
+            child: Text('Login'),
+          ),
+          SizedBox(height: 10),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CreateAccountPage()),
+              );
+            },
+            child: Text('Create Account'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+
+
 }
