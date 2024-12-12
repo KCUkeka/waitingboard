@@ -102,7 +102,7 @@ class FullScreenDashboardPage extends StatelessWidget {
                     return Card(
                       elevation: 4.0,
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(8.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min, // Minimize height of the card

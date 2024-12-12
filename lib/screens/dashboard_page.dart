@@ -94,7 +94,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     return Card(
                       elevation: 4.0,
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(6.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,

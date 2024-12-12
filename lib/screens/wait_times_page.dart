@@ -74,34 +74,62 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   Future<void> loadProvidersFromFirestore() async {
     final snapshot = await _firestore.collection('providers').get();
     setState(() {
-      providerList = snapshot.docs.map((doc) => ProviderInfo.fromFirestore(doc)).toList();
+      providerList =
+          snapshot.docs.map((doc) => ProviderInfo.fromFirestore(doc)).toList();
       // Populate selectedProviders with providers who already have a waitTime
-      selectedProviders = providerList.where((provider) => provider.waitTime != null).toList();
+      selectedProviders =
+          providerList.where((provider) => provider.waitTime != null).toList();
     });
   }
 
-Future<void> saveAllWaitTimes() async {
-  for (var provider in selectedProviders) {
-    if (provider.waitTime != null) {
-      await _firestore.collection('providers').doc(provider.docId).update({
-        'waitTime': provider.waitTime,
-        'lastChanged': Timestamp.now(), // Add current timestamp
+  Future<void> saveAllWaitTimes() async {
+    for (var provider in selectedProviders) {
+      if (provider.waitTime != null) {
+        await _firestore.collection('providers').doc(provider.docId).update({
+          'waitTime': provider.waitTime,
+          'lastChanged': Timestamp.now(), // Add current timestamp
+        });
+      }
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Wait times saved successfully')),
+    );
+  }
+
+  Future<void> _updateWaitTime(
+      ProviderInfo provider, String newWaitTime) async {
+    int? updatedWaitTime = int.tryParse(newWaitTime);
+    if (updatedWaitTime != null) {
+      setState(() {
+        provider.waitTime = updatedWaitTime;
       });
+
+      // Update the Firestore document with the new wait time
+      await _firestore.collection('providers').doc(provider.docId).update({
+        'waitTime': updatedWaitTime,
+        'lastChanged': Timestamp.now(), // Update timestamp
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Wait time updated successfully')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a valid wait time')),
+      );
     }
   }
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('Wait times saved successfully')),
-  );
-}
 
   void openProviderSelection() async {
     // Filter out providers that already have a wait time from the providerList
-    final availableProviders = providerList.where((provider) => provider.waitTime == null).toList();
+    final availableProviders =
+        providerList.where((provider) => provider.waitTime == null).toList();
 
     final selected = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProviderSelectionPage(providerList: availableProviders),
+        builder: (context) =>
+            ProviderSelectionPage(providerList: availableProviders),
       ),
     );
     if (selected != null && selected is List<ProviderInfo>) {
@@ -111,22 +139,54 @@ Future<void> saveAllWaitTimes() async {
     }
   }
 
-Future<void> removeProvider(ProviderInfo provider) async {
-  setState(() {
-    selectedProviders.remove(provider);
-    provider.waitTime = null; // Set wait time to null in the local state
-  });
+  Future<void> removeProvider(ProviderInfo provider) async {
+    // Show a confirmation dialog
+    bool? shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Delete Wait Time"),
+          content: Text(
+              "Are you sure you want to delete this provider's wait time?"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false); // User chose 'No'
+              },
+              child: Text("No"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true); // User chose 'Yes'
+              },
+              child: Text("Yes"),
+            ),
+          ],
+        );
+      },
+    );
 
-  // Update Firestore to remove waitTime and set the lastChanged field
-  await _firestore.collection('providers').doc(provider.docId).update({
-    'waitTime': FieldValue.delete(), // Removes the waitTime field in Firestore
-    'lastChanged': FieldValue.delete(), // delete timestamp
-  });
+    // If the user confirmed the deletion, proceed with removing the wait time
+    if (shouldDelete == true) {
+      setState(() {
+        selectedProviders.remove(provider);
+        provider.waitTime = null; // Set wait time to null in the local state
+      });
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('Wait time removed and timestamp updated successfully')),
-  );
-}
+      // Update Firestore to remove waitTime and set the lastChanged field
+      await _firestore.collection('providers').doc(provider.docId).update({
+        'waitTime':
+            FieldValue.delete(), // Removes the waitTime field in Firestore
+        'lastChanged': FieldValue.delete(), // Delete timestamp
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content:
+                Text('Wait time removed and timestamp updated successfully')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +204,8 @@ Future<void> removeProvider(ProviderInfo provider) async {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0), // Adjust the padding values as needed
+        padding:
+            const EdgeInsets.all(16.0), // Adjust the padding values as needed
         child: Column(
           children: [
             Expanded(
@@ -152,48 +213,77 @@ Future<void> removeProvider(ProviderInfo provider) async {
                 itemCount: selectedProviders.length,
                 itemBuilder: (context, index) {
                   final provider = selectedProviders[index];
-                  final TextEditingController waitTimeController = TextEditingController(
+                  final TextEditingController waitTimeController =
+                      TextEditingController(
                     text: provider.waitTime?.toString() ?? '',
                   );
 
-                  return ListTile(
-                    title: Text(provider.displayName),
-                    subtitle: Text('${provider.specialty}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Wait time input field
-                        SizedBox(
-                          width: 60,
-                          child: TextField(
-                            controller: waitTimeController,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(labelText: 'Time'),
-                            onChanged: (value) {
-                              provider.waitTime = int.tryParse(value);
-                            },
-                          ),
+                  return Column(
+                    children: [
+                      ListTile(
+                        title: Text(provider.displayName),
+                        subtitle: Text('${provider.specialty}'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Wait time input field
+                            SizedBox(
+                              width: 60,
+                              child: TextField(
+                                controller: waitTimeController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(labelText: 'Time'),
+                                onChanged: (value) {
+                                  provider.waitTime = int.tryParse(value);
+                                },
+                              ),
+                            ),
+                            // Update button
+                            IconButton(
+                              icon: Icon(Icons.update, color: Colors.blue),
+                              onPressed: () => _updateWaitTime(
+                                  provider, waitTimeController.text),
+                            ),
+                            // Remove button
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => removeProvider(provider),
+                            ),
+                          ],
                         ),
-                        // Remove button
-                        IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => removeProvider(provider),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const Divider(
+                        thickness: 1.0, // Thickness of the line
+                        color: Colors.grey, // Color of the line
+                      ),
+                    ],
                   );
                 },
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20.0),
-              child: Center(
-                child: IconButton(
-                  icon: Icon(CupertinoIcons.checkmark_alt, size: 40),
-                  onPressed: saveAllWaitTimes,
-                ),
-              ),
-            ),
+  padding: const EdgeInsets.symmetric(vertical: 20.0),
+  child: Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min, // Minimize the column's height
+      children: [
+        Text(
+          'Save All',
+          style: TextStyle(
+            fontSize: 16, // Adjust the size as needed
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8), // Space between the text and the button
+        IconButton(
+          icon: Icon(CupertinoIcons.checkmark_alt, size: 40),
+          onPressed: saveAllWaitTimes,
+        ),
+      ],
+    ),
+  ),
+),
+
           ],
         ),
       ),
