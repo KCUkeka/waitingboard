@@ -15,13 +15,15 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  String? _selectedRole; // Selected role (Front desk or Clinic)
+
   Future<void> _createAccount() async {
     try {
       final username = _usernameController.text.trim();
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
-      if (username.isEmpty || email.isEmpty || password.isEmpty ) {
+      if (username.isEmpty || email.isEmpty || password.isEmpty || _selectedRole == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("All fields are required.")),
         );
@@ -65,6 +67,8 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'username': username,
         'email': email,
+        'role': _selectedRole, // Save selected role
+        'admin': false, // Hidden field defaulted to false
         'created_at': Timestamp.now(),
       });
 
@@ -117,6 +121,21 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
               controller: _passwordController,
               obscureText: true,
               decoration: InputDecoration(labelText: 'Password'),
+            ),
+            DropdownButtonFormField<String>(
+              value: _selectedRole,
+              items: ['Front desk', 'Clinic'].map((role) {
+                return DropdownMenuItem(
+                  value: role,
+                  child: Text(role),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedRole = value;
+                });
+              },
+              decoration: InputDecoration(labelText: 'Role'),
             ),
             SizedBox(height: 20),
             ElevatedButton(

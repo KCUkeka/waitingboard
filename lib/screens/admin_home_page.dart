@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:waitingboard/screens/admin/edit_providers_list.dart';
-import 'package:waitingboard/screens/providers_list.dart';
 import 'login_page.dart'; // Import the LoginPage
 import 'wait_times_page.dart';
 import 'admin/add_provider_page.dart';

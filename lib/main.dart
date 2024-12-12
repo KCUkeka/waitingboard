@@ -3,8 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:waitingboard/screens/home_page.dart';
-import 'package:waitingboard/screens/login_page.dart';
-import 'screens/admin_home_page.dart';
 import 'screens/dashboard_page.dart';
 
 void main() async {
