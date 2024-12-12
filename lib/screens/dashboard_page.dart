@@ -36,30 +36,41 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Dashboard'),
-            ElevatedButton(
-              onPressed: () async {
-                if (kIsWeb) {
-                  // Open the fullscreen dashboard in a new browser tab for web
-                  final url = Uri.base.origin + '/#/fullscreendashboard';
-                  await launchUrl(Uri.parse(url), webOnlyWindowName: '_blank');
-                } else {
-                  // Navigate within the app for non-web platforms
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => FullScreenDashboardPage()),
-                  );
-                }
-              },
-              child: const Text('Full Screen'),
-            ),
-          ],
+  title: Stack(
+    children: [
+      // Centered Dashboard text
+      Align(
+        alignment: Alignment.center,
+        child: const Text(
+          'Dashboard',
         ),
       ),
+      // Right-aligned Full Screen button
+      Align(
+        alignment: Alignment.centerRight,
+        child: ElevatedButton(
+          onPressed: () async {
+            if (kIsWeb) {
+              // Open the fullscreen dashboard in a new browser tab for web
+              final url = Uri.base.origin + '/#/fullscreendashboard';
+              await launchUrl(Uri.parse(url), webOnlyWindowName: '_blank');
+            } else {
+              // Navigate within the app for non-web platforms
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FullScreenDashboardPage(),
+                ),
+              );
+            }
+          },
+          child: const Text('Full Screen'),
+        ),
+      ),
+    ],
+  ),
+),
+
       body: StreamBuilder<List<ProviderInfo>>(
         stream: getProvidersStream(),
         builder: (context, snapshot) {
