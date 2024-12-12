@@ -19,7 +19,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
   List<String> selectedLocations = [];
   String? currentUserRole; // To store the user's role
 
-// List of specialties and titles
+  // List of specialties and titles
   final List<String> specialties = [
     'Spine',
     'Total Joint',
@@ -42,7 +42,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'DPM Fellow',
   ];
 
-// List to hold locations fetched from Firestore
+  // List to hold locations fetched from Firestore
   List<String> locations = [];
 
   @override
@@ -52,7 +52,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     fetchCurrentUserRole();
   }
 
-// Fetch locations from Firestore
+  // Fetch locations from Firestore
   Future<void> fetchLocations() async {
     final snapshot = await _firestore.collection('locations').get();
     setState(() {
@@ -60,6 +60,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     });
   }
 
+  // Fetch the current user's role from Firestore
   Future<void> fetchCurrentUserRole() async {
     final user = _auth.currentUser;
     if (user != null) {
@@ -70,28 +71,36 @@ class _AddProviderPageState extends State<AddProviderPage> {
     }
   }
 
+  // Add a new location to Firestore
   Future<void> addLocation() async {
     final newLocation = newLocationController.text.trim();
-    if (newLocation.isNotEmpty) {
-      final existingLocation = locations.contains(newLocation);
-      if (existingLocation) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Location already exists')),
-        );
-        return;
-      }
+    if (newLocation.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Location name cannot be empty')),
+      );
+      return;
+    }
+    if (locations.contains(newLocation)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Location already exists')),
+      );
+      return;
+    }
+    try {
       await _firestore.collection('locations').add({'name': newLocation});
-      setState(() {
-        locations.add(newLocation); // Update the local list
-      });
-      newLocationController.clear(); // Clear the text field
+      await fetchLocations(); // Refresh the list
+      newLocationController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Location added successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add location: $e')),
       );
     }
   }
 
-// Method to save the provider information to Firebase
+  // Save the provider information to Firestore
   Future<void> saveProvider() async {
     final firstName = firstNameController.text.trim();
     final lastName = lastNameController.text.trim();
@@ -99,7 +108,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     final title = selectedTitle;
 
     if (firstName.isNotEmpty && lastName.isNotEmpty && specialty != null && title != null && selectedLocations.isNotEmpty) {
-// Query Firestore to check for duplicates
+      // Query Firestore to check for duplicates
       final querySnapshot = await _firestore.collection('providers')
           .where('firstName', isEqualTo: firstName)
           .where('lastName', isEqualTo: lastName)
@@ -110,7 +119,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
           SnackBar(content: Text('Provider already listed')),
         );
       } else {
-// Add new provider if no duplicate is found
+        // Add new provider if no duplicate is found
         await _firestore.collection('providers').add({
           'firstName': firstName,
           'lastName': lastName,
@@ -120,14 +129,14 @@ class _AddProviderPageState extends State<AddProviderPage> {
           'waitTime': null,
         });
 
-// Clear the text fields after saving
+        // Clear the text fields after saving
         firstNameController.clear();
         lastNameController.clear();
         selectedSpecialty = null;
         selectedTitle = null;
         selectedLocations = [];
 
-// Navigate back after saving
+        // Navigate back after saving
         Navigator.pop(context);
       }
     } else {
@@ -137,6 +146,35 @@ class _AddProviderPageState extends State<AddProviderPage> {
     }
   }
 
+  // Show the Add Location dialog
+  void _showAddLocationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Add New Location'),
+          content: TextField(
+            controller: newLocationController,
+            decoration: InputDecoration(hintText: 'Enter location name'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                addLocation();
+                Navigator.of(context).pop();
+              },
+              child: Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,7 +182,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
         title: Container(
           alignment: Alignment.center,
           child: Text('Add Provider'),
-),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -215,38 +253,8 @@ class _AddProviderPageState extends State<AddProviderPage> {
                 }).toList(),
               ),
               SizedBox(height: 16),
-              if (currentUserRole == 'admin')
                 ElevatedButton(
-                  onPressed: () {
-// Open dialog to add a new location
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text('Add New Location'),
-                          content: TextField(
-                            controller: newLocationController,
-                            decoration: InputDecoration(hintText: 'Enter location name'),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              child: Text('Cancel'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () {
-                                addLocation();
-                                Navigator.of(context).pop();
-                              },
-                              child: Text('Add'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
+                  onPressed: _showAddLocationDialog,
                   child: Text('Add New Location'),
                 ),
               SizedBox(height: 16),

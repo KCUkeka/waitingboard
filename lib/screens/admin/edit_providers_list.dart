@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-class ProviderListPage extends StatelessWidget {
+import 'package:waitingboard/screens/admin/edit_provider_page.dart';
+class EditProvidersList extends StatelessWidget {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<List<String>> _fetchLocations() async {
@@ -53,7 +54,24 @@ class ProviderListPage extends StatelessWidget {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    
+                    IconButton(
+                      icon: Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditProviderPage(
+                              docId: provider.id,
+                              providerData: providerData,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => deleteProvider(context, provider.id),
+                    ),
                   ],
                 ),
               );

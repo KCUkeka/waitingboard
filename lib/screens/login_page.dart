@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // FirebaseAuth import
 import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore import
+import 'package:waitingboard/screens/home_page.dart';
+import 'package:waitingboard/screens/admin_home_page.dart'; // Admin Home Page import
 import 'signup_page.dart'; // Import signup page
-import 'home_page.dart'; // Home page to navigate after login
 
 class LoginPage extends StatefulWidget {
   @override
@@ -48,56 +49,62 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _login() async {
-    final password = _passwordController.text.trim();
+ Future<void> _login() async {
+  final password = _passwordController.text.trim();
 
-    try {
-      if (_selectedUsername == null || _selectedLocation == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please select a username and location.")),
-        );
-        return;
-      }
-
-      // Fetch user document from Firestore based on the selected username
-      var userSnapshot = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: _selectedUsername)
-          .limit(1)
-          .get();
-
-      if (userSnapshot.docs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Username not found.")),
-        );
-        return;
-      }
-
-      var userDoc = userSnapshot.docs.first;
-      String email = userDoc['email'];
-
-      // Use FirebaseAuth to sign in
-      await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      // Save login state and selected location to SharedPreferences
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('selectedLocation', _selectedLocation!);
-
-      // Navigate to Home Page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
-    } catch (e) {
+  try {
+    if (_selectedUsername == null || _selectedLocation == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Login failed: ${e.toString()}")),
+        const SnackBar(content: Text("Please select a username and location.")),
       );
+      return;
     }
+
+    // Fetch user document from Firestore based on the selected username
+    var userSnapshot = await _firestore
+        .collection('users')
+        .where('username', isEqualTo: _selectedUsername)
+        .limit(1)
+        .get();
+
+    if (userSnapshot.docs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Username not found.")),
+      );
+      return;
+    }
+
+    var userDoc = userSnapshot.docs.first;
+    String email = userDoc['email'];
+
+    // Use FirebaseAuth to sign in
+    await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    // Check for the `admin` field in the user document
+    bool isAdmin = userDoc.data().containsKey('admin') ? userDoc['admin'] as bool : false;
+
+    // Save login state and selected location to SharedPreferences
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('selectedLocation', _selectedLocation!);
+
+    // Navigate to appropriate page based on admin status
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => isAdmin ? AdminHomePage() : HomePage(),
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Login failed: ${e.toString()}")),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

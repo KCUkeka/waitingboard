@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:waitingboard/screens/admin/edit_providers_list.dart';
 import 'package:waitingboard/screens/providers_list.dart';
 import 'login_page.dart'; // Import the LoginPage
 import 'wait_times_page.dart';
+import 'admin/add_provider_page.dart';
 import 'dashboard_page.dart'; // Import DashboardPage
 
-class HomePage extends StatefulWidget {
+class AdminHomePage extends StatefulWidget {
   @override
-  _HomePageState createState() => _HomePageState();
+  _AdminHomePageState createState() => _AdminHomePageState();
 }
 
-class _HomePageState extends State<HomePage>
+class _AdminHomePageState extends State<AdminHomePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -104,16 +106,23 @@ Future<void> _logout() async {
             padding: const EdgeInsets.only(right: 16.0),
             child: PopupMenuButton<String>(
               onSelected: (value) {
-                 if (value == 'Providers List') {
+                if (value == 'Add Provider') {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => ProviderListPage()),
+                    MaterialPageRoute(builder: (context) => AddProviderPage()),
+                  );
+                } else if (value == 'Providers List') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => EditProvidersList()),
                   );
                 } else if (value == 'Logout') {
                   _logout(); // Call the logout function
                 }
               },
               itemBuilder: (context) => [
+                PopupMenuItem(
+                    value: 'Add Provider', child: Text('Add Provider')),
                 PopupMenuItem(
                     value: 'Providers List', child: Text('Providers List')),
                 PopupMenuItem(
