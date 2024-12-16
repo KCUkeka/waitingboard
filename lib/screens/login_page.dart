@@ -93,7 +93,7 @@ Future<void> _login() async {
       // If admin flag is true, navigate to AdminHomePage
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => AdminHomePage()),
+        MaterialPageRoute(builder: (context) => AdminHomePage(selectedLocation: _selectedLocation!)),
       );
     } else {
       // Check for the role if user is not an admin

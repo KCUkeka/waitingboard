@@ -6,6 +6,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
 
 class DashboardPage extends StatefulWidget {
+  final String selectedLocation; // Accept location as a parameter
+
+  DashboardPage({required this.selectedLocation}); // Require the location
+
   @override
   _DashboardPageState createState() => _DashboardPageState();
 }
@@ -38,28 +42,25 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
   title: Stack(
     children: [
-      // Centered Dashboard text
       Align(
         alignment: Alignment.center,
-        child: const Text(
-          'Dashboard',
+        child: Text(
+          '${widget.selectedLocation} Dashboard', // Include the location
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),
-      // Right-aligned Full Screen button
       Align(
         alignment: Alignment.centerRight,
         child: ElevatedButton(
           onPressed: () async {
             if (kIsWeb) {
-              // Open the fullscreen dashboard in a new browser tab for web
               final url = Uri.base.origin + '/#/fullscreendashboard';
               await launchUrl(Uri.parse(url), webOnlyWindowName: '_blank');
             } else {
-              // Navigate within the app for non-web platforms
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => FullScreenDashboardPage(),
+                  builder: (context) => FullScreenDashboardPage(selectedLocation: widget.selectedLocation,),
                 ),
               );
             }
@@ -70,6 +71,7 @@ class _DashboardPageState extends State<DashboardPage> {
     ],
   ),
 ),
+
 
       body: StreamBuilder<List<ProviderInfo>>(
         stream: getProvidersStream(),

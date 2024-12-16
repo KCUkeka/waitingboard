@@ -9,6 +9,19 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'My App',
       initialRoute: '/',
+      onGenerateRoute: (settings) {
+        if (settings.name == '/dashboard') {
+          // Extract arguments passed to the route
+          final args = settings.arguments as Map<String, dynamic>?;
+          final selectedLocation = args?['selectedLocation'] ?? 'Default Location';
+
+          return MaterialPageRoute(
+            builder: (context) => DashboardPage(selectedLocation: selectedLocation),
+          );
+        }
+        // Add other dynamic routes here if needed
+        return null; // Let the framework handle unknown routes
+      },
       routes: {
         '/': (context) => FutureBuilder<String>(
               future: _getSelectedLocation(), // Fetch selected location asynchronously
@@ -24,7 +37,6 @@ class MyApp extends StatelessWidget {
                 }
               },
             ),
-        '/dashboard': (context) => DashboardPage(), // Your DashboardPage
       },
     );
   }

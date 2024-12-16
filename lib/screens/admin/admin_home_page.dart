@@ -9,6 +9,10 @@ import 'add_provider_page.dart';
 import '../dashboard_page.dart'; // Import DashboardPage
 
 class AdminHomePage extends StatefulWidget {
+  final String selectedLocation; // Add selectedLocation as a parameter
+
+  AdminHomePage({required this.selectedLocation}); // Require selectedLocation
+
   @override
   _AdminHomePageState createState() => _AdminHomePageState();
 }
@@ -17,23 +21,20 @@ class _AdminHomePageState extends State<AdminHomePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus(); // Check login status when the home page is initialized
+    _checkLoginStatus();
     _tabController = TabController(length: 2, vsync: this); // Two tabs
   }
 
-  // Check if the user is logged in when the home page is loaded
   Future<void> _checkLoginStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool? isLoggedIn = prefs.getBool('isLoggedIn');
 
     if (isLoggedIn == null || !isLoggedIn) {
-      // If not logged in, navigate to the login page
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => LoginPage()),
@@ -41,43 +42,31 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
   }
 
-  // Log out functionality
-Future<void> _logout() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  String? loginId = prefs.getString('loginId');
+  Future<void> _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? loginId = prefs.getString('loginId');
 
-  if (loginId != null) {
-    try {
-      // Fetch the document to check if it exists
-      DocumentSnapshot snapshot =
-          await _firestore.collection('logins').doc(loginId).get();
+    if (loginId != null) {
+      try {
+        DocumentSnapshot snapshot =
+            await _firestore.collection('logins').doc(loginId).get();
 
-      if (snapshot.exists) {
-        // If the document exists, update the logout timestamp
-        await _firestore.collection('logins').doc(loginId).update({
-          'logout_timestamp': Timestamp.now(),
-        });
-        print('Logout timestamp updated successfully.');
-      } else {
-        print('Document with loginId does not exist.');
+        if (snapshot.exists) {
+          await _firestore.collection('logins').doc(loginId).update({
+            'logout_timestamp': Timestamp.now(),
+          });
+        }
+      } catch (e) {
+        print('Error updating logout timestamp: $e');
       }
-    } catch (e) {
-      print('Error updating logout timestamp: $e');
     }
-  } else {
-    print('Login ID not found in SharedPreferences.');
+
+    await prefs.clear();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
   }
-
-  // Clear session data
-  await prefs.clear();
-
-  // Navigate back to the login page
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (context) => LoginPage()),
-  );
-}
-
 
   @override
   void dispose() {
@@ -91,7 +80,7 @@ Future<void> _logout() async {
       appBar: AppBar(
         title: Container(
           alignment: Alignment.center,
-          child: const Text('Wait Time Dashboard'),
+          child: Text('Wait Time Dashboard - ${widget.selectedLocation}'), // Show location in the title
         ),
         bottom: TabBar(
           controller: _tabController,
@@ -116,7 +105,7 @@ Future<void> _logout() async {
                     MaterialPageRoute(builder: (context) => EditProvidersList()),
                   );
                 } else if (value == 'Logout') {
-                  _logout(); // Call the logout function
+                  _logout();
                 }
               },
               itemBuilder: (context) => [
@@ -126,7 +115,7 @@ Future<void> _logout() async {
                     value: 'Providers List', child: Text('Providers List')),
                 PopupMenuItem(
                     value: 'Logout',
-                    child: Text('Logout')), // Added logout option
+                    child: Text('Logout')),
               ],
               child: Icon(
                 CupertinoIcons.person_crop_circle_fill_badge_plus,
@@ -141,8 +130,13 @@ Future<void> _logout() async {
         child: TabBarView(
           controller: _tabController,
           children: [
-            WaitTimesPage(tabController: _tabController),
-            DashboardPage(), // Replace placeholder with DashboardPage
+            WaitTimesPage(
+        tabController: _tabController,
+        selectedLocation: widget.selectedLocation,  // Pass selectedLocation here
+        ),
+            DashboardPage(
+              selectedLocation: widget.selectedLocation, // Pass location to DashboardPage
+            ),
           ],
         ),
       ),

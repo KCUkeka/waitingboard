@@ -124,7 +124,9 @@ class _FrontHomePageState extends State<FrontHomePage> {
           ),
         ],
       ),
-      body: DashboardPage(),
+      body: DashboardPage(
+  selectedLocation: widget.selectedLocation, // Pass the location
+),
     );
   }
 }

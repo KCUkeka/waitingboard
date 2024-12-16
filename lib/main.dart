@@ -39,25 +39,38 @@ class WaitingApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => FutureBuilder<bool>(
-              future: _checkLoginStatus(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                      child:
-                          CircularProgressIndicator()); // Loading indicator while checking
-                } else if (snapshot.hasData && snapshot.data == true) {
-                  // User is logged in, navigate to appropriate page
-                  return _getHomePage();
-                } else {
-                  // User is not logged in, show the LoginPage
-                  return LoginPage();
-                }
-              },
-            ),
-        '/dashboard': (context) => DashboardPage(),
-        '/fullscreendashboard': (context) => FullScreenDashboardPage(),
+  '/': (context) => FutureBuilder<bool>(
+        future: _checkLoginStatus(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator()); // Loading indicator while checking
+          } else if (snapshot.hasData && snapshot.data == true) {
+            return _getHomePage();
+          } else {
+            return LoginPage();
+          }
+        },
+      ),
+  '/dashboard': (context) => DashboardPage(
+        selectedLocation: 'Default Location', // Pass your location here
+      ),
+  '/fullscreendashboard': (context) {
+    return FutureBuilder<String>(
+      future: _getSelectedLocation(), // Get selected location from SharedPreferences
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasData) {
+          String selectedLocation = snapshot.data!;
+          return FullScreenDashboardPage(selectedLocation: selectedLocation); // Pass selected location
+        } else {
+          return Center(child: Text('No location found!'));
+        }
       },
+    );
+  },
+},
+
     );
   }
 
@@ -68,73 +81,81 @@ class WaitingApp extends StatelessWidget {
   }
 
   // Get the home page based on role
-Widget _getHomePage() {
-  return FutureBuilder<String>(
-    future: _getUserRole(),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return Center(
-            child: CircularProgressIndicator()); // Loading indicator while fetching role
-      } else if (snapshot.hasData) {
-        // Navigate to appropriate home page based on role
-        String role = snapshot.data!;
-        if (role == 'admin') {
-          return AdminHomePage();
-        } else if (role == 'Clinic') {
-          // Fetch selected location from SharedPreferences
-          return FutureBuilder<String>(
-            future: _getSelectedLocation(),
-            builder: (context, locationSnapshot) {
-              if (locationSnapshot.connectionState ==
-                  ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              } else if (locationSnapshot.hasData) {
-                return ClinicHomePage(
-                    selectedLocation: locationSnapshot.data!);
-              } else {
-                return Center(
-                  child: Text(
-                      "No location found!"), // Fallback if no location is found
-                );
-              }
-            },
-          );
-        } else if (role == 'Front desk') {
-          return FutureBuilder<String>(
-            future: _getSelectedLocation(),
-            builder: (context, locationSnapshot) {
-              if (locationSnapshot.connectionState ==
-                  ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              } else if (locationSnapshot.hasData) {
-                return FrontHomePage(selectedLocation: locationSnapshot.data!);
-              } else {
-                return Center(
-                  child: Text(
-                      "No location found!"), // Fallback if no location is found
-                );
-              }
-            },
-          );
+  Widget _getHomePage() {
+    return FutureBuilder<String>(
+      future: _getUserRole(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+              child:
+                  CircularProgressIndicator()); // Loading indicator while fetching role
+        } else if (snapshot.hasData) {
+          // Navigate to appropriate home page based on role
+          String role = snapshot.data!;
+          if (role == 'admin') {
+            // Fetch selected location for admin
+            return FutureBuilder<String>(
+              future:
+                  _getSelectedLocation(), // Assuming this function fetches location
+              builder: (context, locationSnapshot) {
+                if (locationSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (locationSnapshot.hasData) {
+                  return AdminHomePage(
+                      selectedLocation: locationSnapshot.data!);
+                } else {
+                  return AdminHomePage(
+                      selectedLocation:
+                          "Default Location"); // Fallback if no location is found
+                }
+              },
+            );
+          } else if (role == 'Clinic') {
+            return FutureBuilder<String>(
+              future: _getSelectedLocation(),
+              builder: (context, locationSnapshot) {
+                if (locationSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (locationSnapshot.hasData) {
+                  return ClinicHomePage(
+                      selectedLocation: locationSnapshot.data!);
+                } else {
+                  return Center(child: Text("No location found!"));
+                }
+              },
+            );
+          } else if (role == 'Front desk') {
+            return FutureBuilder<String>(
+              future: _getSelectedLocation(),
+              builder: (context, locationSnapshot) {
+                if (locationSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (locationSnapshot.hasData) {
+                  return FrontHomePage(
+                      selectedLocation: locationSnapshot.data!);
+                } else {
+                  return Center(child: Text("No location found!"));
+                }
+              },
+            );
+          } else {
+            return ClinicHomePage(selectedLocation: "Default Location");
+          }
         } else {
-          return ClinicHomePage(
-              selectedLocation:
-                  "Default Location"); // Fallback with default location
+          return ClinicHomePage(selectedLocation: "Default Location");
         }
-      } else {
-        return ClinicHomePage(
-            selectedLocation:
-                "Default Location"); // Fallback with default location
-      }
-    },
-  );
-}
-
+      },
+    );
+  }
 
   // Get user role from SharedPreferences or Firestore
   Future<String> _getUserRole() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('userRole') ?? ''; // Replace with role fetched from Firestore
+    return prefs.getString('userRole') ??
+        ''; // Replace with role fetched from Firestore
   }
 
   // Get selected location from SharedPreferences

@@ -144,8 +144,15 @@ class _ClinicHomePageState extends State<ClinicHomePage>
         child: TabBarView(
           controller: _tabController,
           children: [
-            WaitTimesPage(tabController: _tabController),
-            DashboardPage(), // Replace placeholder with DashboardPage
+            WaitTimesPage(
+              tabController: _tabController,
+              selectedLocation:
+                  widget.selectedLocation, // Pass selectedLocation here
+            ),
+            DashboardPage(
+              selectedLocation:
+                  widget.selectedLocation, 
+            ),
           ],
         ),
       ),

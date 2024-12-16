@@ -46,8 +46,9 @@ class ProviderInfo {
 
 class WaitTimesPage extends StatefulWidget {
   final TabController tabController;
+  final String selectedLocation; // Add selectedLocation here
 
-  WaitTimesPage({required this.tabController});
+  WaitTimesPage({required this.tabController, required this.selectedLocation});
 
   @override
   _WaitTimesPageState createState() => _WaitTimesPageState();
@@ -194,7 +195,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
       appBar: AppBar(
         title: Container(
           alignment: Alignment.center,
-          child: Text('Wait Times'),
+          child: Text('${widget.selectedLocation} Wait Times'),
         ),
         actions: [
           IconButton(
