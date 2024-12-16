@@ -64,7 +64,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     super.initState();
     loadProvidersFromFirestore();
 
-    // Add listener to refresh data when switching back to WaitTimesPage
+// Add listener to refresh data when switching back to WaitTimesPage
     widget.tabController.addListener(() {
       if (widget.tabController.index == 0) {
         loadProvidersFromFirestore(); // Refresh data when tab switches to WaitTimesPage
@@ -75,11 +75,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   Future<void> loadProvidersFromFirestore() async {
     final snapshot = await _firestore.collection('providers').get();
     setState(() {
-      providerList =
-          snapshot.docs.map((doc) => ProviderInfo.fromFirestore(doc)).toList();
-      // Populate selectedProviders with providers who already have a waitTime
-      selectedProviders =
-          providerList.where((provider) => provider.waitTime != null).toList();
+      providerList = snapshot.docs.map((doc) => ProviderInfo.fromFirestore(doc)).toList();
+      selectedProviders = providerList.where((provider) => provider.waitTime != null).toList();
     });
   }
 
@@ -97,20 +94,16 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     );
   }
 
-  Future<void> _updateWaitTime(
-      ProviderInfo provider, String newWaitTime) async {
+  Future<void> _updateWaitTime(ProviderInfo provider, String newWaitTime) async {
     int? updatedWaitTime = int.tryParse(newWaitTime);
     if (updatedWaitTime != null) {
       setState(() {
         provider.waitTime = updatedWaitTime;
       });
-
-      // Update the Firestore document with the new wait time
       await _firestore.collection('providers').doc(provider.docId).update({
         'waitTime': updatedWaitTime,
-        'lastChanged': Timestamp.now(), // Update timestamp
+        'lastChanged': Timestamp.now(),
       });
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Wait time updated successfully')),
       );
@@ -121,34 +114,13 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-  void openProviderSelection() async {
-    // Filter out providers that already have a wait time from the providerList
-    final availableProviders =
-        providerList.where((provider) => provider.waitTime == null).toList();
-
-    final selected = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            ProviderSelectionPage(providerList: availableProviders),
-      ),
-    );
-    if (selected != null && selected is List<ProviderInfo>) {
-      setState(() {
-        selectedProviders.addAll(selected); // Add newly selected providers
-      });
-    }
-  }
-
   Future<void> removeProvider(ProviderInfo provider) async {
-    // Show a confirmation dialog
     bool? shouldDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text("Delete Wait Time"),
-          content: Text(
-              "Are you sure you want to delete this provider's wait time?"),
+          content: Text("Are you sure you want to delete this provider's wait time?"),
           actions: <Widget>[
             TextButton(
               onPressed: () {
@@ -167,24 +139,66 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
       },
     );
 
-    // If the user confirmed the deletion, proceed with removing the wait time
+// If the user confirmed the deletion, proceed with removing the wait time
     if (shouldDelete == true) {
       setState(() {
         selectedProviders.remove(provider);
         provider.waitTime = null; // Set wait time to null in the local state
       });
 
-      // Update Firestore to remove waitTime and set the lastChanged field
       await _firestore.collection('providers').doc(provider.docId).update({
-        'waitTime':
-            FieldValue.delete(), // Removes the waitTime field in Firestore
-        'lastChanged': FieldValue.delete(), // Delete timestamp
+        'waitTime': FieldValue.delete(), // Removes the waitTime field in Firestore
+        'lastChanged': FieldValue.delete(),
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content:
-                Text('Wait time removed and timestamp updated successfully')),
+        SnackBar(content: Text('Wait time removed and timestamp updated successfully')),
+      );
+    }
+  }
+
+  // Function to delete all wait times
+  Future<void> deleteAllWaitTimes() async {
+    // Show confirmation dialog
+    bool? shouldDeleteAll = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Delete All Wait Times"),
+          content: Text("Are you sure you want to delete all wait times?"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false); // User chose 'No'
+              },
+              child: Text("No"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true); // User chose 'Yes'
+              },
+              child: Text("Yes"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDeleteAll == true) {
+      // Delete all wait times in Firestore
+      for (var provider in selectedProviders) {
+        await _firestore.collection('providers').doc(provider.docId).update({
+          'waitTime': FieldValue.delete(), // Removes the waitTime field
+          'lastChanged': FieldValue.delete(),
+        });
+      }
+
+      setState(() {
+        selectedProviders.clear(); // Clear the selectedProviders list
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('All wait times deleted successfully')),
       );
     }
   }
@@ -205,8 +219,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         ],
       ),
       body: Padding(
-        padding:
-            const EdgeInsets.all(16.0), // Adjust the padding values as needed
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             Expanded(
@@ -214,8 +227,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                 itemCount: selectedProviders.length,
                 itemBuilder: (context, index) {
                   final provider = selectedProviders[index];
-                  final TextEditingController waitTimeController =
-                      TextEditingController(
+                  final TextEditingController waitTimeController = TextEditingController(
                     text: provider.waitTime?.toString() ?? '',
                   );
 
@@ -227,7 +239,6 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Wait time input field
                             SizedBox(
                               width: 60,
                               child: TextField(
@@ -239,13 +250,10 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                                 },
                               ),
                             ),
-                            // Update button
                             IconButton(
                               icon: Icon(Icons.update, color: Colors.blue),
-                              onPressed: () => _updateWaitTime(
-                                  provider, waitTimeController.text),
+                              onPressed: () => _updateWaitTime(provider, waitTimeController.text),
                             ),
-                            // Remove button
                             IconButton(
                               icon: Icon(Icons.delete, color: Colors.red),
                               onPressed: () => removeProvider(provider),
@@ -253,10 +261,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                           ],
                         ),
                       ),
-                      const Divider(
-                        thickness: 1.0, // Thickness of the line
-                        color: Colors.grey, // Color of the line
-                      ),
+                      const Divider(),
                     ],
                   );
                 },
@@ -266,29 +271,49 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
               padding: const EdgeInsets.symmetric(vertical: 20.0),
               child: Center(
                 child: Column(
-      mainAxisSize: MainAxisSize.min, // Minimize the column's height
-      children: [
-        Text(
-          'Save All',
-          style: TextStyle(
-            fontSize: 16, // Adjust the size as needed
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8), // Space between the text and the button
-        IconButton(
-                  icon: Icon(CupertinoIcons.checkmark_alt, size: 40),
-                  onPressed: saveAllWaitTimes,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Save All',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    IconButton(
+                      icon: Icon(CupertinoIcons.checkmark_alt, size: 40),
+                      onPressed: saveAllWaitTimes,
+                    ),
+                  ],
                 ),
-],
-    ),
               ),
             ),
-
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: deleteAllWaitTimes, // Trigger the deleteAllWaitTimes function
+        tooltip: 'Delete All Wait Times',
+        child: Icon(Icons.delete_forever),
+      ),
     );
+  }
+
+  // Provider selection function (if needed)
+  void openProviderSelection() async {
+    final availableProviders = providerList.where((provider) => provider.waitTime == null).toList();
+    final selected = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProviderSelectionPage(providerList: availableProviders),
+      ),
+    );
+    if (selected != null && selected is List<ProviderInfo>) {
+      setState(() {
+        selectedProviders.addAll(selected);
+      });
+    }
   }
 }
 
