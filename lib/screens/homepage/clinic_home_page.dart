@@ -1,17 +1,25 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:waitingboard/screens/providers_list.dart';
-import 'login_page.dart'; // Import the LoginPage
-import 'dashboard_page.dart'; // Import DashboardPage
+import '../login_page.dart'; // Import the LoginPage
+import '../wait_times_page.dart';
+import '../dashboard_page.dart'; // Import DashboardPage
 
-class FrontHomePage extends StatefulWidget {
+class ClinicHomePage extends StatefulWidget {
+  final String selectedLocation; // Add selectedLocation as a parameter
+
+  ClinicHomePage({required this.selectedLocation}); // Require selectedLocation
+
   @override
-  _FrontHomePageState createState() => _FrontHomePageState();
+  _ClinicHomePageState createState() => _ClinicHomePageState();
 }
 
-class _FrontHomePageState extends State<FrontHomePage> {
+class _ClinicHomePageState extends State<ClinicHomePage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
   // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -19,6 +27,7 @@ class _FrontHomePageState extends State<FrontHomePage> {
   void initState() {
     super.initState();
     _checkLoginStatus(); // Check login status when the home page is initialized
+    _tabController = TabController(length: 2, vsync: this); // Two tabs
   }
 
   // Check if the user is logged in when the home page is loaded
@@ -73,12 +82,33 @@ class _FrontHomePageState extends State<FrontHomePage> {
   }
 
   @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Container(
           alignment: Alignment.center,
-          child: const Text('Wait Time Dashboard'),
+          child: Column(
+            children: [
+              const Text('Wait Time Dashboard'),
+              Text(
+                'Location: ${widget.selectedLocation}', // Display selected location
+                style: TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Wait Times'),
+            Tab(text: 'Board'),
+          ],
         ),
         actions: [
           Padding(
@@ -96,13 +126,10 @@ class _FrontHomePageState extends State<FrontHomePage> {
               },
               itemBuilder: (context) => [
                 PopupMenuItem(
-                  value: 'Providers List',
-                  child: Text('Providers List'),
-                ),
+                    value: 'Providers List', child: Text('Providers List')),
                 PopupMenuItem(
-                  value: 'Logout',
-                  child: Text('Logout'),
-                ),
+                    value: 'Logout',
+                    child: Text('Logout')), // Added logout option
               ],
               child: Icon(
                 CupertinoIcons.person_crop_circle_fill_badge_plus,
@@ -114,7 +141,13 @@ class _FrontHomePageState extends State<FrontHomePage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: DashboardPage(), // Directly display the DashboardPage
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            WaitTimesPage(tabController: _tabController),
+            DashboardPage(), // Replace placeholder with DashboardPage
+          ],
+        ),
       ),
     );
   }

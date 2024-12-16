@@ -262,9 +262,9 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
               ),
             ),
             Padding(
-  padding: const EdgeInsets.symmetric(vertical: 20.0),
-  child: Center(
-    child: Column(
+              padding: const EdgeInsets.symmetric(vertical: 20.0),
+              child: Center(
+                child: Column(
       mainAxisSize: MainAxisSize.min, // Minimize the column's height
       children: [
         Text(
@@ -276,13 +276,13 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         ),
         const SizedBox(height: 8), // Space between the text and the button
         IconButton(
-          icon: Icon(CupertinoIcons.checkmark_alt, size: 40),
-          onPressed: saveAllWaitTimes,
-        ),
-      ],
+                  icon: Icon(CupertinoIcons.checkmark_alt, size: 40),
+                  onPressed: saveAllWaitTimes,
+                ),
+],
     ),
-  ),
-),
+              ),
+            ),
 
           ],
         ),

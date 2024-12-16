@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // FirebaseAuth import
 import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore import
-import 'package:waitingboard/screens/clinic_home_page.dart';
-import 'package:waitingboard/screens/front_desk_home_page.dart';
+import 'package:waitingboard/screens/homepage/clinic_home_page.dart';
+import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
 import 'package:waitingboard/screens/admin/admin_home_page.dart'; // Admin Home Page import
 import 'signup_page.dart'; // Import signup page
 
@@ -98,25 +98,29 @@ Future<void> _login() async {
     } else {
       // Check for the role if user is not an admin
       String role = userDoc.data().containsKey('role') ? userDoc['role'] as String : '';
+if (role == 'Clinic') {
+// Navigate to ClinicHomePage if role is 'Clinic'
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ClinicHomePage(selectedLocation: _selectedLocation!),
+    ),
+  );
+} else if (role == 'Front desk') {
+// Navigate to FrontHomePage if role is 'Front desk'
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => FrontHomePage(selectedLocation: _selectedLocation!),
+    ),
+  );
+} else {
+  // Default navigation if role is not 'Clinic' or 'Front desk'
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Unknown role")),
+  );
+}
 
-      if (role == 'Clinic') {
-        // Navigate to ClinicHomePage if role is 'Clinic'
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => ClinicHomePage()),
-        );
-      } else if (role == 'Front desk') {
-        // Navigate to FrontHomePage if role is 'Front desk'
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => FrontHomePage()),
-        );
-      } else {
-        // Default navigation if role is not 'Clinic' or 'Front desk'
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Unknown role")),
-        );
-      }
     }
 
     // Save login state and selected location to SharedPreferences
