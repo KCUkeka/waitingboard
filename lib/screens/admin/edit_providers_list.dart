@@ -9,12 +9,48 @@ class EditProvidersList extends StatelessWidget {
     return querySnapshot.docs.map((doc) => doc['name'] as String).toList();
   }
 
-  Future<void> deleteProvider(BuildContext context, String docId) async {
-    await _firestore.collection('providers').doc(docId).delete();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Provider deleted successfully')),
-    );
+Future<void> deleteProvider(BuildContext context, String docId) async {
+  // Show a confirmation dialog
+  final shouldDelete = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Confirm Deletion'),
+      content: Text('Are you sure you want to delete this provider?'),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop(false); // User chose "No"
+          },
+          child: Text('No'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.of(context).pop(true); // User chose "Yes"
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey,
+          ),
+          child: Text('Yes'),
+        ),
+      ],
+    ),
+  );
+
+  // If user confirms deletion
+  if (shouldDelete == true) {
+    try {
+      await _firestore.collection('providers').doc(docId).delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Provider deleted successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting provider: $e')),
+      );
+    }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
