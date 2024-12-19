@@ -6,6 +6,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
 
 class DashboardPage extends StatefulWidget {
+  final String selectedLocation; // Accept location as a parameter
+
+  DashboardPage({required this.selectedLocation}); // Require the location
+
   @override
   _DashboardPageState createState() => _DashboardPageState();
 }
@@ -36,26 +40,37 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        title: Stack(
           children: [
-            const Text('Dashboard'),
-            ElevatedButton(
-              onPressed: () async {
-                if (kIsWeb) {
-                  // Open the fullscreen dashboard in a new browser tab for web
-                  final url = Uri.base.origin + '/#/fullscreendashboard';
-                  await launchUrl(Uri.parse(url), webOnlyWindowName: '_blank');
-                } else {
-                  // Navigate within the app for non-web platforms
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => FullScreenDashboardPage()),
-                  );
-                }
-              },
-              child: const Text('Full Screen'),
+            Align(
+              alignment: Alignment.center,
+              child: Text(
+                '${widget.selectedLocation} Dashboard', // Include the location
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: () async {
+                  if (kIsWeb) {
+                    final url = Uri.base.origin + '/#/fullscreendashboard';
+                    await launchUrl(Uri.parse(url),
+                        webOnlyWindowName: '_blank');
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FullScreenDashboardPage(
+                          selectedLocation: widget.selectedLocation,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Full Screen'),
+              ),
             ),
           ],
         ),
@@ -94,7 +109,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     return Card(
                       elevation: 4.0,
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(6.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
@@ -168,7 +183,8 @@ class ProviderInfo {
       specialty: data['specialty'] ?? '',
       title: data['title'] ?? '',
       waitTime: data['waitTime'],
-      lastChanged: data['lastChanged'] as Timestamp?, // Convert from Firestore Timestamp
+      lastChanged:
+          data['lastChanged'] as Timestamp?, // Convert from Firestore Timestamp
     );
   }
 

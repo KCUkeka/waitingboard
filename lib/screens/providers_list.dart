@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:waitingboard/screens/edit_provider_page.dart';
-class ProviderListPage extends StatelessWidget {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+import 'package:shared_preferences/shared_preferences.dart';
 
-  Future<List<String>> _fetchLocations() async {
-    final querySnapshot = await _firestore.collection('locations').get();
-    return querySnapshot.docs.map((doc) => doc['name'] as String).toList();
+class ProviderListPage extends StatefulWidget {
+  @override
+  _ProviderListPageState createState() => _ProviderListPageState();
+}
+
+class _ProviderListPageState extends State<ProviderListPage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  String? _selectedLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSelectedLocation();
+  }
+
+  Future<void> _loadSelectedLocation() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _selectedLocation = prefs.getString('selectedLocation');
+    });
   }
 
   Future<void> deleteProvider(BuildContext context, String docId) async {
@@ -25,60 +40,46 @@ class ProviderListPage extends StatelessWidget {
           child: const Text('Providers List'),
         ),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collection('providers').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('No providers available'));
-          }
+      body: _selectedLocation == null
+          ? Center(child: CircularProgressIndicator())
+          : StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('providers')
+                  .where('locations', arrayContains: _selectedLocation)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(child: Text('No providers available for this location.'));
+                }
 
-          final providerDocs = snapshot.data!.docs;
+                final providerDocs = snapshot.data!.docs;
 
-          return ListView.builder(
-            itemCount: providerDocs.length,
-            itemBuilder: (context, index) {
-              final provider = providerDocs[index];
-              final providerData = provider.data() as Map<String, dynamic>;
+                return ListView.builder(
+                  itemCount: providerDocs.length,
+                  itemBuilder: (context, index) {
+                    final provider = providerDocs[index];
+                    final providerData = provider.data() as Map<String, dynamic>;
 
-              return ListTile(
-                title: Text('${providerData['firstName']} ${providerData['lastName']}'),
-                subtitle: Text(
-                  '${providerData['specialty']} - ${providerData['title']}',
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.edit, color: Colors.blue),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EditProviderPage(
-                              docId: provider.id,
-                              providerData: providerData,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => deleteProvider(context, provider.id),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-      ),
+                    return ListTile(
+                      title: Text('${providerData['firstName']} ${providerData['lastName']}'),
+                      subtitle: Text(
+                        '${providerData['specialty'] ?? "N/A"} - ${providerData['title'] ?? "N/A"}',
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () => deleteProvider(context, provider.id),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
 }

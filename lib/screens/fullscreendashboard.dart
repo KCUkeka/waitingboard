@@ -39,6 +39,10 @@ class ProviderInfo {
 
 class FullScreenDashboardPage extends StatelessWidget {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String selectedLocation; // Add selectedLocation as a parameter
+
+  // Constructor to accept selectedLocation
+  FullScreenDashboardPage({required this.selectedLocation});
 
   // Method to format the lastChanged timestamp
   String formatTimestamp(DateTime? timestamp) {
@@ -63,7 +67,7 @@ class FullScreenDashboardPage extends StatelessWidget {
       appBar: AppBar(
         title: Container(
           alignment: Alignment.center,
-          child: const Text('Wait times'),
+          child: Text('Wait Times - $selectedLocation'), // Display selectedLocation in AppBar
         ),
         automaticallyImplyLeading: !kIsWeb, // Hide back button on web platform
       ),
@@ -102,7 +106,7 @@ class FullScreenDashboardPage extends StatelessWidget {
                     return Card(
                       elevation: 4.0,
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(8.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min, // Minimize height of the card
@@ -145,3 +149,4 @@ class FullScreenDashboardPage extends StatelessWidget {
     );
   }
 }
+
