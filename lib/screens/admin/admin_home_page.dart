@@ -6,7 +6,7 @@ import 'package:waitingboard/screens/admin/edit_providers_list.dart';
 import '../login_page.dart'; // Import the LoginPage
 import '../wait_times_page.dart';
 import 'add_provider_page.dart';
-import '../dashboard_page.dart'; // Import DashboardPage
+import 'admin_dashboard_page.dart'; // Import DashboardPage
 
 class AdminHomePage extends StatefulWidget {
   final String selectedLocation; // Add selectedLocation as a parameter
@@ -134,7 +134,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         tabController: _tabController,
         selectedLocation: widget.selectedLocation,  // Pass selectedLocation here
         ),
-            DashboardPage(
+            AdminDashboardPage(
               selectedLocation: widget.selectedLocation, // Pass location to DashboardPage
             ),
           ],

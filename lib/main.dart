@@ -3,11 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waitingboard/screens/admin/admin_home_page.dart';
+import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
 import 'package:waitingboard/screens/login_page.dart';
 import 'screens/homepage/clinic_home_page.dart';
-import 'screens/dashboard_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

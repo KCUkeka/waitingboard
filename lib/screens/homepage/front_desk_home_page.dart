@@ -2,8 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/providers_list.dart';
-import 'package:waitingboard/screens/dashboard_page.dart'; // Import DashboardPage
 import '../login_page.dart'; // Import the LoginPage
 
 class FrontHomePage extends StatefulWidget {

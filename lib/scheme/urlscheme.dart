@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:waitingboard/screens/homepage/clinic_home_page.dart';
 import 'package:waitingboard/screens/dashboard_page.dart';
+import 'package:waitingboard/screens/homepage/clinic_home_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MyApp extends StatelessWidget {
