@@ -7,7 +7,7 @@ Work project to show provider's wait time.
 
 
 
-**Create new account page**
+## Create new account page ##
 The main view:
 ![image](https://github.com/user-attachments/assets/c4037abd-3215-454b-bb2c-0eec83ae1bb2)
 
