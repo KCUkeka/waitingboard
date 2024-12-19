@@ -39,38 +39,42 @@ class WaitingApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-  '/': (context) => FutureBuilder<bool>(
-        future: _checkLoginStatus(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator()); // Loading indicator while checking
-          } else if (snapshot.hasData && snapshot.data == true) {
-            return _getHomePage();
-          } else {
-            return LoginPage();
-          }
+        '/': (context) => FutureBuilder<bool>(
+              future: _checkLoginStatus(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                      child:
+                          CircularProgressIndicator()); // Loading indicator while checking
+                } else if (snapshot.hasData && snapshot.data == true) {
+                  return _getHomePage();
+                } else {
+                  return LoginPage();
+                }
+              },
+            ),
+        '/dashboard': (context) => DashboardPage(
+              selectedLocation: 'Default Location', // Pass your location here
+            ),
+        '/fullscreendashboard': (context) {
+          return FutureBuilder<String>(
+            future:
+                _getSelectedLocation(), // Get selected location from SharedPreferences
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasData) {
+                String selectedLocation = snapshot.data!;
+                return FullScreenDashboardPage(
+                    selectedLocation:
+                        selectedLocation); // Pass selected location
+              } else {
+                return Center(child: Text('No location found!'));
+              }
+            },
+          );
         },
-      ),
-  '/dashboard': (context) => DashboardPage(
-        selectedLocation: 'Default Location', // Pass your location here
-      ),
-  '/fullscreendashboard': (context) {
-    return FutureBuilder<String>(
-      future: _getSelectedLocation(), // Get selected location from SharedPreferences
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasData) {
-          String selectedLocation = snapshot.data!;
-          return FullScreenDashboardPage(selectedLocation: selectedLocation); // Pass selected location
-        } else {
-          return Center(child: Text('No location found!'));
-        }
       },
-    );
-  },
-},
-
     );
   }
 

@@ -72,13 +72,25 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     });
   }
 
-  Future<void> loadProvidersFromFirestore() async {
-    final snapshot = await _firestore.collection('providers').get();
+Future<void> loadProvidersFromFirestore() async {
+  try {
+    // Query providers based on the selected location
+    final snapshot = await _firestore
+        .collection('providers')
+        .where('locations', arrayContains: widget.selectedLocation)
+        .get();
+
     setState(() {
       providerList = snapshot.docs.map((doc) => ProviderInfo.fromFirestore(doc)).toList();
       selectedProviders = providerList.where((provider) => provider.waitTime != null).toList();
     });
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to load providers: ${e.toString()}')),
+    );
   }
+}
+
 
   Future<void> saveAllWaitTimes() async {
     for (var provider in selectedProviders) {
