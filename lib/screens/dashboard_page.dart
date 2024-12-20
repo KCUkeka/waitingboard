@@ -21,7 +21,7 @@ class _DashboardPageState extends State<DashboardPage> {
     if (timestamp == null) return "N/A";
 
     final dateTime = timestamp.toDate();
-    final formattedDate = DateFormat('hh:mm a').format(dateTime);
+    final formattedDate = DateFormat('hh:mm a, MM/dd').format(dateTime);
     return formattedDate;
   }
 

@@ -48,7 +48,7 @@ class FullScreenDashboardPage extends StatelessWidget {
   String formatTimestamp(DateTime? timestamp) {
     if (timestamp == null) return "N/A";
 
-    final formattedDate = DateFormat('hh:mm a').format(timestamp);
+    final formattedDate = DateFormat('hh:mm a, MM/dd').format(timestamp);
     return formattedDate;
   }
 
