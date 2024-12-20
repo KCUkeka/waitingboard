@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:waitingboard/screens/dashboard_page.dart';
-import 'package:waitingboard/screens/providers_list.dart';
+import 'package:waitingboard/screens/frontdeskproviders_list.dart';
 import '../login_page.dart'; // Import the LoginPage
 
 class FrontHomePage extends StatefulWidget {
@@ -100,7 +100,7 @@ class _FrontHomePageState extends State<FrontHomePage> {
                 if (value == 'Providers List') {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => ProviderListPage()),
+                    MaterialPageRoute(builder: (context) => FrontdeskprovidersList()),
                   );
                 } else if (value == 'Logout') {
                   _logout(); // Call the logout function

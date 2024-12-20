@@ -9,6 +9,7 @@ class ProviderInfo {
   final String title;
   int? waitTime;
   final String docId;
+  final List<String> locations;  // Added locations field
 
   ProviderInfo({
     required this.firstName,
@@ -17,6 +18,7 @@ class ProviderInfo {
     required this.title,
     this.waitTime,
     required this.docId,
+    required this.locations,  // Make sure locations are passed in the constructor
   });
 
   factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
@@ -28,6 +30,7 @@ class ProviderInfo {
       title: data['title'] ?? '',
       waitTime: data['waitTime'],
       docId: doc.id,
+      locations: List<String>.from(data['locations'] ?? []),  // Ensure locations is a list
     );
   }
 
@@ -38,6 +41,7 @@ class ProviderInfo {
       'specialty': specialty,
       'title': title,
       'waitTime': waitTime,
+      'locations': locations,  // Save the locations to Firestore
     };
   }
 
@@ -58,13 +62,14 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<ProviderInfo> providerList = [];
   List<ProviderInfo> selectedProviders = [];
+  Map<ProviderInfo, String> selectedLocations = {}; // Map to store selected locations for each provider
 
   @override
   void initState() {
     super.initState();
     loadProvidersFromFirestore();
 
-// Add listener to refresh data when switching back to WaitTimesPage
+    // Add listener to refresh data when switching back to WaitTimesPage
     widget.tabController.addListener(() {
       if (widget.tabController.index == 0) {
         loadProvidersFromFirestore(); // Refresh data when tab switches to WaitTimesPage
@@ -72,32 +77,31 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     });
   }
 
-Future<void> loadProvidersFromFirestore() async {
-  try {
-    // Query providers based on the selected location
-    final snapshot = await _firestore
-        .collection('providers')
-        .where('locations', arrayContains: widget.selectedLocation)
-        .get();
+  Future<void> loadProvidersFromFirestore() async {
+    try {
+      // Query providers based on the selected location
+      final snapshot = await _firestore
+          .collection('providers')
+          .where('locations', arrayContains: widget.selectedLocation)
+          .get();
 
-    setState(() {
-      providerList = snapshot.docs.map((doc) => ProviderInfo.fromFirestore(doc)).toList();
-      selectedProviders = providerList.where((provider) => provider.waitTime != null).toList();
-    });
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to load providers: ${e.toString()}')),
-    );
+      setState(() {
+        providerList = snapshot.docs.map((doc) => ProviderInfo.fromFirestore(doc)).toList();
+        selectedProviders = providerList.where((provider) => provider.waitTime != null).toList();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load providers: ${e.toString()}')),
+      );
+    }
   }
-}
-
 
   Future<void> saveAllWaitTimes() async {
     for (var provider in selectedProviders) {
       if (provider.waitTime != null) {
         await _firestore.collection('providers').doc(provider.docId).update({
           'waitTime': provider.waitTime,
-          'lastChanged': Timestamp.now(), // Add current timestamp
+          'lastChanged': Timestamp.now(),
         });
       }
     }
@@ -151,7 +155,7 @@ Future<void> loadProvidersFromFirestore() async {
       },
     );
 
-// If the user confirmed the deletion, proceed with removing the wait time
+    // If the user confirmed the deletion, proceed with removing the wait time
     if (shouldDelete == true) {
       setState(() {
         selectedProviders.remove(provider);
@@ -169,9 +173,9 @@ Future<void> loadProvidersFromFirestore() async {
     }
   }
 
-  // Function to delete all wait times
+// Function to delete all wait times
   Future<void> deleteAllWaitTimes() async {
-    // Show confirmation dialog
+// Show confirmation dialog
     bool? shouldDeleteAll = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -321,9 +325,17 @@ Future<void> loadProvidersFromFirestore() async {
         builder: (context) => ProviderSelectionPage(providerList: availableProviders),
       ),
     );
-    if (selected != null && selected is List<ProviderInfo>) {
+    if (selected != null && selected is List<Map<String, dynamic>>) {
       setState(() {
-        selectedProviders.addAll(selected);
+        selected.forEach((selection) {
+          final provider = selection['provider'] as ProviderInfo;
+          final location = selection['location'] as String;
+
+          // Add the provider and location to your selectedProviders
+          selectedProviders.add(provider);
+          // Optionally, you can store the location in the selectedLocations map if you need to use it later
+          selectedLocations[provider] = location;
+        });
       });
     }
   }
@@ -340,6 +352,7 @@ class ProviderSelectionPage extends StatefulWidget {
 
 class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
   List<ProviderInfo> selectedProviders = [];
+  Map<ProviderInfo, String> selectedLocations = {}; // Map to store selected locations for each provider
 
   @override
   Widget build(BuildContext context) {
@@ -352,7 +365,17 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
         actions: [
           IconButton(
             icon: Icon(CupertinoIcons.checkmark_alt),
-            onPressed: () => Navigator.pop(context, selectedProviders),
+            onPressed: () {
+              Navigator.pop(
+                context,
+                selectedProviders.map((provider) {
+                  return {
+                    'provider': provider,
+                    'location': selectedLocations[provider], // Use the selected location
+                  };
+                }).toList(),
+              );
+            },
           ),
         ],
       ),
@@ -360,19 +383,54 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
         itemCount: widget.providerList.length,
         itemBuilder: (context, index) {
           final provider = widget.providerList[index];
-          return CheckboxListTile(
-            title: Text(provider.displayName),
-            subtitle: Text(provider.specialty),
-            value: selectedProviders.contains(provider),
-            onChanged: (isSelected) {
-              setState(() {
-                if (isSelected == true) {
-                  selectedProviders.add(provider);
-                } else {
-                  selectedProviders.remove(provider);
-                }
-              });
-            },
+          final providerLocations = provider.locations;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CheckboxListTile(
+                title: Text(provider.displayName),
+                subtitle: Text(provider.specialty),
+                value: selectedProviders.contains(provider),
+                onChanged: (isSelected) {
+                  setState(() {
+                    if (isSelected == true) {
+                      selectedProviders.add(provider);
+                      selectedLocations[provider] = providerLocations.first;  // Default to first location
+                    } else {
+                      selectedProviders.remove(provider);
+                      selectedLocations.remove(provider);
+                    }
+                  });
+                },
+              ),
+              if (selectedProviders.contains(provider))
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: DropdownButtonFormField<String>(
+                    value: selectedLocations[provider],
+                    items: providerLocations.map((location) {
+                      return DropdownMenuItem(
+                        value: location,
+                        child: Text(location),
+                      );
+                    }).toList(),
+                    onChanged: (selectedLocation) {
+                      setState(() {
+                        selectedLocations[provider] = selectedLocation!;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Select Location',
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 12.0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                    ),
+                  ),
+                ),
+              const Divider(),
+            ],
           );
         },
       ),
