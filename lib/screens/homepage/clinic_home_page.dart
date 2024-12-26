@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/providers_list.dart';
 import '../login_page.dart'; // Import the LoginPage
 import '../wait_times_page.dart';
-import '../dashboard_page.dart'; // Import DashboardPage
 
 class ClinicHomePage extends StatefulWidget {
   final String selectedLocation; // Add selectedLocation as a parameter

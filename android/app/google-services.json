@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "935944261487",
-    "project_id": "orthowaittimes",
-    "storage_bucket": "orthowaittimes.appspot.com"
+    "project_number": "453878658576",
+    "project_id": "waitboardapp",
+    "storage_bucket": "waitboardapp.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:935944261487:android:2e758f3460647e99fa629a",
+        "mobilesdk_app_id": "1:453878658576:android:592804b89b86e60b9cfc95",
         "android_client_info": {
           "package_name": "com.example.waitingboard"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyA1qBxpCRpw2vzn37VX2r0M63Ry29tVAjU"
+          "current_key": "AIzaSyDJ-5URlTunJoiaZ36J5NSgC2vF4I6ObMs"
         }
       ],
       "services": {

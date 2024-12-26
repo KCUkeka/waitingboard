@@ -3,11 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waitingboard/screens/admin/admin_home_page.dart';
+import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
 import 'package:waitingboard/screens/login_page.dart';
 import 'screens/homepage/clinic_home_page.dart';
-import 'screens/dashboard_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,12 +15,13 @@ void main() async {
   if (kIsWeb) {
     await Firebase.initializeApp(
         options: const FirebaseOptions(
-            apiKey: "AIzaSyCkZcw4UIF7Wf_8ynRjdQNzAVFgxCmvf6g",
-            authDomain: "orthowaittimes.firebaseapp.com",
-            projectId: "orthowaittimes",
-            storageBucket: "orthowaittimes.appspot.com",
-            messagingSenderId: "935944261487",
-            appId: "1:935944261487:web:5e02da4570934a26fa629a"));
+            apiKey: "AIzaSyDNYseJJpYpH3iev09KqT4Di_h3piuIPHU",
+            authDomain: "waitboardapp.firebaseapp.com",
+            projectId: "waitboardapp",
+            storageBucket: "waitboardapp.firebasestorage.app",
+            messagingSenderId: "453878658576",
+            appId: "1:453878658576:web:a431fde091e7bb269cfc95",
+            measurementId: "G-RXLFZ4WGX2"));
   } else {
     await Firebase.initializeApp();
   }

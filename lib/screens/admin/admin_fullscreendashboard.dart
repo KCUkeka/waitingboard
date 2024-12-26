@@ -37,18 +37,18 @@ class ProviderInfo {
   String get displayName => '$lastName, ${firstName[0]}. | $title';
 }
 
-class FullScreenDashboardPage extends StatelessWidget {
+class AdminFullScreenDashboardPage extends StatelessWidget {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String selectedLocation; // Add selectedLocation as a parameter
 
   // Constructor to accept selectedLocation
-  FullScreenDashboardPage({required this.selectedLocation});
+  AdminFullScreenDashboardPage({required this.selectedLocation});
 
   // Method to format the lastChanged timestamp
   String formatTimestamp(DateTime? timestamp) {
     if (timestamp == null) return "N/A";
 
-    final formattedDate = DateFormat('hh:mm a, MM/dd').format(timestamp);
+    final formattedDate = DateFormat('hh:mm a').format(timestamp);
     return formattedDate;
   }
 

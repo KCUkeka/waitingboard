@@ -1,10 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/intl.dart'; // Import for date formatting
-
+import 'package:intl/intl.dart';
+import 'package:waitingboard/screens/fullscreendashboard.dart'; 
 class DashboardPage extends StatefulWidget {
   final String selectedLocation; // Accept location as a parameter
 
@@ -22,7 +21,7 @@ class _DashboardPageState extends State<DashboardPage> {
     if (timestamp == null) return "N/A";
 
     final dateTime = timestamp.toDate();
-    final formattedDate = DateFormat('hh:mm a').format(dateTime);
+    final formattedDate = DateFormat('hh:mm a, MM/dd').format(dateTime);
     return formattedDate;
   }
 

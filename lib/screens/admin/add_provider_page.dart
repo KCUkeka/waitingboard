@@ -127,6 +127,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
           'title': title,
           'locations': selectedLocations,
           'waitTime': null,
+          'selectedLocation': null,
         });
 
         // Clear the text fields after saving
