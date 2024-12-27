@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:waitingboard/logic/models/mysql.dart';
 
 class AddProviderPage extends StatefulWidget {
   @override
@@ -11,8 +10,8 @@ class _AddProviderPageState extends State<AddProviderPage> {
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController newLocationController = TextEditingController();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  final Mysql db = Mysql();
 
   String? selectedSpecialty;
   String? selectedTitle;
@@ -42,7 +41,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'DPM Fellow',
   ];
 
-  // List to hold locations fetched from Firestore
+  // List to hold locations fetched from MySQL
   List<String> locations = [];
 
   @override
@@ -52,44 +51,68 @@ class _AddProviderPageState extends State<AddProviderPage> {
     fetchCurrentUserRole();
   }
 
-  // Fetch locations from Firestore
+  // Fetch locations from MySQL
   Future<void> fetchLocations() async {
-    final snapshot = await _firestore.collection('locations').get();
-    setState(() {
-      locations = snapshot.docs.map((doc) => doc['name'] as String).toList();
-    });
-  }
-
-  // Fetch the current user's role from Firestore
-  Future<void> fetchCurrentUserRole() async {
-    final user = _auth.currentUser;
-    if (user != null) {
-      final snapshot = await _firestore.collection('users').doc(user.uid).get();
+    try {
+      var conn = await db.getConnection();
+      var results = await conn.query('SELECT name FROM locations');
       setState(() {
-        currentUserRole = snapshot['role']; // Assuming role is stored in Firestore
+        locations = results.map((row) => row['name'] as String).toList();
       });
+      await conn.close();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch locations: $e')),
+      );
     }
   }
 
-  // Add a new location to Firestore
+  // Fetch the current user's role from MySQL
+  Future<void> fetchCurrentUserRole() async {
+    try {
+      var conn = await db.getConnection();
+      // Assume user_id is obtained from shared preferences or a session
+      int userId = 1; // Replace with the actual user ID
+      var results = await conn.query('SELECT role FROM users WHERE id = ?', [userId]);
+
+      if (results.isNotEmpty) {
+        setState(() {
+          currentUserRole = results.first['role'];
+        });
+      }
+      await conn.close();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch user role: $e')),
+      );
+    }
+  }
+
+  // Add a new location to MySQL
   Future<void> addLocation() async {
     final newLocation = newLocationController.text.trim();
+
     if (newLocation.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Location name cannot be empty')),
       );
       return;
     }
+
     if (locations.contains(newLocation)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Location already exists')),
       );
       return;
     }
+
     try {
-      await _firestore.collection('locations').add({'name': newLocation});
+      var conn = await db.getConnection();
+      await conn.query('INSERT INTO locations (name) VALUES (?)', [newLocation]);
       await fetchLocations(); // Refresh the list
       newLocationController.clear();
+      await conn.close();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Location added successfully')),
       );
@@ -100,49 +123,61 @@ class _AddProviderPageState extends State<AddProviderPage> {
     }
   }
 
-  // Save the provider information to Firestore
+  // Save the provider information to MySQL
   Future<void> saveProvider() async {
     final firstName = firstNameController.text.trim();
     final lastName = lastNameController.text.trim();
     final specialty = selectedSpecialty;
     final title = selectedTitle;
 
-    if (firstName.isNotEmpty && lastName.isNotEmpty && specialty != null && title != null && selectedLocations.isNotEmpty) {
-      // Query Firestore to check for duplicates
-      final querySnapshot = await _firestore.collection('providers')
-          .where('firstName', isEqualTo: firstName)
-          .where('lastName', isEqualTo: lastName)
-          .get();
+    if (firstName.isEmpty || lastName.isEmpty || specialty == null || title == null || selectedLocations.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('All fields are required')),
+      );
+      return;
+    }
 
-      if (querySnapshot.docs.isNotEmpty) {
+    try {
+      var conn = await db.getConnection();
+      var duplicateCheck = await conn.query(
+        'SELECT id FROM providers WHERE firstName = ? AND lastName = ?',
+        [firstName, lastName],
+      );
+
+      if (duplicateCheck.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Provider already listed')),
         );
-      } else {
-        // Add new provider if no duplicate is found
-        await _firestore.collection('providers').add({
-          'firstName': firstName,
-          'lastName': lastName,
-          'specialty': specialty,
-          'title': title,
-          'locations': selectedLocations,
-          'waitTime': null,
-          'selectedLocation': null,
-        });
-
-        // Clear the text fields after saving
-        firstNameController.clear();
-        lastNameController.clear();
-        selectedSpecialty = null;
-        selectedTitle = null;
-        selectedLocations = [];
-
-        // Navigate back after saving
-        Navigator.pop(context);
+        await conn.close();
+        return;
       }
-    } else {
+
+      // Add new provider
+      await conn.query(
+        'INSERT INTO providers (firstName, lastName, specialty, title, locations) VALUES (?, ?, ?, ?, ?)',
+        [
+          firstName,
+          lastName,
+          specialty,
+          title,
+          selectedLocations.join(','), // Store locations as a comma-separated string
+        ],
+      );
+
+      await conn.close();
+
+      // Clear the text fields after saving
+      firstNameController.clear();
+      lastNameController.clear();
+      selectedSpecialty = null;
+      selectedTitle = null;
+      selectedLocations = [];
+
+      // Navigate back after saving
+      Navigator.pop(context);
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('All fields are required')),
+        SnackBar(content: Text('Failed to save provider: $e')),
       );
     }
   }
@@ -254,10 +289,10 @@ class _AddProviderPageState extends State<AddProviderPage> {
                 }).toList(),
               ),
               SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _showAddLocationDialog,
-                  child: Text('Add New Location'),
-                ),
+              ElevatedButton(
+                onPressed: _showAddLocationDialog,
+                child: Text('Add New Location'),
+              ),
               SizedBox(height: 16),
               ElevatedButton(
                 onPressed: saveProvider,

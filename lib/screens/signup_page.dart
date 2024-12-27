@@ -1,6 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:waitingboard/logic/models/mysql.dart';
 
 class CreateAccountPage extends StatefulWidget {
   @override
@@ -12,8 +11,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final Mysql db = Mysql();
 
   String? _selectedRole; // Selected role (Front desk or Clinic)
 
@@ -23,7 +21,10 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
-      if (username.isEmpty || email.isEmpty || password.isEmpty || _selectedRole == null) {
+      if (username.isEmpty ||
+          email.isEmpty ||
+          password.isEmpty ||
+          _selectedRole == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("All fields are required.")),
         );
@@ -39,38 +40,56 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
 
       if (password.length < 5) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Password must be at least 5 characters.")),
+          const SnackBar(
+              content: Text("Password must be at least 5 characters.")),
         );
         return;
       }
 
-      // Check if username already exists
-      var usernameCheck = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username)
-          .get();
+      var conn = await db.getConnection();
 
-      if (usernameCheck.docs.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Username already exists. Please choose another.")),
-        );
-        return;
-      }
-
-      // Create a new user in Firebase Authentication
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+      // Check if the username already exists
+      var usernameCheck = await conn.query(
+        'SELECT id FROM users WHERE username = ?',
+        [username],
       );
 
-      // Add user details to Firestore with uid as the document ID
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
-        'username': username,
-        'email': email,
-        'role': _selectedRole, // Save selected role
-        'admin': false, // Hidden field defaulted to false
-        'created_at': Timestamp.now(),
-      });
+      if (usernameCheck.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Username already exists. Please choose another.")),
+        );
+        await conn.close();
+        return;
+      }
+
+      // Check if the email already exists
+      var emailCheck = await conn.query(
+        'SELECT id FROM users WHERE email = ?',
+        [email],
+      );
+
+      if (emailCheck.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("This email is already registered.")),
+        );
+        await conn.close();
+        return;
+      }
+
+      // Insert new user into the database
+      await conn.query(
+        'INSERT INTO wait_users (username, email, password, role, admin, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [
+          username,
+          email,
+          password,
+          _selectedRole,
+          0
+        ], // Admin defaults to 0 (false)
+      );
+
+      await conn.close();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Account created successfully!")),
@@ -78,21 +97,6 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
 
       // Navigate back to the Login page
       Navigator.pop(context);
-    } on FirebaseAuthException catch (e) {
-      String errorMessage;
-      switch (e.code) {
-        case 'email-already-in-use':
-          errorMessage = "This email is already registered.";
-          break;
-        case 'weak-password':
-          errorMessage = "The password provided is too weak.";
-          break;
-        default:
-          errorMessage = "Failed to create account: ${e.message}";
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("An error occurred: ${e.toString()}")),
@@ -103,8 +107,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Container(
-        alignment: Alignment.center,child: Text('Create Account'))),
+      appBar: AppBar(
+        title: Container(
+          alignment: Alignment.center,
+          child: Text('Create Account'),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

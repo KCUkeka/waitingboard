@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:waitingboard/logic/models/mysql.dart';
 import 'package:waitingboard/screens/homepage/clinic_home_page.dart';
 import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
 import 'package:waitingboard/screens/admin/admin_home_page.dart';
@@ -15,14 +14,13 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   String? _selectedUsername;
   String? _selectedLocation;
 
   List<String> _usernames = [];
   List<String> _locations = [];
+
+  final Mysql db = Mysql();
 
   @override
   void initState() {
@@ -32,15 +30,16 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _fetchUsernamesAndLocations() async {
     try {
-      var usersSnapshot = await _firestore.collection('users').get();
-      var locationsSnapshot = await _firestore.collection('locations').get();
+      var conn = await db.getConnection();
+      var userResults = await conn.query('SELECT username FROM users');
+      var locationResults = await conn.query('SELECT name FROM locations');
 
       setState(() {
-        _usernames =
-            usersSnapshot.docs.map((doc) => doc['username'] as String).toList();
-        _locations =
-            locationsSnapshot.docs.map((doc) => doc['name'] as String).toList();
+        _usernames = userResults.map((row) => row['username'] as String).toList();
+        _locations = locationResults.map((row) => row['name'] as String).toList();
       });
+
+      await conn.close();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to load data: $e")),
@@ -51,76 +50,69 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login() async {
     final password = _passwordController.text.trim();
 
+    if (_selectedUsername == null || _selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a username and location.")),
+      );
+      return;
+    }
+
     try {
-      if (_selectedUsername == null || _selectedLocation == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please select a username and location.")),
-        );
-        return;
-      }
-
-      var userSnapshot = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: _selectedUsername)
-          .limit(1)
-          .get();
-
-      if (userSnapshot.docs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Username not found.")),
-        );
-        return;
-      }
-
-      var userDoc = userSnapshot.docs.first;
-      String email = userDoc['email'];
-
-      await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+      var conn = await db.getConnection();
+      var results = await conn.query(
+        'SELECT * FROM users WHERE username = ? AND password = ?',
+        [_selectedUsername, password],
       );
 
-      bool isAdmin = userDoc.data().containsKey('admin')
-          ? userDoc['admin'] as bool
-          : false;
-
-      if (isAdmin) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) =>
-                  AdminHomePage(selectedLocation: _selectedLocation!)),
+      if (results.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Invalid username or password.")),
         );
-      } else {
-        String role = userDoc.data().containsKey('role')
-            ? userDoc['role'] as String
-            : '';
-        if (role == 'Clinic') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  ClinicHomePage(selectedLocation: _selectedLocation!),
-            ),
-          );
-        } else if (role == 'Front desk') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  FrontHomePage(selectedLocation: _selectedLocation!),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Unknown role")),
-          );
-        }
+        await conn.close();
+        return;
       }
+
+      var user = results.first;
+      bool isAdmin = user['admin'] == 1;
+      String role = user['role'];
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('selectedLocation', _selectedLocation!);
+      await prefs.setString('userRole', role);
+
+      await conn.close();
+
+      // Navigate based on role
+      if (isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                AdminHomePage(selectedLocation: _selectedLocation!),
+          ),
+        );
+      } else if (role == 'Clinic') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                ClinicHomePage(selectedLocation: _selectedLocation!),
+          ),
+        );
+      } else if (role == 'Front desk') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                FrontHomePage(selectedLocation: _selectedLocation!),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Unknown role")),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Login failed: ${e.toString()}")),
@@ -158,21 +150,25 @@ class _LoginPageState extends State<LoginPage> {
                       });
 
                       if (value != null) {
-                        var userSnapshot = await _firestore
-                            .collection('users')
-                            .where('username', isEqualTo: value)
-                            .limit(1)
-                            .get();
+                        try {
+                          var conn = await db.getConnection();
+                          var result = await conn.query(
+                            'SELECT admin FROM users WHERE username = ?',
+                            [value],
+                          );
 
-                        if (userSnapshot.docs.isNotEmpty) {
-                          isAdmin = userSnapshot.docs.first
-                                  .data()
-                                  .containsKey('admin') &&
-                              userSnapshot.docs.first['admin'] == true;
-                        } else {
-                          isAdmin = false;
+                          if (result.isNotEmpty) {
+                            isAdmin = result.first['admin'] == 1;
+                          } else {
+                            isAdmin = false;
+                          }
+                          await conn.close();
+                          setState(() {});
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Error: $e")),
+                          );
                         }
-                        setState(() {});
                       }
                     },
                     decoration: InputDecoration(labelText: "Select User"),
@@ -221,14 +217,17 @@ class _LoginPageState extends State<LoginPage> {
                       }
 
                       try {
-                        await _firestore
-                            .collection('locations')
-                            .add({'name': newLocation});
+                        var conn = await db.getConnection();
+                        await conn.query(
+                          'INSERT INTO locations (name) VALUES (?)',
+                          [newLocation],
+                        );
                         await _fetchUsernamesAndLocations(); // Refresh locations
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                               content: Text('Location added successfully')),
                         );
+                        await conn.close();
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
