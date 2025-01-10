@@ -16,7 +16,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   String? _selectedRole; // Selected role (Front desk or Clinic)
 
   String hashPassword(String password) {
-    // Hash the password using SHA-256 (commonly used hashing algorithm)
+    // Hash the password using SHA-256
     final bytes = utf8.encode(password); // Convert password to bytes
     final digest = sha256.convert(bytes); // Perform hashing
     return digest.toString();
@@ -55,7 +55,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
 
       // Call API to create the user
       try {
-        await ApiService.createUser(username, email, hashedPassword, _selectedRole!);
+        await ApiService.createUser(
+          username,
+          email,
+          hashedPassword,
+          _selectedRole!,
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Account created successfully!")),
         );
