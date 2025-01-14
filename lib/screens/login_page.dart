@@ -216,6 +216,12 @@ Future<void> _fetchData() async {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            // Adding the image at the top
+            Image.asset(
+              'assets/images/waitboard.png',
+              width: 200,
+              height: 200,
+            ),
             DropdownButtonFormField<String>(
               value: _selectedUsername,
               items: _users.map((user) {
