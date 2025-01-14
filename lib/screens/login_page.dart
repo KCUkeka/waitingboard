@@ -26,27 +26,32 @@ class _LoginPageState extends State<LoginPage> {
     _fetchData();
   }
 
-  Future<void> _fetchData() async {
-    try {
-      var users = await ApiService.fetchUsers();
-      var locations = await ApiService.fetchLocations();
+Future<void> _fetchData() async {
+  try {
+    var users = await ApiService.fetchUsers();
+    var locations = await ApiService.fetchLocations();
 
-      setState(() {
-        _users = users.map((user) {
-          return {
-            'username': user['username'] as String,
-            'password': user['password'] as String,
-            'admin': user['admin'].toString(), // Fetch admin status as string
-          };
-        }).toList();
-        _locations = locations.map((location) => location['name'] as String).toList();
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load data: $e")),
-      );
-    }
+    setState(() {
+      _users = users.map((user) {
+        return {
+          'username': user['username']?.toString() ?? '', // Fallback to empty string
+          'password': user['password']?.toString() ?? '', // Fallback to empty string
+          'admin': user['admin']?.toString() ?? '0', // Fallback to '0' (not admin)
+        };
+      }).toList();
+
+      _locations = locations.map((location) {
+        return location['name']?.toString() ?? ''; // Fallback to empty string
+      }).where((name) => name.isNotEmpty).toList(); // Filter out empty names
+    });
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Failed to load data: $e")),
+    );
   }
+}
+
+
 
   String hashPassword(String password) {
     final bytes = utf8.encode(password);

@@ -28,7 +28,10 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
-      if (username.isEmpty || email.isEmpty || password.isEmpty || _selectedRole == null) {
+      if (username.isEmpty ||
+          email.isEmpty ||
+          password.isEmpty ||
+          _selectedRole == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("All fields are required.")),
         );
@@ -44,27 +47,35 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
 
       if (password.length < 5) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Password must be at least 5 characters.")),
+          const SnackBar(
+              content: Text("Password must be at least 5 characters.")),
         );
         return;
       }
 
       // Hash the password before sending it to the API
-      final hashedPassword = hashPassword(password);
-      print('Hashed Password: $hashedPassword'); // Debug hashed password
 
+      final hashedPassword = hashPassword(password);
+
+      // Include 'admin': 'false' in the API payload
+      final userPayload = {
+        'username': username,
+        'email': email,
+        'password': hashedPassword,
+        'role': _selectedRole,
+      };
       // Call API to create the user
       try {
         await ApiService.createUser(
           username,
           email,
           hashedPassword,
-          _selectedRole!,
+          _selectedRole!, // Role is required
         );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Account created successfully!")),
         );
-        Navigator.pop(context); // Navigate back to the Login page
+        Navigator.pop(context); // Navigate back to the previous page
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Failed to create account: $e")),
@@ -81,7 +92,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Center(child: Text('Create Account')),
+        title: const Center(child: Text('Create Account')),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -89,17 +100,17 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
           children: <Widget>[
             TextField(
               controller: _usernameController,
-              decoration: InputDecoration(labelText: 'Username'),
+              decoration: const InputDecoration(labelText: 'Username'),
             ),
             TextField(
               controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(labelText: 'Email'),
               keyboardType: TextInputType.emailAddress,
             ),
             TextField(
               controller: _passwordController,
               obscureText: true,
-              decoration: InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(labelText: 'Password'),
             ),
             DropdownButtonFormField<String>(
               value: _selectedRole,
@@ -114,12 +125,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                   _selectedRole = value;
                 });
               },
-              decoration: InputDecoration(labelText: 'Role'),
+              decoration: const InputDecoration(labelText: 'Role'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _createAccount,
-              child: Text('Create Account'),
+              child: const Text('Create Account'),
             ),
           ],
         ),
