@@ -52,20 +52,29 @@ class ApiService {
   }
 
   // Add a new location
-  static Future<void> addLocation(String locationName) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/locations'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'name': locationName}),
-      );
-      if (response.statusCode != 201) {
-        throw Exception('Failed to add location. Response: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Error adding location: $e');
+static Future<void> addLocation(String locationName) async {
+  try {
+    final url = Uri.parse('$baseUrl/locations');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'name': locationName}),
+    );
+
+    print('Request URL: $url');
+    print('Request Body: ${jsonEncode({'name': locationName})}');
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to add location. Response: ${response.body}');
     }
+  } catch (e) {
+    print('Error in addLocation: $e');
+    throw Exception('Error adding location: $e');
   }
+}
+
 
   // Create a new user
   static Future<void> createUser(

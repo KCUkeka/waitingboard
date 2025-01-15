@@ -17,7 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   String? _selectedUsername;
   String? _selectedLocation;
 
-  List<Map<String, String>> _users = []; // Store user objects with username and hashed password
+  List<Map<String,  dynamic>> _users = []; // Store user objects with username and hashed password
   List<String> _locations = [];
 
   @override
@@ -29,16 +29,23 @@ class _LoginPageState extends State<LoginPage> {
 Future<void> _fetchData() async {
   try {
     var users = await ApiService.fetchUsers();
+    print('Fetched Users: $users');  // Debug the full response
     var locations = await ApiService.fetchLocations();
 
     setState(() {
       _users = users.map((user) {
         return {
-          'username': user['username']?.toString() ?? '', // Fallback to empty string
-          'password': user['password']?.toString() ?? '', // Fallback to empty string
-          'admin': user['admin']?.toString() ?? '0', // Fallback to '0' (not admin)
-        };
+      'username': user['username']?.toString() ?? '',
+      'password': user['password']?.toString() ?? '',
+      'admin': user['admin'], // Include admin field
+    };
       }).toList();
+
+      // Debugging the mapped users and their passwords
+      for (var user in _users) {
+        // print('Username: ${user['username']}, Password: ${user['password']}');
+      }
+
 
       _locations = locations.map((location) {
         return location['name']?.toString() ?? ''; // Fallback to empty string
@@ -54,9 +61,10 @@ Future<void> _fetchData() async {
 
 
   String hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
+    final bytes = utf8.encode(password); // Encode the password in UTF-8
+    final digest = sha256.convert(bytes); // Generate the hash
+    print('Hashed Password: $digest');  // Debug print
+    return digest.toString(); // Return the hashed password as a hexadecimal string
   }
 
   Future<void> _addNewLocation() async {
@@ -65,98 +73,118 @@ Future<void> _fetchData() async {
     final TextEditingController passwordController = TextEditingController();
 
     await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Add New Location"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: locationNameController,
-                decoration: InputDecoration(labelText: "Location Name"),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                controller: usernameController,
-                decoration: InputDecoration(labelText: "Username"),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: InputDecoration(labelText: "Password"),
-              ),
-            ],
+  context: context,
+  builder: (context) {
+    return AlertDialog(
+      title: Text("Add New Location"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Dropdown for username selection
+          DropdownButtonFormField<String>(
+            value: usernameController.text.isEmpty ? null : usernameController.text,
+            items: _users.map((user) {
+              return DropdownMenuItem(
+                value: user['username'] as String,
+                child: Text(user['username']!),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                usernameController.text = value!;
+              });
+            },
+            decoration: InputDecoration(labelText: "Select Username"),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final locationName = locationNameController.text.trim();
-                final username = usernameController.text.trim();
-                final password = passwordController.text.trim();
+          SizedBox(height: 10),
 
-                if (locationName.isEmpty || username.isEmpty || password.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("All fields are required.")),
-                  );
-                  return;
-                }
+          // Password input
+          TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: InputDecoration(labelText: "Password"),
+          ),
+          SizedBox(height: 10),
 
-                // Find the user and check admin status
-                final user = _users.firstWhere(
-                  (user) => user['username'] == username,
-                  orElse: () => {},
-                );
+          // Location name input
+          TextField(
+            controller: locationNameController,
+            decoration: InputDecoration(labelText: "Location Name"),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text("Cancel"),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            final locationName = locationNameController.text.trim();
+            final username = usernameController.text.trim();
+            final password = passwordController.text.trim();
 
-                if (user.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Invalid username.")),
-                  );
-                  return;
-                }
+            if (locationName.isEmpty || username.isEmpty || password.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("All fields are required.")),
+              );
+              return;
+            }
 
-                final hashedPassword = user['password'];
-                final isAdmin = user['admin'] == '1'; // Check if admin is true
+            // Find the user by username
+            final user = _users.firstWhere(
+              (user) => user['username'] == username,
+              orElse: () => {},
+            );
 
-                if (!isAdmin) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Only admins can add locations.")),
-                  );
-                  return;
-                }
+            if (user.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Invalid username.")),
+              );
+              return;
+            }
+            
+            print("User admin value: ${user['admin']}"); // Debugging line to inspect the admin value
 
-                if (hashPassword(password) != hashedPassword) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Invalid password.")),
-                  );
-                  return;
-                }
+            // Check if the user is an admin
+            final isAdmin = user['admin'] == true || user['admin'] == 'true';
+            if (!isAdmin) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Only admins can add locations.")),
+              );
+              return;
+            }
 
-                // Add the new location via API
-                try {
-                  await ApiService.addLocation(locationName);
-                  await _fetchData(); // Refresh locations
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Location added successfully.")),
-                  );
-                  Navigator.of(context).pop(); // Close dialog
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Failed to add location: $e")),
-                  );
-                }
-              },
-              child: Text("Add"),
-            ),
-          ],
-        );
-      },
+            // Verify the password
+            final hashedPassword = user['password'];
+            if (hashPassword(password) != hashedPassword) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Invalid password.")),
+              );
+              return;
+            }
+
+            // Add the new location via API
+            try {
+              await ApiService.addLocation(locationName);
+              await _fetchData(); // Refresh locations
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Location added successfully.")),
+              );
+              Navigator.of(context).pop(); // Close dialog
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Failed to add location: $e")),
+              );
+            }
+          },
+          child: Text("Add"),
+        ),
+      ],
     );
+  },
+);
+
   }
 
   Future<void> _login() async {
@@ -179,7 +207,11 @@ Future<void> _fetchData() async {
         return;
       }
 
-      final hashedPassword = user['password'];
+      final hashedPassword = user['password']; // Stored password hash from the backend
+
+      // Debugging print statements for the hashes
+    print('Entered Password Hash: ${hashPassword(enteredPassword)}');
+    print('Stored Password Hash: $hashedPassword');
 
       if (hashPassword(enteredPassword) != hashedPassword) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -216,7 +248,6 @@ Future<void> _fetchData() async {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            // Adding the image at the top
             Image.asset(
               'assets/images/waitboard.png',
               width: 200,
@@ -226,7 +257,7 @@ Future<void> _fetchData() async {
               value: _selectedUsername,
               items: _users.map((user) {
                 return DropdownMenuItem(
-                  value: user['username'],
+                  value: user['username'] as String,
                   child: Text(user['username']!),
                 );
               }).toList(),
