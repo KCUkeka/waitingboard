@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:waitingboard/screens/homepage/clinic_home_page.dart';
+import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
 import 'package:waitingboard/services/api_service.dart';
 import 'signup_page.dart';
 
@@ -17,7 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   String? _selectedUsername;
   String? _selectedLocation;
 
-  List<Map<String,  dynamic>> _users = []; // Store user objects with username and hashed password
+  List<Map<String, dynamic>> _users = []; // Store user objects with username and hashed password
   List<String> _locations = [];
 
   @override
@@ -26,20 +27,21 @@ class _LoginPageState extends State<LoginPage> {
     _fetchData();
   }
 
-Future<void> _fetchData() async {
-  try {
-    var users = await ApiService.fetchUsers();
-    print('Fetched Users: $users');  // Debug the full response
-    var locations = await ApiService.fetchLocations();
+  Future<void> _fetchData() async {
+    try {
+      var users = await ApiService.fetchUsers();
+// print('Fetched Users: $users');  // Debug the full response
+      var locations = await ApiService.fetchLocations();
 
-    setState(() {
-      _users = users.map((user) {
-        return {
-      'username': user['username']?.toString() ?? '',
-      'password': user['password']?.toString() ?? '',
-      'admin': user['admin'], // Include admin field
-    };
-      }).toList();
+      setState(() {
+        _users = users.map((user) {
+          return {
+            'username': user['username']?.toString() ?? '',
+            'password': user['password']?.toString() ?? '',
+            'role': user['role']?.toString() ?? '',
+            'admin': user['admin'], 
+          };
+        }).toList();
 
       // Debugging the mapped users and their passwords
       for (var user in _users) {
@@ -47,18 +49,16 @@ Future<void> _fetchData() async {
       }
 
 
-      _locations = locations.map((location) {
-        return location['name']?.toString() ?? ''; // Fallback to empty string
-      }).where((name) => name.isNotEmpty).toList(); // Filter out empty names
-    });
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Failed to load data: $e")),
-    );
+        _locations = locations.map((location) {
+          return location['name']?.toString() ?? ''; // Fallback to empty string
+        }).where((name) => name.isNotEmpty).toList(); // Filter out empty names
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load data: $e")),
+      );
+    }
   }
-}
-
-
 
   String hashPassword(String password) {
     final bytes = utf8.encode(password); // Encode the password in UTF-8
@@ -210,8 +210,8 @@ Future<void> _fetchData() async {
       final hashedPassword = user['password']; // Stored password hash from the backend
 
       // Debugging print statements for the hashes
-    print('Entered Password Hash: ${hashPassword(enteredPassword)}');
-    print('Stored Password Hash: $hashedPassword');
+    // print('Entered Password Hash: ${hashPassword(enteredPassword)}');
+    // print('Stored Password Hash: $hashedPassword');
 
       if (hashPassword(enteredPassword) != hashedPassword) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -224,12 +224,26 @@ Future<void> _fetchData() async {
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('selectedLocation', _selectedLocation!);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ClinicHomePage(selectedLocation: _selectedLocation!),
-        ),
-      );
+      // Navigate based on role
+      if (user['role'] == 'Front desk') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FrontHomePage(selectedLocation: _selectedLocation!),
+          ),
+        );
+      } else if (user['role'] == 'Clinic') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ClinicHomePage(selectedLocation: _selectedLocation!),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Role not recognized.")),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Login failed: $e")),
@@ -303,7 +317,7 @@ Future<void> _fetchData() async {
               },
               child: Text('Create Account'),
             ),
-            SizedBox(height: 20),
+SizedBox(height: 20),
             ElevatedButton(
               onPressed: _addNewLocation,
               child: Text('New Location'),
