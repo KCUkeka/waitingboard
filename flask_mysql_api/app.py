@@ -121,6 +121,58 @@ def add_location():
         print(f"Error in /locations (POST) route: {e}")
         return jsonify({"error": str(e)}), 500
 
+# Route to fetch providers
+@app.route('/providers', methods=['GET'])
+def get_providers():
+    try:
+        location_id = request.args.get('location_id')  # Get location_id from query parameters
+
+        cursor = mysql.connection.cursor()
+
+        # Base query to fetch all non-deleted providers
+        query = """
+            SELECT 
+                p.id, p.first_name, p.last_name, p.specialty, 
+                p.title, p.wait_time, p.last_changed, 
+                p.location_id, l.name AS location_name
+            FROM waitingboard_providers p
+            JOIN waitingboard_locations l ON p.location_id = l.id
+            WHERE p.deleteFlag = 0
+        """
+
+        # Add filtering by location_id if provided
+        if location_id:
+            query += " AND p.location_id = %s"
+            cursor.execute(query, (location_id,))
+        else:
+            cursor.execute(query)
+
+        providers = cursor.fetchall()
+        cursor.close()
+
+        # Map results to JSON-friendly format
+        provider_list = []
+        for row in providers:
+            provider = {
+                "id": row['id'],
+                "firstName": row['first_name'],
+                "lastName": row['last_name'],
+                "specialty": row['specialty'],
+                "title": row['title'],
+                "waitTime": row['wait_time'],
+                "lastChanged": row['last_changed'].strftime("%Y-%m-%d %H:%M:%S") if row['last_changed'] else None,
+                "locationId": row['location_id'],
+                "locationName": row['location_name'],
+            }
+            provider_list.append(provider)
+
+        return jsonify(provider_list), 200
+    except Exception as e:
+        print(f"Error in /providers route: {e}")
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+
+
 # Route to mark a provider as deleted (sets deleteFlag to 1)
 @app.route('/providers/<provider_id>', methods=['PATCH'])
 def delete_provider(provider_id):

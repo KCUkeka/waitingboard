@@ -17,41 +17,37 @@ class _ProviderListPageState extends State<ProviderListPage> {
     _loadSelectedLocation();
   }
 
-  Future<void> _loadSelectedLocation() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _selectedLocation = prefs.getString('selectedLocation');
-    });
-  }
+Future<void> _loadSelectedLocation() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  setState(() {
+    _selectedLocation = prefs.getString('selectedLocation') ?? ''; // Default to empty string
+  });
+}
+
 
   // API call to fetch provider data
 Future<List<Map<String, dynamic>>> fetchProviders() async {
-  final url = 'http://127.0.0.1:5000/providers';  // Replace with actual API URL
+  final String baseUrl = 'http://127.0.0.1:5000/providers'; // Replace with actual API URL
+
+  // Check if _selectedLocation is null or empty
+  final String url = (_selectedLocation == null || _selectedLocation!.isEmpty)
+      ? baseUrl // No filtering if location is not set
+      : '$baseUrl?location_id=$_selectedLocation'; // Add location_id as a query parameter
 
   try {
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
-
-      // If _selectedLocation is null, return all providers
-      if (_selectedLocation == null || _selectedLocation!.isEmpty) {
-        return data.map<Map<String, dynamic>>((provider) => provider as Map<String, dynamic>).toList();
-      }
-
-      // Filter by selected location
-      return data
-          .where((provider) => provider['locations'].contains(_selectedLocation))
-          .map<Map<String, dynamic>>((provider) => provider as Map<String, dynamic>)
-          .toList();
+      return data.map<Map<String, dynamic>>((provider) => provider as Map<String, dynamic>).toList();
     } else {
-      throw Exception('Failed to load providers');
+      throw Exception('Failed to load providers: ${response.body}');
     }
   } catch (e) {
     throw Exception('Error fetching providers: $e');
   }
 }
-
 
   // API call to mark a provider as deleted (sets deleteFlag to 1)
   Future<void> deleteProvider(String providerId) async {
