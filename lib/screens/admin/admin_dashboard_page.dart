@@ -1,7 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:waitingboard/services/api_service.dart'; // Flask API service
 import 'package:intl/intl.dart'; // Import for date formatting
 
 class AdminDashboardPage extends StatefulWidget {
@@ -14,26 +12,24 @@ class AdminDashboardPage extends StatefulWidget {
 }
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   // Format the lastChanged timestamp
-  String formatTimestamp(Timestamp? timestamp) {
+  String formatTimestamp(String? timestamp) {
     if (timestamp == null) return "N/A";
 
-    final dateTime = timestamp.toDate();
+    final dateTime = DateTime.parse(timestamp);
     final formattedDate = DateFormat('hh:mm a').format(dateTime);
     return formattedDate;
   }
 
-  // Stream to fetch and group providers by location, filtering for non-null wait times
-  Stream<Map<String, List<ProviderInfo>>> getProvidersGroupedByLocation() {
-    return _firestore.collection('providers').snapshots().map((snapshot) {
+  // Fetch and group providers by location
+  Future<Map<String, List<ProviderInfo>>> fetchProvidersGroupedByLocation() async {
+    try {
+      final response = await ApiService.fetchProviders(); // Replace with your actual API call
       Map<String, List<ProviderInfo>> groupedProviders = {};
 
-      for (var doc in snapshot.docs) {
-        final provider = ProviderInfo.fromFirestore(doc);
+      for (var providerData in response) {
+        final provider = ProviderInfo.fromJson(providerData);
 
-        // Only include providers with non-null wait times
         if (provider.waitTime != null) {
           for (var location in provider.locations) {
             if (!groupedProviders.containsKey(location)) {
@@ -45,7 +41,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       }
 
       return groupedProviders;
-    });
+    } catch (e) {
+      print('Error fetching providers: $e');
+      return {};
+    }
   }
 
   @override
@@ -58,37 +57,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               alignment: Alignment.center,
               child: Text(
                 'Dashboard',
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (kIsWeb) {
-                    final url = Uri.base.origin + '/#/fullscreendashboard';
-                    await launchUrl(Uri.parse(url),
-                        webOnlyWindowName: '_blank');
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AdminDashboardPage(
-                          selectedLocation: widget.selectedLocation,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Full Screen'),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
           ],
         ),
       ),
-      body: StreamBuilder<Map<String, List<ProviderInfo>>>(
-        stream: getProvidersGroupedByLocation(),
+      body: FutureBuilder<Map<String, List<ProviderInfo>>>(
+        future: fetchProvidersGroupedByLocation(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -108,8 +84,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+                      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
                       child: Text(
                         location,
                         style: const TextStyle(
@@ -148,8 +123,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                                     Text(
                                       provider.displayName,
                                       style: const TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold),
+                                          fontSize: 20, fontWeight: FontWeight.bold),
                                       textAlign: TextAlign.center,
                                     ),
                                     const SizedBox(height: 8),
@@ -159,17 +133,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                                       textAlign: TextAlign.center,
                                     ),
                                     const SizedBox(height: 8),
-                                    const Text('Wait Time:',
-                                        style: TextStyle(fontSize: 16)),
+                                    const Text('Wait Time:', style: TextStyle(fontSize: 16)),
                                     Text(
                                       '${provider.waitTime} mins',
                                       style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold),
+                                          fontSize: 18, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 8),
-                                    const Text('Last Changed:',
-                                        style: TextStyle(fontSize: 16)),
+                                    const Text('Last Changed:', style: TextStyle(fontSize: 16)),
                                     Text(
                                       formatTimestamp(provider.lastChanged),
                                       style: const TextStyle(fontSize: 14),
@@ -194,14 +165,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 }
 
-// Updated ProviderInfo model to include locations
+// Updated ProviderInfo model
 class ProviderInfo {
   final String firstName;
   final String lastName;
   final String specialty;
   final String title;
   final int? waitTime;
-  final Timestamp? lastChanged;
+  final String? lastChanged; // Changed to String to match API format
   final List<String> locations;
 
   ProviderInfo({
@@ -214,17 +185,15 @@ class ProviderInfo {
     required this.locations,
   });
 
-  factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory ProviderInfo.fromJson(Map<String, dynamic> json) {
     return ProviderInfo(
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      specialty: data['specialty'] ?? '',
-      title: data['title'] ?? '',
-      waitTime: data['waitTime'],
-      lastChanged:
-          data['lastChanged'] as Timestamp?, // Convert from Firestore Timestamp
-      locations: List<String>.from(data['locations'] ?? []),
+      firstName: json['firstName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      specialty: json['specialty'] ?? '',
+      title: json['title'] ?? '',
+      waitTime: json['waitTime'],
+      lastChanged: json['lastChanged'],
+      locations: List<String>.from(json['locations'] ?? []),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http; // For HTTP requests
+import 'dart:convert'; // For JSON decoding
 
 class ProviderListPage extends StatefulWidget {
   @override
@@ -8,7 +9,6 @@ class ProviderListPage extends StatefulWidget {
 }
 
 class _ProviderListPageState extends State<ProviderListPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _selectedLocation;
 
   @override
@@ -24,11 +24,58 @@ class _ProviderListPageState extends State<ProviderListPage> {
     });
   }
 
-  Future<void> deleteProvider(BuildContext context, String docId) async {
-    await _firestore.collection('providers').doc(docId).delete();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Provider deleted successfully')),
-    );
+  // API call to fetch provider data
+Future<List<Map<String, dynamic>>> fetchProviders() async {
+  final url = 'http://127.0.0.1:5000/providers';  // Replace with actual API URL
+
+  try {
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+
+      // If _selectedLocation is null, return all providers
+      if (_selectedLocation == null || _selectedLocation!.isEmpty) {
+        return data.map<Map<String, dynamic>>((provider) => provider as Map<String, dynamic>).toList();
+      }
+
+      // Filter by selected location
+      return data
+          .where((provider) => provider['locations'].contains(_selectedLocation))
+          .map<Map<String, dynamic>>((provider) => provider as Map<String, dynamic>)
+          .toList();
+    } else {
+      throw Exception('Failed to load providers');
+    }
+  } catch (e) {
+    throw Exception('Error fetching providers: $e');
+  }
+}
+
+
+  // API call to mark a provider as deleted (sets deleteFlag to 1)
+  Future<void> deleteProvider(String providerId) async {
+    final url = 'http://127.0.0.1:5000/providers/$providerId'; // Your API URL
+
+    try {
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'deleteFlag': 1}), // Mark as deleted
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Provider marked as deleted successfully')),
+        );
+      } else {
+        throw Exception('Failed to mark provider as deleted');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error marking provider as deleted')),
+      );
+    }
   }
 
   @override
@@ -42,11 +89,9 @@ class _ProviderListPageState extends State<ProviderListPage> {
       ),
       body: _selectedLocation == null
           ? Center(child: CircularProgressIndicator())
-          : StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('providers')
-                  .where('locations', arrayContains: _selectedLocation)
-                  .snapshots(),
+          : FutureBuilder<List<Map<String, dynamic>>>(
+              // Fetch the providers
+              future: fetchProviders(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
@@ -54,26 +99,27 @@ class _ProviderListPageState extends State<ProviderListPage> {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(child: Text('No providers available for this location.'));
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                      child: Text('No providers available for this location.'));
                 }
 
-                final providerDocs = snapshot.data!.docs;
+                final providerData = snapshot.data!;
 
                 return ListView.builder(
-                  itemCount: providerDocs.length,
+                  itemCount: providerData.length,
                   itemBuilder: (context, index) {
-                    final provider = providerDocs[index];
-                    final providerData = provider.data() as Map<String, dynamic>;
+                    final provider = providerData[index];
 
                     return ListTile(
-                      title: Text('${providerData['firstName']} ${providerData['lastName']}'),
+                      title: Text(
+                          '${provider['firstName']} ${provider['lastName']}'),
                       subtitle: Text(
-                        '${providerData['specialty'] ?? "N/A"} - ${providerData['title'] ?? "N/A"}',
+                        '${provider['specialty'] ?? "N/A"} - ${provider['title'] ?? "N/A"}',
                       ),
                       trailing: IconButton(
                         icon: Icon(Icons.delete),
-                        onPressed: () => deleteProvider(context, provider.id),
+                        onPressed: () => deleteProvider(provider['id']),
                       ),
                     );
                   },

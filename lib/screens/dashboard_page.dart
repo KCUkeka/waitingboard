@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
-import 'package:waitingboard/screens/fullscreendashboard.dart'; 
+import 'package:waitingboard/screens/fullscreendashboard.dart';
+import 'package:waitingboard/services/api_service.dart'; // Import the API service
+
 class DashboardPage extends StatefulWidget {
   final String selectedLocation; // Accept location as a parameter
 
@@ -14,25 +15,24 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   // Method to format the lastChanged timestamp
-  String formatTimestamp(Timestamp? timestamp) {
-    if (timestamp == null) return "N/A";
+  String formatTimestamp(DateTime? dateTime) {
+    if (dateTime == null) return "N/A";
 
-    final dateTime = timestamp.toDate();
     final formattedDate = DateFormat('hh:mm a, MM/dd').format(dateTime);
     return formattedDate;
   }
 
-  // Stream to fetch providers with a non-null wait time
-  Stream<List<ProviderInfo>> getProvidersStream() {
-    return _firestore.collection('providers').snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ProviderInfo.fromFirestore(doc))
-          .where((provider) => provider.waitTime != null)
+  // Method to fetch providers data from the API
+  Future<List<ProviderInfo>> _fetchProviders() async {
+    try {
+      final providers = await ApiService.fetchProviders();
+      return providers
+          .map((provider) => ProviderInfo.fromApi(provider))
           .toList();
-    });
+    } catch (e) {
+      throw Exception('Error fetching providers: $e');
+    }
   }
 
   @override
@@ -74,8 +74,8 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
       ),
-      body: StreamBuilder<List<ProviderInfo>>(
-        stream: getProvidersStream(),
+      body: FutureBuilder<List<ProviderInfo>>(
+        future: _fetchProviders(), // Fetch providers from the API
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -163,7 +163,7 @@ class ProviderInfo {
   final String specialty;
   final String title;
   final int? waitTime;
-  final Timestamp? lastChanged;
+  final DateTime? lastChanged;
 
   ProviderInfo({
     required this.firstName,
@@ -174,16 +174,17 @@ class ProviderInfo {
     this.lastChanged,
   });
 
-  factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  // Factory method to create a ProviderInfo from API data
+  factory ProviderInfo.fromApi(Map<String, dynamic> data) {
     return ProviderInfo(
       firstName: data['firstName'] ?? '',
       lastName: data['lastName'] ?? '',
       specialty: data['specialty'] ?? '',
       title: data['title'] ?? '',
       waitTime: data['waitTime'],
-      lastChanged:
-          data['lastChanged'] as Timestamp?, // Convert from Firestore Timestamp
+      lastChanged: data['lastChanged'] != null
+          ? DateTime.parse(data['lastChanged']) // Assuming lastChanged is a string or timestamp
+          : null,
     );
   }
 

@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart'; // Import to access kIsWeb
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
+import 'package:http/http.dart' as http; // For HTTP requests
+import 'dart:convert'; // For JSON decoding
 
 class ProviderInfo {
   final String firstName;
@@ -20,8 +21,7 @@ class ProviderInfo {
     this.lastChanged,
   });
 
-  factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory ProviderInfo.fromApi(Map<String, dynamic> data) {
     return ProviderInfo(
       firstName: data['firstName'] ?? '',
       lastName: data['lastName'] ?? '',
@@ -29,7 +29,7 @@ class ProviderInfo {
       title: data['title'] ?? '',
       waitTime: data['waitTime'],
       lastChanged: data['lastChanged'] != null
-          ? (data['lastChanged'] as Timestamp).toDate()
+          ? DateTime.parse(data['lastChanged'])
           : null,
     );
   }
@@ -38,7 +38,6 @@ class ProviderInfo {
 }
 
 class FullScreenDashboardPage extends StatelessWidget {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String selectedLocation; // Add selectedLocation as a parameter
 
   // Constructor to accept selectedLocation
@@ -52,13 +51,22 @@ class FullScreenDashboardPage extends StatelessWidget {
     return formattedDate;
   }
 
-  Stream<List<ProviderInfo>> getProvidersStream() {
-    return _firestore.collection('providers').snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ProviderInfo.fromFirestore(doc))
-          .where((provider) => provider.waitTime != null)
-          .toList();
-    });
+  // API call to fetch provider data (replace with your API service call)
+  Future<List<ProviderInfo>> fetchProviders() async {
+    final url = 'http://127.0.0.1:5000/providers'; // Replace with your API URL
+
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((item) => ProviderInfo.fromApi(item)).toList();
+      } else {
+        throw Exception('Failed to load providers');
+      }
+    } catch (e) {
+      throw Exception('Error fetching providers: $e');
+    }
   }
 
   @override
@@ -71,8 +79,8 @@ class FullScreenDashboardPage extends StatelessWidget {
         ),
         automaticallyImplyLeading: !kIsWeb, // Hide back button on web platform
       ),
-      body: StreamBuilder<List<ProviderInfo>>(
-        stream: getProvidersStream(),
+      body: FutureBuilder<List<ProviderInfo>>(
+        future: fetchProviders(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -149,4 +157,3 @@ class FullScreenDashboardPage extends StatelessWidget {
     );
   }
 }
-

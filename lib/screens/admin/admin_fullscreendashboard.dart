@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart'; // Import to access kIsWeb
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
+import 'package:waitingboard/services/api_service.dart'; // Flask API service
 
 class ProviderInfo {
   final String firstName;
@@ -9,7 +9,7 @@ class ProviderInfo {
   final String specialty;
   final String title;
   final int? waitTime;
-  final DateTime? lastChanged; // New field for last updated timestamp
+  final DateTime? lastChanged; // Field for last updated timestamp
 
   ProviderInfo({
     required this.firstName,
@@ -20,8 +20,8 @@ class ProviderInfo {
     this.lastChanged,
   });
 
-  factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  // Factory constructor to parse JSON data from the API
+  factory ProviderInfo.fromJson(Map<String, dynamic> data) {
     return ProviderInfo(
       firstName: data['firstName'] ?? '',
       lastName: data['lastName'] ?? '',
@@ -29,7 +29,7 @@ class ProviderInfo {
       title: data['title'] ?? '',
       waitTime: data['waitTime'],
       lastChanged: data['lastChanged'] != null
-          ? (data['lastChanged'] as Timestamp).toDate()
+          ? DateTime.parse(data['lastChanged']) // Parse ISO date format
           : null,
     );
   }
@@ -38,7 +38,6 @@ class ProviderInfo {
 }
 
 class AdminFullScreenDashboardPage extends StatelessWidget {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String selectedLocation; // Add selectedLocation as a parameter
 
   // Constructor to accept selectedLocation
@@ -47,18 +46,17 @@ class AdminFullScreenDashboardPage extends StatelessWidget {
   // Method to format the lastChanged timestamp
   String formatTimestamp(DateTime? timestamp) {
     if (timestamp == null) return "N/A";
-
-    final formattedDate = DateFormat('hh:mm a').format(timestamp);
-    return formattedDate;
+    return DateFormat('hh:mm a').format(timestamp);
   }
 
-  Stream<List<ProviderInfo>> getProvidersStream() {
-    return _firestore.collection('providers').snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ProviderInfo.fromFirestore(doc))
-          .where((provider) => provider.waitTime != null)
-          .toList();
-    });
+  // Fetch providers using the ApiService
+  Future<List<ProviderInfo>> fetchProviders() async {
+    try {
+      final response = await ApiService.fetchProviders(); // Fetch from API
+      return response.map((data) => ProviderInfo.fromJson(data)).toList();
+    } catch (e) {
+      throw Exception('Error fetching providers: $e');
+    }
   }
 
   @override
@@ -71,8 +69,8 @@ class AdminFullScreenDashboardPage extends StatelessWidget {
         ),
         automaticallyImplyLeading: !kIsWeb, // Hide back button on web platform
       ),
-      body: StreamBuilder<List<ProviderInfo>>(
-        stream: getProvidersStream(),
+      body: FutureBuilder<List<ProviderInfo>>(
+        future: fetchProviders(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -125,7 +123,7 @@ class AdminFullScreenDashboardPage extends StatelessWidget {
                             const SizedBox(height: 8),
                             const Text('Wait Time:', style: TextStyle(fontSize: 16)),
                             Text(
-                              '${provider.waitTime} mins',
+                              '${provider.waitTime ?? "N/A"} mins',
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 8),
@@ -149,4 +147,3 @@ class AdminFullScreenDashboardPage extends StatelessWidget {
     );
   }
 }
-

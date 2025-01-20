@@ -32,6 +32,7 @@ class _LoginPageState extends State<LoginPage> {
       var users = await ApiService.fetchUsers();
 // print('Fetched Users: $users');  // Debug the full response
       var locations = await ApiService.fetchLocations();
+print('Fetched Locations: $locations'); // Debug the structure
 
       setState(() {
         _users = users.map((user) {
@@ -44,13 +45,13 @@ class _LoginPageState extends State<LoginPage> {
         }).toList();
 
       // Debugging the mapped users and their passwords
-      for (var user in _users) {
-        // print('Username: ${user['username']}, Password: ${user['password']}');
-      }
+      // for (var user in _users) {
+      //   print('Username: ${user['username']}, Password: ${user['password']}');
+      // } 
 
 
         _locations = locations.map((location) {
-          return location['name']?.toString() ?? ''; // Fallback to empty string
+          return location.toString(); // Fallback to empty string
         }).where((name) => name.isNotEmpty).toList(); // Filter out empty names
       });
     } catch (e) {
@@ -85,7 +86,7 @@ class _LoginPageState extends State<LoginPage> {
             value: usernameController.text.isEmpty ? null : usernameController.text,
             items: _users.map((user) {
               return DropdownMenuItem(
-                value: user['username'] as String,
+                value: user['username']?.toString() ?? '',
                 child: Text(user['username']!),
               );
             }).toList(),

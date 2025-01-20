@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/frontdeskproviders_list.dart';
+import 'package:waitingboard/services/api_service.dart'; // Flask API service
 import '../login_page.dart'; // Import the LoginPage
 
 class FrontHomePage extends StatefulWidget {
@@ -16,9 +16,6 @@ class FrontHomePage extends StatefulWidget {
 }
 
 class _FrontHomePageState extends State<FrontHomePage> {
-  // Firestore instance
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   @override
   void initState() {
     super.initState();
@@ -46,21 +43,11 @@ class _FrontHomePageState extends State<FrontHomePage> {
 
     if (loginId != null) {
       try {
-        // Fetch the document to check if it exists
-        DocumentSnapshot snapshot =
-            await _firestore.collection('logins').doc(loginId).get();
-
-        if (snapshot.exists) {
-          // If the document exists, update the logout timestamp
-          await _firestore.collection('logins').doc(loginId).update({
-            'logout_timestamp': Timestamp.now(),
-          });
-          print('Logout timestamp updated successfully.');
-        } else {
-          print('Document with loginId does not exist.');
-        }
+        // Call the Flask API to log out
+        await ApiService.logout(loginId);
+        print('Logout successful.');
       } catch (e) {
-        print('Error updating logout timestamp: $e');
+        print('Error logging out: $e');
       }
     } else {
       print('Login ID not found in SharedPreferences.');
@@ -100,7 +87,8 @@ class _FrontHomePageState extends State<FrontHomePage> {
                 if (value == 'Providers List') {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => FrontdeskprovidersList()),
+                    MaterialPageRoute(
+                        builder: (context) => FrontdeskprovidersList()),
                   );
                 } else if (value == 'Logout') {
                   _logout(); // Call the logout function
@@ -125,8 +113,8 @@ class _FrontHomePageState extends State<FrontHomePage> {
         ],
       ),
       body: DashboardPage(
-  selectedLocation: widget.selectedLocation, // Pass the location
-),
+        selectedLocation: widget.selectedLocation, // Pass the location
+      ),
     );
   }
 }

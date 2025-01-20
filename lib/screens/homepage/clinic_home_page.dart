@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/providers_list.dart';
-import '../login_page.dart'; // Import the LoginPage
+import 'package:waitingboard/services/api_service.dart'; //Flask API service
+import '../login_page.dart';
 import '../wait_times_page.dart';
 
 class ClinicHomePage extends StatefulWidget {
@@ -20,15 +20,21 @@ class _ClinicHomePageState extends State<ClinicHomePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Firestore instance
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+@override
+void initState() {
+  super.initState();
+  _checkLoginStatus(); // Check login status when the home page is initialized
+  _tabController = TabController(length: 2, vsync: this); // Two tabs
 
-  @override
-  void initState() {
-    super.initState();
-    _checkLoginStatus(); // Check login status when the home page is initialized
-    _tabController = TabController(length: 2, vsync: this); // Two tabs
-  }
+  _saveSelectedLocation(); // Save the selected location to SharedPreferences
+}
+
+// Save the selected location to SharedPreferences
+Future<void> _saveSelectedLocation() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString('selectedLocation', widget.selectedLocation);
+}
+
 
   // Check if the user is logged in when the home page is loaded
   Future<void> _checkLoginStatus() async {
@@ -51,19 +57,9 @@ class _ClinicHomePageState extends State<ClinicHomePage>
 
     if (loginId != null) {
       try {
-        // Fetch the document to check if it exists
-        DocumentSnapshot snapshot =
-            await _firestore.collection('logins').doc(loginId).get();
-
-        if (snapshot.exists) {
-          // If the document exists, update the logout timestamp
-          await _firestore.collection('logins').doc(loginId).update({
-            'logout_timestamp': Timestamp.now(),
-          });
-          print('Logout timestamp updated successfully.');
-        } else {
-          print('Document with loginId does not exist.');
-        }
+        // API call to update the logout timestamp
+        await ApiService.logout(loginId);
+        print('Logout timestamp updated successfully.');
       } catch (e) {
         print('Error updating logout timestamp: $e');
       }
@@ -127,9 +123,7 @@ class _ClinicHomePageState extends State<ClinicHomePage>
               itemBuilder: (context) => [
                 PopupMenuItem(
                     value: 'Providers List', child: Text('Providers List')),
-                PopupMenuItem(
-                    value: 'Logout',
-                    child: Text('Logout')), // Added logout option
+                PopupMenuItem(value: 'Logout', child: Text('Logout')),
               ],
               child: Icon(
                 CupertinoIcons.person_crop_circle_fill_badge_plus,
@@ -146,12 +140,10 @@ class _ClinicHomePageState extends State<ClinicHomePage>
           children: [
             WaitTimesPage(
               tabController: _tabController,
-              selectedLocation:
-                  widget.selectedLocation, // Pass selectedLocation here
+              selectedLocation: widget.selectedLocation,
             ),
             DashboardPage(
-              selectedLocation:
-                  widget.selectedLocation, 
+              selectedLocation: widget.selectedLocation,
             ),
           ],
         ),

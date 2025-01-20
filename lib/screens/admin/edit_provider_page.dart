@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:waitingboard/services/api_service.dart'; // Import ApiService
 
 class EditProviderPage extends StatefulWidget {
   final String docId;
@@ -12,12 +12,12 @@ class EditProviderPage extends StatefulWidget {
 }
 
 class _EditProviderPageState extends State<EditProviderPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late TextEditingController firstNameController;
   late TextEditingController lastNameController;
   late String selectedSpecialty;
   late String selectedTitle;
   List<String> selectedLocations = [];
+  List<String> locations = [];
 
   final List<String> specialties = [
     'Spine', 'Total Joint', 'Upper Extremity', 'Shoulder', 'Knee',
@@ -25,7 +25,6 @@ class _EditProviderPageState extends State<EditProviderPage> {
   ];
 
   final List<String> titles = ['Dr.', 'PA', 'PA-C', 'DPM Fellow'];
-  List<String> locations = [];
 
   @override
   void initState() {
@@ -45,10 +44,16 @@ class _EditProviderPageState extends State<EditProviderPage> {
   }
 
   Future<void> _fetchLocations() async {
-    final querySnapshot = await _firestore.collection('locations').get();
-    setState(() {
-      locations = querySnapshot.docs.map((doc) => doc['name'] as String).toList();
-    });
+    try {
+      final fetchedLocations = await ApiService.fetchLocations(); // Fetch locations from the API
+      setState(() {
+        locations = fetchedLocations;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch locations: $e')),
+      );
+    }
   }
 
   Future<void> _updateProvider() async {
@@ -64,13 +69,17 @@ class _EditProviderPageState extends State<EditProviderPage> {
     }
 
     try {
-      await _firestore.collection('providers').doc(widget.docId).update({
-        'firstName': firstNameController.text.trim(),
-        'lastName': lastNameController.text.trim(),
-        'specialty': selectedSpecialty,
-        'title': selectedTitle,
-        'locations': selectedLocations, // Save selected locations as a list
-      });
+      await ApiService.updateProvider(
+        widget.docId,
+        {
+          'firstName': firstNameController.text.trim(),
+          'lastName': lastNameController.text.trim(),
+          'specialty': selectedSpecialty,
+          'title': selectedTitle,
+          'locations': selectedLocations,
+        },
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Provider updated successfully')),
       );

@@ -1,57 +1,63 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:waitingboard/screens/admin/edit_provider_page.dart';
+import 'package:waitingboard/services/api_service.dart'; // Import the API service
 
 class EditProvidersList extends StatelessWidget {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<List<String>> _fetchLocations() async {
-    final querySnapshot = await _firestore.collection('locations').get();
-    return querySnapshot.docs.map((doc) => doc['name'] as String).toList();
-  }
-
-Future<void> deleteProvider(BuildContext context, String docId) async {
-  // Show a confirmation dialog
-  final shouldDelete = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text('Confirm Deletion'),
-      content: Text('Are you sure you want to delete this provider?'),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop(false); // User chose "No"
-          },
-          child: Text('No'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).pop(true); // User chose "Yes"
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey,
-          ),
-          child: Text('Yes'),
-        ),
-      ],
-    ),
-  );
-
-  // If user confirms deletion
-  if (shouldDelete == true) {
+  // Method to fetch the list of providers from the API
+  Future<List<Map<String, dynamic>>> _fetchProviders() async {
     try {
-      await _firestore.collection('providers').doc(docId).delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Provider deleted successfully')),
-      );
+      // Fetching provider data from the API
+      final providers = await ApiService.fetchProviders();
+      return providers.map((provider) => provider as Map<String, dynamic>).toList();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting provider: $e')),
-      );
+      throw Exception('Error fetching providers: $e');
     }
   }
-}
 
+  // Method to delete a provider from the API
+  Future<void> deleteProvider(BuildContext context, String providerId) async {
+    // Show a confirmation dialog
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Confirm Deletion'),
+        content: Text('Are you sure you want to delete this provider?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(false); // User chose "No"
+            },
+            child: Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop(true); // User chose "Yes"
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey,
+            ),
+            child: Text('Yes'),
+          ),
+        ],
+      ),
+    );
+
+    // If user confirms deletion
+    if (shouldDelete == true) {
+      try {
+        // Call the API to delete the provider
+        await ApiService.deleteProvider(providerId);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Provider deleted successfully')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting provider: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,8 +68,8 @@ Future<void> deleteProvider(BuildContext context, String docId) async {
           child: const Text('Providers List'),
         ),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collection('providers').snapshots(),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _fetchProviders(), // Fetch providers via the API
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
@@ -71,22 +77,21 @@ Future<void> deleteProvider(BuildContext context, String docId) async {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Center(child: Text('No providers available'));
           }
 
-          final providerDocs = snapshot.data!.docs;
+          final providerData = snapshot.data!;
 
           return ListView.builder(
-            itemCount: providerDocs.length,
+            itemCount: providerData.length,
             itemBuilder: (context, index) {
-              final provider = providerDocs[index];
-              final providerData = provider.data() as Map<String, dynamic>;
+              final provider = providerData[index];
 
               return ListTile(
-                title: Text('${providerData['firstName']} ${providerData['lastName']}'),
+                title: Text('${provider['firstName']} ${provider['lastName']}'),
                 subtitle: Text(
-                  '${providerData['specialty']} - ${providerData['title']}',
+                  '${provider['specialty']} - ${provider['title']}',
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -98,8 +103,8 @@ Future<void> deleteProvider(BuildContext context, String docId) async {
                           context,
                           MaterialPageRoute(
                             builder: (context) => EditProviderPage(
-                              docId: provider.id,
-                              providerData: providerData,
+                              docId: provider['id'], // Assuming the API returns a field 'id'
+                              providerData: provider,
                             ),
                           ),
                         );
@@ -107,7 +112,7 @@ Future<void> deleteProvider(BuildContext context, String docId) async {
                     ),
                     IconButton(
                       icon: Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => deleteProvider(context, provider.id),
+                      onPressed: () => deleteProvider(context, provider['id']),
                     ),
                   ],
                 ),

@@ -81,11 +81,18 @@ def get_locations():
         locations = cursor.fetchall()
         cursor.close()
 
-        location_list = [{"id": row['id'], "name": row['name']} for row in locations]
+        # Map results to JSON-friendly format
+        location_list = []
+        for row in locations:
+            location = {
+                "id": row['id'],
+                "name": row['name'],
+            }
+            location_list.append(location)
 
         return jsonify(location_list), 200
     except Exception as e:
-        print(f"Error in /locations (GET) route: {e}")
+        print(f"Error in /locations route: {e}")
         return jsonify({"error": str(e)}), 500
 
 # Route to add a new location
@@ -112,6 +119,25 @@ def add_location():
         return jsonify({"message": "Location added successfully!"}), 201
     except Exception as e:
         print(f"Error in /locations (POST) route: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Route to mark a provider as deleted (sets deleteFlag to 1)
+@app.route('/providers/<provider_id>', methods=['PATCH'])
+def delete_provider(provider_id):
+    try:
+        # Use the MySQL connection to update the provider's deleteFlag
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+            UPDATE waitingboard_providers 
+            SET deleteFlag = 1 
+            WHERE id = %s
+        """, (provider_id,))
+        mysql.connection.commit()
+        cursor.close()
+
+        return jsonify({"message": "Provider marked as deleted"}), 200
+    except Exception as e:
+        print(f"Error in /providers/<provider_id> PATCH route: {e}")
         return jsonify({"error": str(e)}), 500
 
 # Start the Flask app
