@@ -126,10 +126,12 @@ def add_location():
 def get_providers():
     try:
         location_id = request.args.get('location_id')  # Get location_id from query parameters
+        # Debug print
+        print(f"Received location_id: {location_id}")
 
         cursor = mysql.connection.cursor()
 
-        # Base query to fetch all non-deleted providers
+        # Base query: Fetch all non-deleted providers
         query = """
             SELECT 
                 p.id, p.first_name, p.last_name, p.specialty, 
@@ -169,8 +171,71 @@ def get_providers():
         return jsonify(provider_list), 200
     except Exception as e:
         print(f"Error in /providers route: {e}")
-        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
+
+# Route to add a provider
+@app.route('/providers', methods=['POST'])
+def add_provider():
+    data = request.get_json()
+    print("Incoming Data:", data)  # Debug incoming data
+
+    first_name = data.get('firstName')
+    last_name = data.get('lastName')
+    specialty = data.get('specialty')
+    title = data.get('title')
+    locations = data.get('locations', '')  # Comma-separated string of locations
+
+    # Validate that none of the required fields are empty
+    if not all([first_name, last_name, specialty, title, locations]):
+        return jsonify({"error": "All fields are required"}), 400
+
+    # Split locations into a list
+    location_list = [loc.strip() for loc in locations.split(',')]
+
+    try:
+        cursor = mysql.connection.cursor()
+
+        # Check for duplicates (same first and last name)
+        cursor.execute(
+            "SELECT id FROM waitingboard_providers WHERE first_name = %s AND last_name = %s",
+            [first_name, last_name],
+        )
+        if cursor.fetchone():
+            return jsonify({"error": "Provider already exists"}), 400
+
+        # Validate that all provided locations exist in the `waitingboard_locations` table
+        valid_locations = []
+        for location in location_list:
+            cursor.execute("SELECT id FROM waitingboard_locations WHERE name = %s", (location,))
+            if cursor.fetchone():  # Location exists
+                valid_locations.append(location)
+            else:
+                print(f"Invalid location: {location}")  # Debug invalid locations
+
+        if not valid_locations:
+            return jsonify({"error": "None of the selected locations are valid"}), 400
+
+        # Combine valid locations into a single string for `location_name`
+        combined_locations = ','.join(valid_locations)
+        print(f"Combined Locations: {combined_locations}")  # Debug print
+
+        # Insert the provider with the combined location_name
+        query = """
+        INSERT INTO waitingboard_providers (first_name, last_name, specialty, title, location_name)
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        cursor.execute(query, (first_name, last_name, specialty, title, combined_locations))
+
+        mysql.connection.commit()
+        cursor.close()
+
+        return jsonify({"message": "Provider added successfully", "locations": combined_locations}), 201
+
+    except Exception as e:
+        print("Error:", e)  # Log the error for debugging
+        mysql.connection.rollback()  # Rollback on error
+        return jsonify({"error": str(e)}), 500
+
 
 
 # Route to mark a provider as deleted (sets deleteFlag to 1)

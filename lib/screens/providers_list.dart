@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http; // For HTTP requests
 import 'dart:convert'; // For JSON decoding
+import '../model/provider_info.dart';
 
 class ProviderListPage extends StatefulWidget {
   @override
@@ -17,37 +18,51 @@ class _ProviderListPageState extends State<ProviderListPage> {
     _loadSelectedLocation();
   }
 
-Future<void> _loadSelectedLocation() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
+  Future<void> _loadSelectedLocation() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final selectedLocation = prefs.getString('selectedLocation') ?? '';
 
-  setState(() {
-    _selectedLocation = prefs.getString('selectedLocation') ?? ''; // Default to empty string
-  });
-}
+    if (mounted) {
+      setState(() {
+        _selectedLocation = selectedLocation;
+      });
+    }
 
+    print('Loaded selected location: $_selectedLocation');
+  }
 
   // API call to fetch provider data
-Future<List<Map<String, dynamic>>> fetchProviders() async {
-  final String baseUrl = 'http://127.0.0.1:5000/providers'; // Replace with actual API URL
+  Future<List<ProviderInfo>> fetchProviders() async {
+    final String baseUrl = 'http://127.0.0.1:5000/providers';
 
-  // Check if _selectedLocation is null or empty
-  final String url = (_selectedLocation == null || _selectedLocation!.isEmpty)
-      ? baseUrl // No filtering if location is not set
-      : '$baseUrl?location_id=$_selectedLocation'; // Add location_id as a query parameter
+    // Use an empty string if _selectedLocation is null
+    final String url = (_selectedLocation == null || _selectedLocation!.isEmpty)
+        ? baseUrl
+        : '$baseUrl?location_id=$_selectedLocation';
 
-  try {
-    final response = await http.get(Uri.parse(url));
+    print('Fetching providers from URL: $url');
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map<Map<String, dynamic>>((provider) => provider as Map<String, dynamic>).toList();
-    } else {
-      throw Exception('Failed to load providers: ${response.body}');
-    }
-  } catch (e) {
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+
+        // Debug raw response
+        print('Raw API response: ${response.body}');
+
+        // Convert raw JSON data into a list of ProviderInfo objects
+        return data.map<ProviderInfo>((provider) {
+          return ProviderInfo.fromApi(provider, provider['docId']);
+        }).toList();
+      } else {
+        throw Exception('Failed to load providers: ${response.body}');
+      }
+    } catch (e) {
+    print('Error fetching providers: $e');
     throw Exception('Error fetching providers: $e');
   }
-}
+  }
 
   // API call to mark a provider as deleted (sets deleteFlag to 1)
   Future<void> deleteProvider(String providerId) async {
@@ -85,43 +100,38 @@ Future<List<Map<String, dynamic>>> fetchProviders() async {
       ),
       body: _selectedLocation == null
           ? Center(child: CircularProgressIndicator())
-          : FutureBuilder<List<Map<String, dynamic>>>(
-              // Fetch the providers
-              future: fetchProviders(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(
-                      child: Text('No providers available for this location.'));
-                }
+          : FutureBuilder<List<ProviderInfo>>(
+  future: fetchProviders(),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return Center(child: CircularProgressIndicator());
+    }
+    if (snapshot.hasError) {
+      return Center(child: Text('Error: ${snapshot.error}'));
+    }
+    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+      return Center(child: Text('No providers available for this location.'));
+    }
 
-                final providerData = snapshot.data!;
+    final providerData = snapshot.data!;
 
-                return ListView.builder(
-                  itemCount: providerData.length,
-                  itemBuilder: (context, index) {
-                    final provider = providerData[index];
+    return ListView.builder(
+      itemCount: providerData.length,
+      itemBuilder: (context, index) {
+        final provider = providerData[index];
 
-                    return ListTile(
-                      title: Text(
-                          '${provider['firstName']} ${provider['lastName']}'),
-                      subtitle: Text(
-                        '${provider['specialty'] ?? "N/A"} - ${provider['title'] ?? "N/A"}',
-                      ),
-                      trailing: IconButton(
-                        icon: Icon(Icons.delete),
-                        onPressed: () => deleteProvider(provider['id']),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+        return ListTile(
+          title: Text('${provider.firstName} ${provider.lastName}'),
+          subtitle: Text('${provider.specialty} - ${provider.title}'),
+          trailing: IconButton(
+            icon: Icon(Icons.delete),
+            onPressed: () => deleteProvider(provider.docId),
+          ),
+        );
+      },
+    );
+  },
+),
     );
   }
 }

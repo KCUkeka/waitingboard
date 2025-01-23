@@ -43,7 +43,6 @@ static Future<List<String>> fetchLocations() async {
 }
 
 
-
   // Login user
   static Future<bool> loginUser(String username, String password) async {
     try {
@@ -101,19 +100,57 @@ static Future<List<String>> fetchLocations() async {
     }
   }
 
-    // Method to fetch providers based on selected location
+// Method to add a provider
+  static Future<void> addProvider(
+    String firstName,
+    String lastName,
+    String specialty,
+    String title,
+    String locations,  // Accept a String here
+  ) async {
+    const String apiUrl = 'http://127.0.0.1:5000/providers';  // Replace with your API URL
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'firstName': firstName,
+          'lastName': lastName,
+          'specialty': specialty,
+          'title': title,
+          'locations': locations,  // Pass as a String
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        print('Provider added successfully');
+      } else {
+        throw Exception('Failed to add provider: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Failed to add provider: $e');
+    }
+  }
+  
+// Method to fetch providers based on selected location
 static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) async {
   try {
     print("Fetching providers for location: $location");
+
     final response = await http.get(Uri.parse('$baseUrl/providers?location=$location'));
 
     if (response.statusCode == 200) {
+      // Parse the response JSON and map to ProviderInfo objects
       List<dynamic> data = jsonDecode(response.body);
-      return data.map((provider) => ProviderInfo.fromApi(provider, provider['docId'])).toList();
+      return data.whereType<Map<String, dynamic>>().map<ProviderInfo>((provider) {
+        return ProviderInfo.fromApi(provider, provider['docId'] ?? '');
+      }).toList();
     } else {
       throw Exception('Failed to load providers for location: ${response.statusCode}');
     }
   } catch (e) {
+    print("Error in fetchProvidersByLocation: $e");
     throw Exception('Error fetching providers: $e');
   }
 }

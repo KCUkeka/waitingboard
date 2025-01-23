@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:waitingboard/logic/models/mysql.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import 'package:waitingboard/services/api_service.dart';
 
 class AddProviderPage extends StatefulWidget {
   @override
@@ -10,9 +13,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController newLocationController = TextEditingController();
-
-  final Mysql db = Mysql();
-
+  
   String? selectedSpecialty;
   String? selectedTitle;
   List<String> selectedLocations = [];
@@ -48,139 +49,130 @@ class _AddProviderPageState extends State<AddProviderPage> {
   void initState() {
     super.initState();
     fetchLocations();
-    fetchCurrentUserRole();
   }
 
-  // Fetch locations from MySQL
-  Future<void> fetchLocations() async {
-    try {
-      var conn = await db.getConnection();
-      var results = await conn.query('SELECT name FROM locations');
+  // Fetch locations from Flask Api
+Future<void> fetchLocations() async {
+  const String apiUrl = 'http://127.0.0.1:5000/locations'; // Replace with your Flask server URL
+
+  try {
+    final response = await http.get(Uri.parse(apiUrl));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+
       setState(() {
-        locations = results.map((row) => row['name'] as String).toList();
+        locations = data.map((location) => location['name'] as String).toList();
       });
-      await conn.close();
-    } catch (e) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to fetch locations: $e')),
+        SnackBar(content: Text('Failed to fetch locations: ${response.body}')),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to fetch locations: $e')),
+    );
+  }
+}
+
+
+
+
+  // Add a new location to Flask Api
+Future<void> addLocation() async {
+  const String apiUrl = 'http://127.0.0.1:5000/locations'; // Replace with your Flask server URL
+
+  final newLocation = newLocationController.text.trim();
+
+  if (newLocation.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Location name cannot be empty')),
+    );
+    return;
   }
 
-  // Fetch the current user's role from MySQL
-  Future<void> fetchCurrentUserRole() async {
-    try {
-      var conn = await db.getConnection();
-      // Assume user_id is obtained from shared preferences or a session
-      int userId = 1; // Replace with the actual user ID
-      var results = await conn.query('SELECT role FROM users WHERE id = ?', [userId]);
+  try {
+    final response = await http.post(
+      Uri.parse(apiUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'name': newLocation}),
+    );
 
-      if (results.isNotEmpty) {
-        setState(() {
-          currentUserRole = results.first['role'];
-        });
-      }
-      await conn.close();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to fetch user role: $e')),
-      );
-    }
-  }
-
-  // Add a new location to MySQL
-  Future<void> addLocation() async {
-    final newLocation = newLocationController.text.trim();
-
-    if (newLocation.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Location name cannot be empty')),
-      );
-      return;
-    }
-
-    if (locations.contains(newLocation)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Location already exists')),
-      );
-      return;
-    }
-
-    try {
-      var conn = await db.getConnection();
-      await conn.query('INSERT INTO locations (name) VALUES (?)', [newLocation]);
-      await fetchLocations(); // Refresh the list
+    if (response.statusCode == 201) {
+      await fetchLocations(); // Refresh the locations
       newLocationController.clear();
-      await conn.close();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Location added successfully')),
       );
-    } catch (e) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add location: $e')),
+        SnackBar(content: Text('Failed to add location: ${response.body}')),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to add location: $e')),
+    );
+  }
+}
+
+
+// Save the provider information to Flask API
+Future<void> saveProvider() async {
+  final firstName = firstNameController.text.trim();
+  final lastName = lastNameController.text.trim();
+  final specialty = selectedSpecialty;
+  final title = selectedTitle;
+
+  // Convert the selectedLocations list to a comma-separated string
+  final locationsString = selectedLocations.join(',');
+
+  //Print to debug what is being sent
+  print('First Name: $firstName');
+  print('Last Name: $lastName');
+  print('Specialty: $specialty');
+  print('Title: $title');
+  print('Locations: $locationsString');
+
+  if (firstName.isEmpty || lastName.isEmpty || specialty == null || title == null || locationsString.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('All fields are required')),
+    );
+    return;
   }
 
-  // Save the provider information to MySQL
-  Future<void> saveProvider() async {
-    final firstName = firstNameController.text.trim();
-    final lastName = lastNameController.text.trim();
-    final specialty = selectedSpecialty;
-    final title = selectedTitle;
+  try {
+    // Use the addProvider method from ApiService
+    await ApiService.addProvider(
+      firstName,
+      lastName,
+      specialty,
+      title,
+      locationsString,  // Pass the locations as a comma-separated string
+    );
 
-    if (firstName.isEmpty || lastName.isEmpty || specialty == null || title == null || selectedLocations.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('All fields are required')),
-      );
-      return;
-    }
+    // Clear fields after successful save
+    firstNameController.clear();
+    lastNameController.clear();
+    selectedSpecialty = null;
+    selectedTitle = null;
+    selectedLocations = [];
 
-    try {
-      var conn = await db.getConnection();
-      var duplicateCheck = await conn.query(
-        'SELECT id FROM providers WHERE firstName = ? AND lastName = ?',
-        [firstName, lastName],
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Provider added successfully')),
+    );
 
-      if (duplicateCheck.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Provider already listed')),
-        );
-        await conn.close();
-        return;
-      }
-
-      // Add new provider
-      await conn.query(
-        'INSERT INTO providers (firstName, lastName, specialty, title, locations) VALUES (?, ?, ?, ?, ?)',
-        [
-          firstName,
-          lastName,
-          specialty,
-          title,
-          selectedLocations.join(','), // Store locations as a comma-separated string
-        ],
-      );
-
-      await conn.close();
-
-      // Clear the text fields after saving
-      firstNameController.clear();
-      lastNameController.clear();
-      selectedSpecialty = null;
-      selectedTitle = null;
-      selectedLocations = [];
-
-      // Navigate back after saving
-      Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save provider: $e')),
-      );
-    }
+    Navigator.pop(context); // Navigate back
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to save provider: $e')),
+    );
   }
+}
+
+
 
   // Show the Add Location dialog
   void _showAddLocationDialog() {

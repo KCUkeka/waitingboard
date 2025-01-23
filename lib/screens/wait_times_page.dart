@@ -6,7 +6,7 @@ import 'package:waitingboard/services/api_service.dart';
 
 class WaitTimesPage extends StatefulWidget {
   final TabController tabController;
-  final String selectedLocation; // Add selectedLocation here
+  final String selectedLocation;
 
   WaitTimesPage({required this.tabController, required this.selectedLocation});
 
@@ -17,41 +17,58 @@ class WaitTimesPage extends StatefulWidget {
 class _WaitTimesPageState extends State<WaitTimesPage> {
   List<ProviderInfo> providerList = [];
   List<ProviderInfo> selectedProviders = [];
-  Map<ProviderInfo, String> selectedLocations = {}; // Map to store selected locations for each provider
+  final Map<String, TextEditingController> _waitTimeControllers = {};
 
   @override
   void initState() {
     super.initState();
     loadProvidersFromApi();
 
-// Add listener to refresh data when switching back to WaitTimesPage
+    // Add listener to refresh data when switching back to WaitTimesPage
     widget.tabController.addListener(() {
       if (widget.tabController.index == 0) {
-        loadProvidersFromApi(); // Refresh data when tab switches to WaitTimesPage
+        loadProvidersFromApi();
       }
     });
   }
 
-Future<void> loadProvidersFromApi() async {
-  try {
-    final List<dynamic> fetchedProviders =
-        await ApiService.fetchProvidersByLocation(widget.selectedLocation);
-
-    setState(() {
-      providerList = fetchedProviders
-          .map((providerData) => ProviderInfo.fromApi(providerData, providerData['docId']))
-          .toList();
-      selectedProviders = providerList
-          .where((provider) => provider.waitTime != null)
-          .toList();
-    });
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to load providers: ${e.toString()}')),
-    );
+  @override
+  void dispose() {
+    // Dispose all TextEditingControllers
+    for (var controller in _waitTimeControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
   }
-}
 
+  Future<void> loadProvidersFromApi() async {
+    try {
+      final List<dynamic> fetchedProviders =
+          await ApiService.fetchProvidersByLocation(widget.selectedLocation);
+
+      setState(() {
+        providerList = fetchedProviders
+            .map((providerData) => ProviderInfo.fromApi(providerData, providerData['docId']))
+            .toList();
+        selectedProviders = providerList
+            .where((provider) => provider.waitTime != null)
+            .toList();
+        _initializeControllers();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load providers: ${e.toString()}')),
+      );
+    }
+  }
+
+  void _initializeControllers() {
+    for (var provider in selectedProviders) {
+      _waitTimeControllers[provider.docId] = TextEditingController(
+        text: provider.waitTime?.toString() ?? '',
+      );
+    }
+  }
 
   Future<void> saveAllWaitTimes() async {
     try {
@@ -59,7 +76,6 @@ Future<void> loadProvidersFromApi() async {
         if (provider.waitTime != null) {
           await ApiService.updateProvider(provider.docId, {
             'waitTime': provider.waitTime,
-            'selectedLocation': provider.selectedLocation,
           });
         }
       }
@@ -80,10 +96,7 @@ Future<void> loadProvidersFromApi() async {
         provider.waitTime = updatedWaitTime;
       });
       try {
-        await ApiService.updateProvider(provider.docId, {
-          'waitTime': updatedWaitTime,
-          'selectedLocation': provider.selectedLocation,
-        });
+        await ApiService.updateProvider(provider.docId, {'waitTime': updatedWaitTime});
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Wait time updated successfully')),
         );
@@ -100,41 +113,23 @@ Future<void> loadProvidersFromApi() async {
   }
 
   Future<void> removeProvider(ProviderInfo provider) async {
-    bool? shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Delete Wait Time"),
-          content: Text("Are you sure you want to delete this provider's wait time?"),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false), // User chose 'No'
-              child: Text("No"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true), // User chose 'Yes'
-              child: Text("Yes"),
-            ),
-          ],
-        );
-      },
+    bool? shouldDelete = await _showConfirmationDialog(
+      context,
+      'Delete Wait Time',
+      "Are you sure you want to delete this provider's wait time?",
     );
 
-// If the user confirmed the deletion, proceed with removing the wait time
     if (shouldDelete == true) {
       setState(() {
         selectedProviders.remove(provider);
-        provider.waitTime = null; // Set wait time to null in the local state
-        provider.selectedLocation = null; // Set selectedLocation to null locally
+        _waitTimeControllers.remove(provider.docId);
+        provider.waitTime = null;
       });
 
       try {
-        await ApiService.updateProvider(provider.docId, {
-          'waitTime': null,
-          'selectedLocation': null,
-        });
+        await ApiService.updateProvider(provider.docId, {'waitTime': null});
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Wait time and selected location removed successfully')),
+          SnackBar(content: Text('Wait time removed successfully')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -144,41 +139,22 @@ Future<void> loadProvidersFromApi() async {
     }
   }
 
-// Function to delete all wait times
   Future<void> deleteAllWaitTimes() async {
-// Show confirmation dialog
-    bool? shouldDeleteAll = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Delete All Wait Times"),
-          content: Text("Are you sure you want to delete all wait times?"),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false), // User chose 'No'
-              child: Text("No"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true), // User chose 'Yes'
-              child: Text("Yes"),
-            ),
-          ],
-        );
-      },
+    bool? shouldDeleteAll = await _showConfirmationDialog(
+      context,
+      'Delete All Wait Times',
+      'Are you sure you want to delete all wait times?',
     );
 
     if (shouldDeleteAll == true) {
-      // Delete all wait times
       try {
         for (var provider in selectedProviders) {
-          await ApiService.updateProvider(provider.docId, {
-            'waitTime': null,
-            'selectedLocation': null,
-          });
+          await ApiService.updateProvider(provider.docId, {'waitTime': null});
         }
 
         setState(() {
-          selectedProviders.clear(); // Clear the selectedProviders list
+          selectedProviders.clear();
+          _waitTimeControllers.clear();
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('All wait times deleted successfully')),
@@ -191,14 +167,28 @@ Future<void> loadProvidersFromApi() async {
     }
   }
 
+  Future<bool?> _showConfirmationDialog(
+      BuildContext context, String title, String content) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text('No')),
+            TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text('Yes')),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Container(
-          alignment: Alignment.center,
-          child: Text('${widget.selectedLocation} Wait Times'),
-        ),
+        title: Text('${widget.selectedLocation} Wait Times'),
         actions: [
           IconButton(
             icon: Icon(CupertinoIcons.add),
@@ -215,32 +205,27 @@ Future<void> loadProvidersFromApi() async {
                 itemCount: selectedProviders.length,
                 itemBuilder: (context, index) {
                   final provider = selectedProviders[index];
-                  final TextEditingController waitTimeController = TextEditingController(
-                    text: provider.waitTime?.toString() ?? '',
-                  );
+                  final controller = _waitTimeControllers[provider.docId]!;
 
                   return Column(
                     children: [
                       ListTile(
                         title: Text(provider.displayName),
-                        subtitle: Text('${provider.specialty}'),
+                        subtitle: Text(provider.specialty),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             SizedBox(
                               width: 60,
                               child: TextField(
-                                controller: waitTimeController,
+                                controller: controller,
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(labelText: 'Time'),
-                                onChanged: (value) {
-                                  provider.waitTime = int.tryParse(value);
-                                },
                               ),
                             ),
                             IconButton(
                               icon: Icon(Icons.update, color: Colors.blue),
-                              onPressed: () => _updateWaitTime(provider, waitTimeController.text),
+                              onPressed: () => _updateWaitTime(provider, controller.text),
                             ),
                             IconButton(
                               icon: Icon(Icons.delete, color: Colors.red),
@@ -255,42 +240,23 @@ Future<void> loadProvidersFromApi() async {
                 },
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20.0),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Save All',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    IconButton(
-                      icon: Icon(CupertinoIcons.checkmark_alt, size: 40),
-                      onPressed: saveAllWaitTimes,
-                    ),
-                  ],
-                ),
-              ),
+            IconButton(
+              icon: Icon(CupertinoIcons.checkmark_alt, size: 40),
+              onPressed: saveAllWaitTimes,
             ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: deleteAllWaitTimes, // Trigger the deleteAllWaitTimes function
+        onPressed: deleteAllWaitTimes,
         tooltip: 'Delete All Wait Times',
         child: Icon(Icons.delete_forever),
       ),
     );
   }
-  
-// Provider selection function (if needed)
+
   void openProviderSelection() async {
-    final availableProviders = providerList.where((provider) => provider.waitTime == null).toList();
+    final availableProviders = providerList.where((p) => p.waitTime == null).toList();
     final selected = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -301,8 +267,8 @@ Future<void> loadProvidersFromApi() async {
     if (selected != null) {
       setState(() {
         selectedProviders.add(selected);
+        _waitTimeControllers[selected.docId] = TextEditingController();
       });
     }
   }
 }
-

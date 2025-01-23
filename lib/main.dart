@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:waitingboard/logic/models/mysql.dart';
 import 'package:waitingboard/screens/admin/admin_home_page.dart';
 import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
 import 'package:waitingboard/screens/login_page.dart';
+import 'package:waitingboard/services/api_service.dart';
 import 'screens/homepage/clinic_home_page.dart';
 
 void main() async {
@@ -14,7 +14,6 @@ void main() async {
 }
 
 class WaitingApp extends StatelessWidget {
-  final Mysql db = Mysql();
 
   @override
   Widget build(BuildContext context) {
@@ -105,16 +104,17 @@ class WaitingApp extends StatelessWidget {
   }
 
   // Fetch data from MySQL
-  Future<void> _fetchMySQLData() async {
-    try {
-      var conn = await db.getConnection();
-      var results = await conn.query('SELECT * FROM users');
-      for (var row in results) {
-        print('Name: ${row['name']}, Email: ${row['email']}');
-      }
-      await conn.close();
-    } catch (e) {
-      print('Error connecting to MySQL: $e');
+Future<void> _fetchUsersData() async {
+  try {
+    // Fetch users data from the API
+    List<dynamic> users = await ApiService.fetchUsers();
+    // Print user data (or use it in the UI)
+    for (var user in users) {
+      print('Username: ${user['username']}, Email: ${user['email']}');
     }
+  } catch (e) {
+    print('Error fetching users: $e');
   }
+}
+
 }

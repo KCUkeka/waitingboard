@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
+import 'package:waitingboard/screens/admin/admin_home_page.dart';
 import 'dart:convert';
 import 'package:waitingboard/screens/homepage/clinic_home_page.dart';
 import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
@@ -32,7 +33,7 @@ class _LoginPageState extends State<LoginPage> {
       var users = await ApiService.fetchUsers();
 // print('Fetched Users: $users');  // Debug the full response
       var locations = await ApiService.fetchLocations();
-print('Fetched Locations: $locations'); // Debug the structure
+// print('Fetched Locations: $locations'); // Debug the structure
 
       setState(() {
         _users = users.map((user) {
@@ -64,7 +65,7 @@ print('Fetched Locations: $locations'); // Debug the structure
   String hashPassword(String password) {
     final bytes = utf8.encode(password); // Encode the password in UTF-8
     final digest = sha256.convert(bytes); // Generate the hash
-    print('Hashed Password: $digest');  // Debug print
+    // print('Hashed Password: $digest');  // Debug print
     return digest.toString(); // Return the hashed password as a hexadecimal string
   }
 
@@ -188,69 +189,83 @@ print('Fetched Locations: $locations'); // Debug the structure
 
   }
 
-  Future<void> _login() async {
-    final username = _selectedUsername;
-    final enteredPassword = _passwordController.text.trim();
+Future<void> _login() async {
+  final username = _selectedUsername;
+  final enteredPassword = _passwordController.text.trim();
 
-    if (username == null || _selectedLocation == null || enteredPassword.isEmpty) {
+  if (username == null || _selectedLocation == null || enteredPassword.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please complete all fields.")),
+    );
+    return;
+  }
+
+  try {
+    final user = _users.firstWhere((user) => user['username'] == username, orElse: () => {});
+    if (user.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please complete all fields.")),
+        const SnackBar(content: Text("Invalid username.")),
       );
       return;
     }
 
-    try {
-      final user = _users.firstWhere((user) => user['username'] == username, orElse: () => {});
-      if (user.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Invalid username.")),
-        );
-        return;
-      }
+    final hashedPassword = user['password']; // Stored password hash from the backend
 
-      final hashedPassword = user['password']; // Stored password hash from the backend
-
-      // Debugging print statements for the hashes
+    // Debugging print statements for the hashes
     // print('Entered Password Hash: ${hashPassword(enteredPassword)}');
     // print('Stored Password Hash: $hashedPassword');
 
-      if (hashPassword(enteredPassword) != hashedPassword) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Invalid password.")),
-        );
-        return;
-      }
-
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('selectedLocation', _selectedLocation!);
-
-      // Navigate based on role
-      if (user['role'] == 'Front desk') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FrontHomePage(selectedLocation: _selectedLocation!),
-          ),
-        );
-      } else if (user['role'] == 'Clinic') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ClinicHomePage(selectedLocation: _selectedLocation!),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Role not recognized.")),
-        );
-      }
-    } catch (e) {
+// Verify the password
+    if (hashPassword(enteredPassword) != hashedPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Login failed: $e")),
+        const SnackBar(content: Text("Invalid password.")),
+      );
+      return;
+    }
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('selectedLocation', _selectedLocation!);
+
+    // Check if the user is an admin
+    final isAdmin = user['admin'] == true || user['admin'] == 'true';
+    if (isAdmin) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AdminHomePage(selectedLocation: _selectedLocation!),
+        ),
+      );
+      return;
+    }
+
+    // Navigate based on role
+    if (user['role'] == 'Front desk') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => FrontHomePage(selectedLocation: _selectedLocation!),
+        ),
+      );
+    } else if (user['role'] == 'Clinic') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ClinicHomePage(selectedLocation: _selectedLocation!),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Role not recognized.")),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Login failed: $e")),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
