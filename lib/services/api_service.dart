@@ -42,7 +42,6 @@ static Future<List<String>> fetchLocations() async {
   }
 }
 
-
   // Login user
   static Future<bool> loginUser(String username, String password) async {
     try {
@@ -174,16 +173,19 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
   }
 
   // Method to delete a provider
-  static Future<void> deleteProvider(String providerId) async {
+  static Future<void> deleteProvider(dynamic  providerId) async {
     try {
-      final response = await http.delete(
+      final response = await http.patch(
         Uri.parse('$baseUrl/providers/$providerId'), // Assuming this is the API endpoint
         headers: {'Content-Type': 'application/json'},
       );
-      if (response.statusCode != 200) {
+    print('Delete Response: ${response.statusCode}, Body: ${response.body}');
+      
+      if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Failed to delete provider. Response: ${response.body}');
       }
     } catch (e) {
+      print('Error in deleteProvider: $e'); // debug to see which provider is failing
       throw Exception('Error deleting provider: $e');
     }
   }

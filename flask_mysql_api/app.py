@@ -72,6 +72,7 @@ def add_user():
         print(f"Error in /users (POST) route: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 # Route to fetch all locations
 @app.route('/locations', methods=['GET'])
 def get_locations():
@@ -121,13 +122,13 @@ def add_location():
         print(f"Error in /locations (POST) route: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 # Route to fetch providers
 @app.route('/providers', methods=['GET'])
 def get_providers():
     try:
-        location_id = request.args.get('location_id')  # Get location_id from query parameters
-        # Debug print
-        print(f"Received location_id: {location_id}")
+        location_name_filter = request.args.get('location_name')  # Get location_name from query parameters
+        print(f"Received location_name filter: {location_name_filter}")
 
         cursor = mysql.connection.cursor()
 
@@ -136,16 +137,15 @@ def get_providers():
             SELECT 
                 p.id, p.first_name, p.last_name, p.specialty, 
                 p.title, p.wait_time, p.last_changed, 
-                p.location_id, l.name AS location_name
+                p.location_name
             FROM waitingboard_providers p
-            JOIN waitingboard_locations l ON p.location_id = l.id
             WHERE p.deleteFlag = 0
         """
 
-        # Add filtering by location_id if provided
-        if location_id:
-            query += " AND p.location_id = %s"
-            cursor.execute(query, (location_id,))
+        # Add filtering by location_name if provided
+        if location_name_filter:
+            query += " AND p.location_name LIKE %s"
+            cursor.execute(query, (f"%{location_name_filter}%",))
         else:
             cursor.execute(query)
 
@@ -163,7 +163,6 @@ def get_providers():
                 "title": row['title'],
                 "waitTime": row['wait_time'],
                 "lastChanged": row['last_changed'].strftime("%Y-%m-%d %H:%M:%S") if row['last_changed'] else None,
-                "locationId": row['location_id'],
                 "locationName": row['location_name'],
             }
             provider_list.append(provider)
@@ -172,6 +171,8 @@ def get_providers():
     except Exception as e:
         print(f"Error in /providers route: {e}")
         return jsonify({"error": str(e)}), 500
+
+
 
 # Route to add a provider
 @app.route('/providers', methods=['POST'])
