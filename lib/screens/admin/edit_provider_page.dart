@@ -26,35 +26,53 @@ class _EditProviderPageState extends State<EditProviderPage> {
 
   final List<String> titles = ['Dr.', 'PA', 'PA-C', 'DPM Fellow'];
 
-  @override
-  void initState() {
-    super.initState();
-    firstNameController = TextEditingController(text: widget.providerData['firstName'] ?? '');
-    lastNameController = TextEditingController(text: widget.providerData['lastName'] ?? '');
+@override
+void initState() {
+  super.initState();
+  firstNameController = TextEditingController(text: widget.providerData['firstName']?.toString() ?? '');
+  lastNameController = TextEditingController(text: widget.providerData['lastName']?.toString() ?? '');
 
-    // Ensure the selected values are valid
-    selectedSpecialty = specialties.contains(widget.providerData['specialty'])
-        ? widget.providerData['specialty']
-        : specialties.first;
-    selectedTitle = titles.contains(widget.providerData['title']) ? widget.providerData['title'] : titles.first;
+  // Ensure the selected values are valid
+  selectedSpecialty = specialties.contains(widget.providerData['specialty'])
+      ? widget.providerData['specialty']
+      : specialties.first;
+  selectedTitle = titles.contains(widget.providerData['title']) ? widget.providerData['title'] : titles.first;
 
-    // Initialize selected locations
-    selectedLocations = List<String>.from(widget.providerData['locations'] ?? []);
-    _fetchLocations();
+  // Initialize selected locations (convert from string if necessary)
+  selectedLocations = List<String>.from(widget.providerData['locations'] ?? []);
+
+  // If locations are received as a comma-separated string, split them into a list
+  if (widget.providerData['locations'] is String) {
+    selectedLocations = widget.providerData['locations'].split(',');
   }
+
+  _fetchLocations();
+}
 
   Future<void> _fetchLocations() async {
-    try {
-      final fetchedLocations = await ApiService.fetchLocations(); // Fetch locations from the API
-      setState(() {
-        locations = fetchedLocations;
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to fetch locations: $e')),
-      );
-    }
+  try {
+    // Fetch locations from the API
+    final fetchedLocations = await ApiService.fetchLocations();
+
+    // Debug: Check what is being fetched
+    print(fetchedLocations);
+
+
+    setState(() {
+      locations = fetchedLocations;
+
+      // Ensure selectedLocations only contains valid locations from the fetched list
+      selectedLocations = selectedLocations
+          .where((location) => fetchedLocations.contains(location))
+          .toList();
+    });
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to fetch locations: $e')),
+    );
   }
+}
+
 
   Future<void> _updateProvider() async {
     if (firstNameController.text.isEmpty ||
@@ -67,6 +85,14 @@ class _EditProviderPageState extends State<EditProviderPage> {
       );
       return;
     }
+  // Debug the data being sent
+  print({
+    'firstName': firstNameController.text.trim(),
+    'lastName': lastNameController.text.trim(),
+    'specialty': selectedSpecialty,
+    'title': selectedTitle,
+    'locations': selectedLocations.join(','), // Send as comma-separated string
+  });
 
     try {
       await ApiService.updateProvider(
@@ -76,7 +102,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
           'lastName': lastNameController.text.trim(),
           'specialty': selectedSpecialty,
           'title': selectedTitle,
-          'locations': selectedLocations,
+          'locations': selectedLocations.join(','), // Send as comma-separated string
         },
       );
 
@@ -91,29 +117,36 @@ class _EditProviderPageState extends State<EditProviderPage> {
     }
   }
 
-  Widget _buildLocationsMultiSelect() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Locations', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ...locations.map((location) {
-          return CheckboxListTile(
-            title: Text(location),
-            value: selectedLocations.contains(location),
-            onChanged: (isSelected) {
+Widget _buildLocationsFilterChips() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('Locations', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      Wrap(
+        spacing: 8.0,
+        children: locations.map((location) {
+          return FilterChip(
+            label: Text(location),
+            selected: selectedLocations.contains(location), // Mark as selected if it's in selectedLocations
+            onSelected: (selected) {
               setState(() {
-                if (isSelected == true) {
+                if (selected) {
+                  // Add location to selectedLocations if selected
                   selectedLocations.add(location);
                 } else {
+                  // Remove location from selectedLocations if unselected
                   selectedLocations.remove(location);
                 }
               });
             },
           );
         }).toList(),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
+
 
   @override
   void dispose() {
@@ -175,7 +208,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
                   }
                 },
               ),
-              _buildLocationsMultiSelect(),
+              _buildLocationsFilterChips(),
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _updateProvider,

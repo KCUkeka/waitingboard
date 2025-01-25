@@ -15,7 +15,9 @@ class _EditProvidersListState extends State<EditProvidersList> {
     try {
       // Fetching provider data from the API
       final providers = await ApiService.fetchProviders();
-      return providers.map((provider) => provider as Map<String, dynamic>).toList();
+      return providers
+          .map((provider) => provider as Map<String, dynamic>)
+          .toList();
     } catch (e) {
       throw Exception('Error fetching providers: $e');
     }
@@ -33,11 +35,13 @@ class _EditProvidersListState extends State<EditProvidersList> {
         content: const Text('Are you sure you want to delete this provider?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false), // User chose "No"
+            onPressed: () =>
+                Navigator.of(context).pop(false), // User chose "No"
             child: const Text('No'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true), // User chose "Yes"
+            onPressed: () =>
+                Navigator.of(context).pop(true), // User chose "Yes"
             style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
             child: const Text('Yes'),
           ),
@@ -108,11 +112,17 @@ class _EditProvidersListState extends State<EditProvidersList> {
                     IconButton(
                       icon: const Icon(Icons.edit, color: Colors.blue),
                       onPressed: () {
+                        // Log the provider details to debug
+                        print(provider); // Check the structure of the provider
+                        print(provider['id']
+                            .runtimeType); // Check the type of the 'id'
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => EditProviderPage(
-                              docId: provider['id'], // Assuming the API returns a field 'id'
+                              docId: provider['id']
+                                  .toString(), // API returns a field 'id' to string
                               providerData: provider,
                             ),
                           ),
@@ -120,13 +130,16 @@ class _EditProvidersListState extends State<EditProvidersList> {
                       },
                     ),
                     IconButton(
-  icon: Icon(Icons.delete, color: Colors.red),
-  onPressed: () {
-    print('Provider ID: ${provider['id']}, Type: ${provider['id'].runtimeType}');
-    deleteProvider(context, provider['id'].toString());
-  },
-),
-
+                      icon: Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        print(
+                            'Provider ID: ${provider['id']}, Type: ${provider['id'].runtimeType}');
+                        deleteProvider(
+                            context,
+                            provider['id']
+                                .toString()); // Provider ID is a string
+                      },
+                    ),
                   ],
                 ),
               );

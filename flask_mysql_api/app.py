@@ -237,7 +237,62 @@ def add_provider():
         mysql.connection.rollback()  # Rollback on error
         return jsonify({"error": str(e)}), 500
 
+# Route to update provider information
+@app.route('/providers/<provider_id>', methods=['PUT'])
+def update_provider(provider_id):
+    try:
+        data = request.json
 
+        # Debugging: print the incoming data
+        print(f"Received data: {data}")
+
+        # Check that all necessary fields are in the request
+        required_fields = ["firstName", "lastName", "specialty", "title", "locations"]
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing field: {field}"}), 400
+
+        # Map the incoming field names to the database column names
+        fields_to_update = []
+        values = []
+
+        # Mapping camelCase to snake_case columns
+        field_map = {
+            "firstName": "first_name",
+            "lastName": "last_name",
+            "specialty": "specialty",
+            "title": "title",
+            "locations": "location_name"
+        }
+
+        # Loop through the provided fields and update the corresponding columns
+        for field, db_column in field_map.items():
+            if field in data:
+                fields_to_update.append(f"{db_column} = %s")
+                values.append(data[field])
+
+        # Add the provider ID to the values list
+        values.append(provider_id)
+
+        # Debugging: print the fields to update and values
+        print(f"Fields to update: {fields_to_update}")
+        print(f"Values: {values}")
+
+        # Use the MySQL connection to update the provider
+        cursor = mysql.connection.cursor()
+        query = f"""
+            UPDATE waitingboard_providers
+            SET {', '.join(fields_to_update)}, last_changed = NOW()
+            WHERE id = %s
+        """
+        cursor.execute(query, values)
+        mysql.connection.commit()
+        cursor.close()
+
+        return jsonify({"message": "Provider updated successfully"}), 200
+    except Exception as e:
+        print(f"Error in PUT /providers/<provider_id>: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # Route to mark a provider as deleted (sets deleteFlag to 1)
 @app.route('/providers/<provider_id>', methods=['PATCH'])
