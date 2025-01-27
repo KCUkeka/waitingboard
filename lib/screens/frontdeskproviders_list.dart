@@ -65,7 +65,7 @@ class _FrontdeskProviderListPageState extends State<FrontdeskprovidersList> {
                     return ListTile(
                       title: Text('${provider.firstName} ${provider.lastName}'),
                       subtitle: Text(
-                        '${provider.specialty ?? "N/A"} - ${provider.title ?? "N/A"}',
+                        '${provider.specialty } - ${provider.title }',
                       ),
                     );
                   },

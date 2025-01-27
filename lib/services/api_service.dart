@@ -43,20 +43,32 @@ static Future<List<String>> fetchLocations() async {
 }
 
   // Login user
-  static Future<bool> loginUser(String username, String password) async {
+  static Future<bool> loginUser(String username, String password, String location) async {
     try {
+      print('Attempting login for user: $username at location: $location'); // Debug print
+      
       final response = await http.post(
         Uri.parse('$baseUrl/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
+        body: jsonEncode({
+          'username': username, 
+          'password': password,
+          'location': location
+        }),
       );
+      
+      // print('Login response status: ${response.statusCode}'); // Debug print
+      // print('Login response body: ${response.body}'); // Debug print
+
       if (response.statusCode == 200) {
+        print('Login successful, last_logged_in and location updated'); // Debug print
         return true;
       } else {
         print('Login failed. Response: ${response.body}');
         return false;
       }
     } catch (e) {
+      print('Login error: $e'); // Debug print
       throw Exception('Error logging in: $e');
     }
   }
@@ -71,10 +83,10 @@ static Future<List<String>> fetchLocations() async {
         body: jsonEncode({'name': locationName}),
       );
 
-      print('Request URL: $url');
-      print('Request Body: ${jsonEncode({'name': locationName})}');
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      // print('Request URL: $url');
+      // print('Request Body: ${jsonEncode({'name': locationName})}');
+      // print('Response Status: ${response.statusCode}');
+      // print('Response Body: ${response.body}');
 
       if (response.statusCode != 201) {
         throw Exception('Failed to add location. Response: ${response.body}');
@@ -163,22 +175,27 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
 }
 
 
-
-
-
     // Update provider information
-  static Future<void> updateProvider(String docId, Map<String, dynamic> providerData) async {
+  static Future<void> updateProvider(String providerId, Map<String, dynamic> updateData) async {
+    // print('Sending update request:'); // Debug prints
+    // print('URL: $baseUrl/providers/$providerId');
+    // print('Update data: $updateData');
+
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/providers/$docId'),
-        body: json.encode(providerData),
-        headers: {'Content-Type': 'application/json'},
+      Uri.parse('$baseUrl/providers/$providerId/wait-time'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(updateData),
       );
 
+      // print('Response status: ${response.statusCode}'); // Debug print
+      // print('Response body: ${response.body}'); // Debug print
+
       if (response.statusCode != 200) {
-        throw Exception('Failed to update provider. Status code: ${response.statusCode}');
+        throw Exception('Failed to update provider. Status code: ${response.statusCode}, Body: ${response.body}');
       }
     } catch (e) {
+      print('Error in updateProvider: $e'); // Debug print
       throw Exception('Error updating provider: $e');
     }
   }
@@ -201,6 +218,22 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
     }
   }
 
+  // Remove provider wait time
+    static Future<void> removeProviderWaitTime(String providerId) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/providers/$providerId/remove-wait-time'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to remove wait time. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error removing wait time: $e');
+    }
+  }
+
   // Create a new user
   static Future<void> createUser(
       String username, String email, String password, String role) async {
@@ -217,13 +250,13 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
         }),
       );
 
-      print('Request Body: ${jsonEncode({
-        'username': username,
-        'email': email,
-        'password': password,
-        'role': role,
-        'admin': false,
-      })}'); // Debug request body
+      // print('Request Body: ${jsonEncode({
+      //   'username': username,
+      //   'email': email,
+      //   'password': password,
+      //   'role': role,
+      //   'admin': false,
+      // })}'); // Debug request body
 
       if (response.statusCode != 201) {
         throw Exception('Failed to create user: ${response.body}');

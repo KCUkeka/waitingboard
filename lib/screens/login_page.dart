@@ -209,16 +209,28 @@ Future<void> _login() async {
       return;
     }
 
-    final hashedPassword = user['password']; // Stored password hash from the backend
+    final hashedPassword = user['password'];
 
-    // Debugging print statements for the hashes
-    // print('Entered Password Hash: ${hashPassword(enteredPassword)}');
-    // print('Stored Password Hash: $hashedPassword');
-
-// Verify the password
     if (hashPassword(enteredPassword) != hashedPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Invalid password.")),
+      );
+      return;
+    }
+
+    // Add this: Call loginUser to update last_logged_in
+    // print('Login attempt details:');
+    // print('Username: $username');
+    // print('Password hash: ${hashPassword(enteredPassword)}');
+    // print('Selected Location: $_selectedLocation');
+    final loginSuccess = await ApiService.loginUser(
+      username,
+      hashPassword(enteredPassword),  // Make sure password is hashed
+      _selectedLocation!
+    );
+    if (!loginSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to update login time and location.")),
       );
       return;
     }
@@ -227,7 +239,7 @@ Future<void> _login() async {
     await prefs.setBool('isLoggedIn', true);
     await prefs.setString('selectedLocation', _selectedLocation!);
 
-    // Check if the user is an admin
+    // Rest of your navigation logic remains the same
     final isAdmin = user['admin'] == true || user['admin'] == 'true';
     if (isAdmin) {
       Navigator.pushReplacement(
@@ -239,7 +251,6 @@ Future<void> _login() async {
       return;
     }
 
-    // Navigate based on role
     if (user['role'] == 'Front desk') {
       Navigator.pushReplacement(
         context,

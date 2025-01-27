@@ -102,28 +102,38 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-  Future<void> _updateWaitTime(
-      ProviderInfo provider, String newWaitTime) async {
+  Future<void> _updateWaitTime(ProviderInfo provider, String newWaitTime) async {
     int? updatedWaitTime = int.tryParse(newWaitTime);
     if (updatedWaitTime != null) {
-      setState(() {
-        provider.waitTime = updatedWaitTime;
-      });
       try {
-        await ApiService.updateProvider(
-            provider.docId, {'waitTime': updatedWaitTime});
+        print('Attempting to update wait time:'); // Debug prints
+        print('Provider ID: ${provider.docId}');
+        print('New wait time: $updatedWaitTime');
+
+        // Create the update data
+        Map<String, dynamic> updateData = {
+          'waitTime': updatedWaitTime,
+          'id': provider.docId
+        };
+
+        await ApiService.updateProvider(provider.docId, updateData);
+        
+        setState(() {
+          provider.waitTime = updatedWaitTime;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Wait time updated successfully')),
+          const SnackBar(content: Text('Wait time updated successfully')),
         );
       } catch (e) {
+        print('Error updating wait time: $e'); // Debug print
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Failed to update wait time: ${e.toString()}')),
+          SnackBar(content: Text('Failed to update wait time: $e')),
         );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a valid wait time')),
+        const SnackBar(content: Text('Please enter a valid wait time')),
       );
     }
   }
@@ -136,21 +146,23 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     );
 
     if (shouldDelete == true) {
-      setState(() {
-        selectedProviders.remove(provider);
-        _waitTimeControllers.remove(provider.docId);
-        provider.waitTime = null;
-      });
-
       try {
-        await ApiService.updateProvider(provider.docId, {'waitTime': null});
+        await ApiService.removeProviderWaitTime(provider.docId);
+        
+        setState(() {
+          selectedProviders.remove(provider);
+          _waitTimeControllers.remove(provider.docId);
+          provider.waitTime = null;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Wait time removed successfully')),
+          const SnackBar(content: Text('Wait time removed successfully')),
         );
+        
+        await loadProvidersFromApi(); // Refresh the list
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Failed to remove wait time: ${e.toString()}')),
+          SnackBar(content: Text('Failed to remove wait time: $e')),
         );
       }
     }

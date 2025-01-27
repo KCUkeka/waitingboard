@@ -123,6 +123,42 @@ def add_location():
         return jsonify({"error": str(e)}), 500
 
 
+#Route to track las login
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')  # This is the hashed password
+    location = data.get('location')
+    
+    print(f"Login attempt - Username: {username}, Location: {location}")
+    print(f"Received password hash: {password}")
+    
+    cursor = mysql.connection.cursor()
+    try:
+        # Get user with exact username and password match
+        cursor.execute('SELECT * FROM waitingboard_users WHERE username = %s AND password = %s', 
+                      (username, password))
+        user = cursor.fetchone()
+        
+        if user:
+            # Update login time and location
+            cursor.execute('UPDATE waitingboard_users SET last_logged_in = NOW(), last_location = %s WHERE username = %s', 
+                         (location, username))
+            mysql.connection.commit()
+            print(f"Login successful for {username}")
+            return jsonify({"success": True}), 200
+        else:
+            print(f"Login failed - No matching user found for {username}")
+            return jsonify({"error": "Invalid credentials"}), 401
+            
+    except Exception as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        cursor.close()
+
 # Route to fetch providers
 @app.route('/providers', methods=['GET'])
 def get_providers():
@@ -222,8 +258,8 @@ def add_provider():
 
         # Insert the provider with the combined location_name
         query = """
-        INSERT INTO waitingboard_providers (first_name, last_name, specialty, title, location_name)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO waitingboard_providers (first_name, last_name, specialty, title, location_name, provider_modified)
+        VALUES (%s, %s, %s, %s, %s, NOW())
         """
         cursor.execute(query, (first_name, last_name, specialty, title, combined_locations))
 
@@ -282,7 +318,7 @@ def update_provider(provider_id):
         cursor = mysql.connection.cursor()
         query = f"""
             UPDATE waitingboard_providers
-            SET {', '.join(fields_to_update)}, last_changed = NOW()
+            SET {', '.join(fields_to_update)}, provider_modified = NOW()
             WHERE id = %s
         """
         cursor.execute(query, values)
@@ -294,6 +330,62 @@ def update_provider(provider_id):
         print(f"Error in PUT /providers/<provider_id>: {e}")
         return jsonify({"error": str(e)}), 500
 
+# Update wait time
+@app.route('/providers/<provider_id>/wait-time', methods=['PUT'])
+def update_provider_wait_time(provider_id):
+    try:
+        data = request.get_json()
+        print(f"Received update request for provider {provider_id}")
+        print(f"Request data: {data}")
+        
+        wait_time = data.get('waitTime')
+        if wait_time is None:
+            return jsonify({"error": "waitTime is required"}), 400
+            
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+            UPDATE waitingboard_providers 
+            SET wait_time = %s,
+                provider_modified = NOW()
+            WHERE id = %s
+        """, (wait_time, provider_id))
+        
+        if cursor.rowcount == 0:
+            return jsonify({"error": f"No provider found with id {provider_id}"}), 404
+            
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({"message": "Provider updated successfully"}), 200
+        
+    except Exception as e:
+        print(f"Error updating provider: {e}")
+        return jsonify({"error": str(e)}), 500
+
+        #Remove provider wait time
+@app.route('/providers/<provider_id>/remove-wait-time', methods=['PUT'])
+def remove_provider_wait_time(provider_id):
+    try:
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+            UPDATE waitingboard_providers 
+            SET wait_time = NULL,
+                provider_modified = NOW()
+            WHERE id = %s
+        """, (provider_id,))
+        
+        if cursor.rowcount == 0:
+            return jsonify({"error": f"No provider found with id {provider_id}"}), 404
+            
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({"message": "Wait time removed successfully"}), 200
+        
+    except Exception as e:
+        print(f"Error removing wait time: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # Route to mark a provider as deleted (sets deleteFlag to 1)
 @app.route('/providers/<provider_id>', methods=['PATCH'])
 def delete_provider(provider_id):
@@ -302,7 +394,8 @@ def delete_provider(provider_id):
         cursor = mysql.connection.cursor()
         cursor.execute("""
             UPDATE waitingboard_providers 
-            SET deleteFlag = 1 
+            SET deleteFlag = 1,
+            provider_modified = NOW() 
             WHERE id = %s
         """, (provider_id,))
         mysql.connection.commit()
