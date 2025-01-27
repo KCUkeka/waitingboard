@@ -288,8 +288,14 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   }
 
   void openProviderSelection() async {
-    final availableProviders =
-        providerList.where((p) => p.waitTime == null).toList();
+    print('Selected Location: ${widget.selectedLocation}'); // Debug print
+    
+    final availableProviders = providerList
+        .where((p) => p.locations.contains(widget.selectedLocation))
+        .toList();
+    
+    print('Available Providers: $availableProviders'); // Debug print
+        
     final selected = await Navigator.push(
       context,
       MaterialPageRoute(

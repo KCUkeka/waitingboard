@@ -146,7 +146,11 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
       return data.map<ProviderInfo>((providerJson) {
         String docId = providerJson['id']?.toString() ?? '';
         // Convert single locationName to a list
-        List<String> locations = [(providerJson['locationName'] ?? '').toString()];
+        List<String> locations = (providerJson['locationName'] ?? '')
+            .toString()
+            .split(',')
+            .map((e) => e.trim())
+            .toList();
         return ProviderInfo.fromApi(providerJson, docId, locations);
       }).toList();
     } else {

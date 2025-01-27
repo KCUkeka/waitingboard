@@ -50,7 +50,7 @@ class ProviderInfo {
 
   // Getter for display name
   String get displayName {
-    return '$lastName, ${firstName.isNotEmpty ? firstName[0] : '?'} | $title (${locations.isNotEmpty ? locations : 'No Location'})';
+    return '$lastName, ${firstName.isNotEmpty ? firstName[0] : '?'} | $title';
 
   }
 }
