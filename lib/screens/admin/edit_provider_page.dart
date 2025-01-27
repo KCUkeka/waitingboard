@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:waitingboard/services/api_service.dart'; // Import ApiService
+import 'package:waitingboard/services/api_service.dart'; 
 
 class EditProviderPage extends StatefulWidget {
   final String docId;
@@ -101,14 +101,14 @@ class _EditProviderPageState extends State<EditProviderPage> {
       return;
     }
     // Debug the data being sent
-    print({
-      'firstName': firstNameController.text.trim(),
-      'lastName': lastNameController.text.trim(),
-      'specialty': selectedSpecialty,
-      'title': selectedTitle,
-      'locations':
-          selectedLocations.join(','), // Send as comma-separated string
-    });
+    // print({
+    //   'firstName': firstNameController.text.trim(),
+    //   'lastName': lastNameController.text.trim(),
+    //   'specialty': selectedSpecialty,
+    //   'title': selectedTitle,
+    //   'locations':
+    //       selectedLocations.join(','), // Send as comma-separated string
+    // });
 
     try {
       await ApiService.updateProvider(

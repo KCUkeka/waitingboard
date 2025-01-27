@@ -53,7 +53,8 @@ class _ProviderListPageState extends State<ProviderListPage> {
 
         // Convert raw JSON data into a list of ProviderInfo objects
         return data.map<ProviderInfo>((provider) {
-          return ProviderInfo.fromApi(provider, provider['docId']);
+          List<String> locations = [(provider['locationName'] ?? '').toString()];
+          return ProviderInfo.fromApi(provider, provider['docId'] ?? '', locations);
         }).toList();
       } else {
         throw Exception('Failed to load providers: ${response.body}');

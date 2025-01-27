@@ -45,11 +45,24 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     try {
       final List<dynamic> fetchedProviders =
           await ApiService.fetchProvidersByLocation(widget.selectedLocation);
+      // debug fetch error
+      print('Fetched providers: $fetchedProviders');
 
       setState(() {
-        providerList = fetchedProviders
-            .map((providerData) => ProviderInfo.fromApi(providerData, providerData['docId']))
-            .toList();
+        providerList = fetchedProviders.map((providerData) {
+          if (providerData is Map<String, dynamic>) {
+            List<String> locations = [
+              (providerData['locationName'] ?? '').toString()
+            ];
+            return ProviderInfo.fromApi(
+                providerData, providerData['id']?.toString() ?? '', locations);
+          } else if (providerData is ProviderInfo) {
+            return providerData; // If it's already a ProviderInfo object, just return it
+          } else {
+            throw Exception(
+                'Unexpected data type: ${providerData.runtimeType}');
+          }
+        }).toList();
         selectedProviders = providerList
             .where((provider) => provider.waitTime != null)
             .toList();
@@ -89,20 +102,23 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-  Future<void> _updateWaitTime(ProviderInfo provider, String newWaitTime) async {
+  Future<void> _updateWaitTime(
+      ProviderInfo provider, String newWaitTime) async {
     int? updatedWaitTime = int.tryParse(newWaitTime);
     if (updatedWaitTime != null) {
       setState(() {
         provider.waitTime = updatedWaitTime;
       });
       try {
-        await ApiService.updateProvider(provider.docId, {'waitTime': updatedWaitTime});
+        await ApiService.updateProvider(
+            provider.docId, {'waitTime': updatedWaitTime});
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Wait time updated successfully')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update wait time: ${e.toString()}')),
+          SnackBar(
+              content: Text('Failed to update wait time: ${e.toString()}')),
         );
       }
     } else {
@@ -133,7 +149,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to remove wait time: ${e.toString()}')),
+          SnackBar(
+              content: Text('Failed to remove wait time: ${e.toString()}')),
         );
       }
     }
@@ -161,7 +178,9 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete all wait times: ${e.toString()}')),
+          SnackBar(
+              content:
+                  Text('Failed to delete all wait times: ${e.toString()}')),
         );
       }
     }
@@ -176,8 +195,12 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
           title: Text(title),
           content: Text(content),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text('No')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text('Yes')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('No')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text('Yes')),
           ],
         );
       },
@@ -188,7 +211,15 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.selectedLocation} Wait Times'),
+        title: Align(
+          alignment: Alignment.center,
+          child: Text(
+            '${widget.selectedLocation} Wait Times',
+            style: const TextStyle(
+              fontSize: 20,
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(CupertinoIcons.add),
@@ -225,7 +256,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                             ),
                             IconButton(
                               icon: Icon(Icons.update, color: Colors.blue),
-                              onPressed: () => _updateWaitTime(provider, controller.text),
+                              onPressed: () =>
+                                  _updateWaitTime(provider, controller.text),
                             ),
                             IconButton(
                               icon: Icon(Icons.delete, color: Colors.red),
@@ -256,11 +288,13 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   }
 
   void openProviderSelection() async {
-    final availableProviders = providerList.where((p) => p.waitTime == null).toList();
+    final availableProviders =
+        providerList.where((p) => p.waitTime == null).toList();
     final selected = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProviderSelectionPage(providers: availableProviders),
+        builder: (context) =>
+            ProviderSelectionPage(providers: availableProviders),
       ),
     );
 

@@ -57,7 +57,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               alignment: Alignment.center,
               child: Text(
                 'Dashboard',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 20,),
               ),
             ),
           ],

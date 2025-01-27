@@ -140,10 +140,14 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
     final response = await http.get(Uri.parse('$baseUrl/providers?location=$location'));
 
     if (response.statusCode == 200) {
-      // Parse the response JSON and map to ProviderInfo objects
+      // Parse the response JSON
       List<dynamic> data = jsonDecode(response.body);
-      return data.whereType<Map<String, dynamic>>().map<ProviderInfo>((provider) {
-        return ProviderInfo.fromApi(provider, provider['docId'] ?? '');
+
+      return data.map<ProviderInfo>((providerJson) {
+        String docId = providerJson['id']?.toString() ?? '';
+        // Convert single locationName to a list
+        List<String> locations = [(providerJson['locationName'] ?? '').toString()];
+        return ProviderInfo.fromApi(providerJson, docId, locations);
       }).toList();
     } else {
       throw Exception('Failed to load providers for location: ${response.statusCode}');
@@ -153,6 +157,9 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
     throw Exception('Error fetching providers: $e');
   }
 }
+
+
+
 
 
     // Update provider information
