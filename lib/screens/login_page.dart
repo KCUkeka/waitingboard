@@ -282,7 +282,18 @@ Future<void> _login() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Center(child: Text('Orthoillinois Wait Times Login')),
+        title: Container(
+          alignment: Alignment.center,
+          child: Column(
+            children: [
+              Text('Orthoillinois'),
+              Padding(
+                padding: EdgeInsets.only(left: 20.0),
+                child: Text('Wait Times Login'),
+              ),
+            ],
+          ),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
