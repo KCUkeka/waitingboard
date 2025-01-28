@@ -156,6 +156,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+// --------------------------------------------------- ProviderInfo for cards model ---------------------------------------------------  
 // ProviderInfo model
 class ProviderInfo {
   final String firstName;

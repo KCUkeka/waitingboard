@@ -17,6 +17,7 @@ mysql = MySQL(app)
 
 # --------------------------------------------------- All defined routes below ---------------------------------------------------  
 
+# --------------------------------------------------- Users ---------------------------------------------------  
 # Method to fetch all users
 @app.route('/users', methods=['GET'])
 def get_users():
@@ -76,6 +77,8 @@ def add_user():
         return jsonify({"error": str(e)}), 500
 
 
+
+# --------------------------------------------------- Locations ---------------------------------------------------     
 # Route to fetch all locations
 @app.route('/locations', methods=['GET'])
 def get_locations():
@@ -126,6 +129,8 @@ def add_location():
         return jsonify({"error": str(e)}), 500
 
 
+
+# --------------------------------------------------- Login ---------------------------------------------------     
 #Route to track las login
 @app.route('/login', methods=['POST'])
 def login():
@@ -162,12 +167,16 @@ def login():
     finally:
         cursor.close()
 
+
+
+
+# --------------------------------------------------- Providers ---------------------------------------------------     
 # Route to fetch providers
 @app.route('/providers', methods=['GET'])
 def get_providers():
     try:
-        location_name_filter = request.args.get('location_name')  # Get location_name from query parameters
-        print(f"Received location_name filter: {location_name_filter}")
+        location_name_filter = request.args.get('provider_locations')  # Get provider_locations from query parameters
+        print(f"Received provider_locations filter: {location_name_filter}")
 
         cursor = mysql.connection.cursor()
 
@@ -176,14 +185,14 @@ def get_providers():
             SELECT 
                 p.id, p.first_name, p.last_name, p.specialty, 
                 p.title, p.wait_time, p.last_changed, 
-                p.location_name
+                p.provider_locations
             FROM waitingboard_providers p
             WHERE p.deleteFlag = 0
         """
 
-        # Add filtering by location_name if provided
+        # Add filtering by provider_locations if provided
         if location_name_filter:
-            query += " AND p.location_name LIKE %s"
+            query += " AND p.provider_locations LIKE %s"
             cursor.execute(query, (f"%{location_name_filter}%",))
         else:
             cursor.execute(query)
@@ -202,7 +211,7 @@ def get_providers():
                 "title": row['title'],
                 "waitTime": row['wait_time'],
                 "lastChanged": row['last_changed'].strftime("%Y-%m-%d %H:%M:%S") if row['last_changed'] else None,
-                "locationName": row['location_name'],
+                "locationName": row['provider_locations'],
             }
             provider_list.append(provider)
 
@@ -210,7 +219,6 @@ def get_providers():
     except Exception as e:
         print(f"Error in /providers route: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 
 # Route to add a provider
@@ -255,13 +263,13 @@ def add_provider():
         if not valid_locations:
             return jsonify({"error": "None of the selected locations are valid"}), 400
 
-        # Combine valid locations into a single string for `location_name`
+        # Combine valid locations into a single string for `provider_locations`
         combined_locations = ','.join(valid_locations)
         print(f"Combined Locations: {combined_locations}")  # Debug print
 
-        # Insert the provider with the combined location_name
+        # Insert the provider with the combined provider_locations
         query = """
-        INSERT INTO waitingboard_providers (first_name, last_name, specialty, title, location_name, provider_modified)
+        INSERT INTO waitingboard_providers (first_name, last_name, specialty, title, provider_locations, provider_modified)
         VALUES (%s, %s, %s, %s, %s, NOW())
         """
         cursor.execute(query, (first_name, last_name, specialty, title, combined_locations))
@@ -275,6 +283,10 @@ def add_provider():
         print("Error:", e)  # Log the error for debugging
         mysql.connection.rollback()  # Rollback on error
         return jsonify({"error": str(e)}), 500
+
+
+# --------------------------------------------------- Update routes ---------------------------------------------------   
+ 
 
 # Route to update provider information
 @app.route('/providers/<provider_id>', methods=['PUT'])
@@ -301,7 +313,7 @@ def update_provider(provider_id):
             "lastName": "last_name",
             "specialty": "specialty",
             "title": "title",
-            "locations": "location_name"
+            "locations": "provider_locations"
         }
 
         # Loop through the provided fields and update the corresponding columns
@@ -332,6 +344,7 @@ def update_provider(provider_id):
     except Exception as e:
         print(f"Error in PUT /providers/<provider_id>: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 # Update wait time
 @app.route('/providers/<provider_id>/wait-time', methods=['PUT'])
@@ -365,7 +378,9 @@ def update_provider_wait_time(provider_id):
         print(f"Error updating provider: {e}")
         return jsonify({"error": str(e)}), 500
 
-        #Remove provider wait time
+
+
+#Remove provider wait time
 @app.route('/providers/<provider_id>/remove-wait-time', methods=['PUT'])
 def remove_provider_wait_time(provider_id):
     try:
@@ -388,6 +403,8 @@ def remove_provider_wait_time(provider_id):
     except Exception as e:
         print(f"Error removing wait time: {e}")
         return jsonify({"error": str(e)}), 500
+
+
 
 # Route to mark a provider as deleted (sets deleteFlag to 1)
 @app.route('/providers/<provider_id>', methods=['PATCH'])
