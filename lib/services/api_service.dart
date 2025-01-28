@@ -5,6 +5,9 @@ import 'package:waitingboard/model/provider_info.dart';
 class ApiService {
   static const String baseUrl = 'http://127.0.0.1:5000'; // Change to IP address for device testing
 
+
+
+// ---------------------------------------------------------Users ----------------------------------------------
   // Fetch all users
   static Future<List<dynamic>> fetchUsers() async {
     try {
@@ -18,29 +21,6 @@ class ApiService {
       throw Exception('Error fetching users: $e');
     }
   }
-
-  // Fetch all locations
-static Future<List<String>> fetchLocations() async {
-  try {
-    final response = await http.get(Uri.parse('$baseUrl/locations'));
-    if (response.statusCode == 200) {
-      // Decode response as List<dynamic>
-      List<dynamic> jsonResponse = json.decode(response.body);
-
-      // Extract 'name' field from each object
-      return jsonResponse.map((item) {
-        if (item is Map<String, dynamic> && item.containsKey('name')) {
-          return item['name'].toString(); // Ensure 'name' is a String
-        }
-        return ''; // Fallback if 'name' is not found
-      }).where((name) => name.isNotEmpty).toList();
-    } else {
-      throw Exception('Failed to fetch locations. Status code: ${response.statusCode}');
-    }
-  } catch (e) {
-    throw Exception('Error fetching locations: $e');
-  }
-}
 
   // Login user
   static Future<bool> loginUser(String username, String password, String location) async {
@@ -73,6 +53,65 @@ static Future<List<String>> fetchLocations() async {
     }
   }
 
+  // Create a new user
+  static Future<void> createUser(
+      String username, String email, String password, String role) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/users'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'email': email,
+          'password': password,
+          'role': role,
+          'admin': false, // Default admin to false
+        }),
+      );
+
+      // print('Request Body: ${jsonEncode({
+      //   'username': username,
+      //   'email': email,
+      //   'password': password,
+      //   'role': role,
+      //   'admin': false,
+      // })}'); // Debug request body
+
+      if (response.statusCode != 201) {
+        throw Exception('Failed to create user: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error creating user: $e');
+    }
+  }
+
+
+
+//-------------------------------------------------------Locations ----------------------------------------------
+  // Fetch all locations
+static Future<List<String>> fetchLocations() async {
+  try {
+    final response = await http.get(Uri.parse('$baseUrl/locations'));
+    if (response.statusCode == 200) {
+      // Decode response as List<dynamic>
+      List<dynamic> jsonResponse = json.decode(response.body);
+
+      // Extract 'name' field from each object
+      return jsonResponse.map((item) {
+        if (item is Map<String, dynamic> && item.containsKey('name')) {
+          return item['name'].toString(); // Ensure 'name' is a String
+        }
+        return ''; // Fallback if 'name' is not found
+      }).where((name) => name.isNotEmpty).toList();
+    } else {
+      throw Exception('Failed to fetch locations. Status code: ${response.statusCode}');
+    }
+  } catch (e) {
+    throw Exception('Error fetching locations: $e');
+  }
+}
+
+
   // Add a new location
   static Future<void> addLocation(String locationName) async {
     try {
@@ -97,6 +136,8 @@ static Future<List<String>> fetchLocations() async {
     }
   }
 
+
+//-------------------------------------------------------Providers ----------------------------------------------
   // Fetch all providers
   static Future<List<dynamic>> fetchProviders() async {
     try {
@@ -174,6 +215,7 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
 }
 
 
+//-------------------------------------------------------Update methods ---------------------------------------------- 
     // Update provider information
   static Future<void> updateProvider(String providerId, Map<String, dynamic> updateData) async {
     // print('Sending update request:'); // Debug prints
@@ -233,38 +275,8 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
     }
   }
 
-  // Create a new user
-  static Future<void> createUser(
-      String username, String email, String password, String role) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/users'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': username,
-          'email': email,
-          'password': password,
-          'role': role,
-          'admin': false, // Default admin to false
-        }),
-      );
 
-      // print('Request Body: ${jsonEncode({
-      //   'username': username,
-      //   'email': email,
-      //   'password': password,
-      //   'role': role,
-      //   'admin': false,
-      // })}'); // Debug request body
-
-      if (response.statusCode != 201) {
-        throw Exception('Failed to create user: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Error creating user: $e');
-    }
-  }
-
+//-------------------------------------------------------Tables ----------------------------------------------
   // Fetch all database tables
   static Future<List<dynamic>> fetchTables() async {
     try {
@@ -279,6 +291,7 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
     }
   }
 
+//-------------------------------------------------------Logout ----------------------------------------------  
   // Define the logout method
   static Future<void> logout(String loginId) async {
     final response = await http.post(
