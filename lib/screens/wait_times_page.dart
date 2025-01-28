@@ -86,18 +86,27 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   Future<void> saveAllWaitTimes() async {
     try {
       for (var provider in selectedProviders) {
-        if (provider.waitTime != null) {
-          await ApiService.updateProvider(provider.docId, {
-            'waitTime': provider.waitTime,
-          });
+        final controller = _waitTimeControllers[provider.docId];
+        if (controller != null && controller.text.isNotEmpty) {
+          final waitTime = int.tryParse(controller.text);
+          if (waitTime != null) {
+            print('Saving wait time for ${provider.displayName}: $waitTime'); // Debug print
+            await ApiService.updateProvider(provider.docId, {
+              'waitTime': waitTime,
+            });
+          }
         }
       }
+      
+      await loadProvidersFromApi(); // Refresh the list after saving
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Wait times saved successfully')),
+        const SnackBar(content: Text('Wait times saved successfully')),
       );
     } catch (e) {
+      print('Error saving wait times: $e'); // Debug print
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save wait times: ${e.toString()}')),
+        SnackBar(content: Text('Failed to save wait times: $e')),
       );
     }
   }
@@ -303,7 +312,9 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     print('Selected Location: ${widget.selectedLocation}'); // Debug print
     
     final availableProviders = providerList
-        .where((p) => p.locations.contains(widget.selectedLocation))
+        .where((p) => p.locations.contains(widget.selectedLocation) && 
+          !selectedProviders.any((selected) => selected.docId == p.docId) // Check if provider is already selected  
+          )
         .toList();
     
     print('Available Providers: $availableProviders'); // Debug print
