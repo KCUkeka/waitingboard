@@ -119,11 +119,10 @@ static Future<List<String>> fetchLocations() async {
     String title,
     String locations,  // Accept a String here
   ) async {
-    const String apiUrl = 'http://127.0.0.1:5000/providers';  // Replace with your API URL
 
     try {
       final response = await http.post(
-        Uri.parse(apiUrl),
+        Uri.parse(baseUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'firstName': firstName,

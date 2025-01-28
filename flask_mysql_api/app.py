@@ -14,7 +14,10 @@ app.config.from_object(Config)
 # Initialize MySQL
 mysql = MySQL(app)
 
-# Route to fetch all users
+
+# --------------------------------------------------- All defined routes below ---------------------------------------------------  
+
+# Method to fetch all users
 @app.route('/users', methods=['GET'])
 def get_users():
     try:
