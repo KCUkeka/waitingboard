@@ -211,13 +211,16 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     if (shouldDeleteAll == true) {
       try {
         for (var provider in selectedProviders) {
-          await ApiService.updateProvider(provider.docId, {'waitTime': null});
+          await ApiService.removeProviderWaitTime(provider.docId);
         }
 
         setState(() {
           selectedProviders.clear();
           _waitTimeControllers.clear();
         });
+
+        await loadProvidersFromApi();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('All wait times deleted successfully')),
         );

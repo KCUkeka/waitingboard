@@ -300,7 +300,6 @@ def get_active_providers():
             FROM waitingboard_providers 
             WHERE wait_time IS NOT NULL 
             AND (deleteFlag IS NULL OR deleteFlag = 0)
-            ORDER BY provider_modified DESC
         """)
         
         providers = cursor.fetchall()
@@ -385,36 +384,49 @@ def update_provider(provider_id):
         return jsonify({"error": str(e)}), 500
 
 
-# Update wait time
+#Update provider wait times
 @app.route('/providers/<provider_id>/wait-time', methods=['PUT'])
 def update_provider_wait_time(provider_id):
     try:
         data = request.get_json()
+        print(f"Received data: {data}")  # Debug print
         
         wait_time = data.get('waitTime')
-        current_location = data.get('currentLocation')  # Get current location from request
+        current_location = data.get('currentLocation') 
+        is_removing = data.get('isRemoving', False)  # New flag to indicate removal
+        
+        print(f"Processing update for provider {provider_id}")  # Debug print
+        print(f"Wait time: {wait_time}, Location: {current_location}, Removing: {is_removing}")  # Debug print
 
-        if wait_time is None:
-            return jsonify({"error": "waitTime is required"}), 400
-            
         cursor = mysql.connection.cursor()
 
-        if current_location:
+        if is_removing:  # If we're removing the wait time
             cursor.execute("""
                 UPDATE waitingboard_providers 
-                SET wait_time = %s,
-                    current_location = %s,
-                    last_changed = NOW()
+                SET wait_time = NULL,
+                    current_location = NULL,
+                    last_changed = NULL
                 WHERE id = %s
-            """, (wait_time, current_location, provider_id))
-        else:
-            cursor.execute("""
-                UPDATE waitingboard_providers 
-                SET wait_time = %s,
-                    last_changed = NOW()
-                WHERE id = %s
-            """, (wait_time, provider_id))
-        
+            """, (provider_id,))
+        else:  # If we're setting a wait time
+            if wait_time is None:
+                return jsonify({"error": "waitTime is required for updates"}), 400
+                
+            if current_location:  # If we have location
+                cursor.execute("""
+                    UPDATE waitingboard_providers 
+                    SET wait_time = %s,
+                        current_location = %s,
+                        last_changed = NOW()
+                    WHERE id = %s
+                """, (wait_time, current_location, provider_id))
+            else:  # If we only have wait time
+                cursor.execute("""
+                    UPDATE waitingboard_providers 
+                    SET wait_time = %s,
+                        last_changed = NOW()
+                    WHERE id = %s
+                """, (wait_time, provider_id))
         
         if cursor.rowcount == 0:
             return jsonify({"error": f"No provider found with id {provider_id}"}), 404
@@ -427,34 +439,6 @@ def update_provider_wait_time(provider_id):
     except Exception as e:
         print(f"Error updating provider: {e}")
         return jsonify({"error": str(e)}), 500
-
-
-
-#Remove provider wait time
-@app.route('/providers/<provider_id>/remove-wait-time', methods=['PUT'])
-def remove_provider_wait_time(provider_id):
-    try:
-        cursor = mysql.connection.cursor()
-        cursor.execute("""
-            UPDATE waitingboard_providers 
-            SET wait_time = NULL,
-                last_changed = NULL,
-                current_location = NULL,
-            WHERE id = %s
-        """, (provider_id,))
-        
-        if cursor.rowcount == 0:
-            return jsonify({"error": f"No provider found with id {provider_id}"}), 404
-            
-        mysql.connection.commit()
-        cursor.close()
-        
-        return jsonify({"message": "Wait time removed successfully"}), 200
-        
-    except Exception as e:
-        print(f"Error removing wait time: {e}")
-        return jsonify({"error": str(e)}), 500
-
 
 
 # Route to mark a provider as deleted (sets deleteFlag to 1)

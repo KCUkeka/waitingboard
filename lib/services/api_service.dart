@@ -264,6 +264,27 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
     }
   }
 
+  // Remove provider wait time
+   static Future<void> removeProviderWaitTime(String providerId) async {
+    try {
+      final response = await http.put(  // Note: using PUT, not a new endpoint
+        Uri.parse('$baseUrl/providers/$providerId/wait-time'),  // Use existing endpoint
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'isRemoving': true,
+          'waitTime': null,
+          'currentLocation': null
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to remove wait time. Status code: ${response.statusCode}, Body: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error removing wait time: $e');
+    }
+  }
+
   // Method to delete a provider
   static Future<void> deleteProvider(dynamic  providerId) async {
     try {
@@ -282,21 +303,7 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
     }
   }
 
-  // Remove provider wait time
-    static Future<void> removeProviderWaitTime(String providerId) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/providers/$providerId/remove-wait-time'),
-        headers: {'Content-Type': 'application/json'},
-      );
 
-      if (response.statusCode != 200) {
-        throw Exception('Failed to remove wait time. Status code: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error removing wait time: $e');
-    }
-  }
 
 
 //-------------------------------------------------------Tables ----------------------------------------------
