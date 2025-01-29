@@ -224,7 +224,6 @@ def get_providers():
 @app.route('/providers', methods=['POST'])
 def add_provider():
     data = request.get_json()
-    print("Incoming Data:", data)  # Debug incoming data
 
     first_name = data.get('firstName')
     last_name = data.get('lastName')
@@ -332,9 +331,6 @@ def update_provider(provider_id):
     try:
         data = request.json
 
-        # Debugging: print the incoming data
-        print(f"Received data: {data}")
-
         # Check that all necessary fields are in the request
         required_fields = ["firstName", "lastName", "specialty", "title", "locations"]
         for field in required_fields:
@@ -363,9 +359,6 @@ def update_provider(provider_id):
         # Add the provider ID to the values list
         values.append(provider_id)
 
-        # Debugging: print the fields to update and values
-        print(f"Fields to update: {fields_to_update}")
-        print(f"Values: {values}")
 
         # Use the MySQL connection to update the provider
         cursor = mysql.connection.cursor()
@@ -389,14 +382,11 @@ def update_provider(provider_id):
 def update_provider_wait_time(provider_id):
     try:
         data = request.get_json()
-        print(f"Received data: {data}")  # Debug print
         
         wait_time = data.get('waitTime')
         current_location = data.get('currentLocation') 
         is_removing = data.get('isRemoving', False)  # New flag to indicate removal
         
-        print(f"Processing update for provider {provider_id}")  # Debug print
-        print(f"Wait time: {wait_time}, Location: {current_location}, Removing: {is_removing}")  # Debug print
 
         cursor = mysql.connection.cursor()
 
@@ -440,7 +430,7 @@ def update_provider_wait_time(provider_id):
         print(f"Error updating provider: {e}")
         return jsonify({"error": str(e)}), 500
 
-
+    
 # Route to mark a provider as deleted (sets deleteFlag to 1)
 @app.route('/providers/<provider_id>', methods=['PATCH'])
 def delete_provider(provider_id):

@@ -74,10 +74,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
 
     Future<void> loadProvidersFromApi() async {
     try {
-      print('Loading providers for location: ${widget.selectedLocation}'); // Debug print
       final List<dynamic> fetchedProviders =
           await ApiService.fetchProvidersByLocation(widget.selectedLocation);
-      print('Fetched providers: $fetchedProviders'); // Debug print
 
 
       setState(() {
@@ -98,7 +96,6 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         selectedProviders = providerList
             .where((provider) => provider.waitTime != null)
             .toList();
-        print('Selected providers count: ${selectedProviders.length}'); // Debug print
         _initializeControllers();
       });
     } catch (e) {

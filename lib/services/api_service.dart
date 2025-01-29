@@ -25,7 +25,6 @@ class ApiService {
   // Login user
   static Future<bool> loginUser(String username, String password, String location) async {
     try {
-      print('Attempting login for user: $username at location: $location'); // Debug print
       
       final response = await http.post(
         Uri.parse('$baseUrl/login'),
@@ -37,11 +36,8 @@ class ApiService {
         }),
       );
       
-      // print('Login response status: ${response.statusCode}'); // Debug print
-      // print('Login response body: ${response.body}'); // Debug print
 
       if (response.statusCode == 200) {
-        print('Login successful, last_logged_in and location updated'); // Debug print
         return true;
       } else {
         print('Login failed. Response: ${response.body}');
@@ -68,15 +64,6 @@ class ApiService {
           'admin': false, // Default admin to false
         }),
       );
-
-      // print('Request Body: ${jsonEncode({
-      //   'username': username,
-      //   'email': email,
-      //   'password': password,
-      //   'role': role,
-      //   'admin': false,
-      // })}'); // Debug request body
-
       if (response.statusCode != 201) {
         throw Exception('Failed to create user: ${response.body}');
       }
@@ -217,29 +204,22 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
 // Active providers
   static Future<List<ProviderInfo>> fetchActiveProviders() async {
     try {
-      print('Fetching active providers from API...'); // Debug print
       final response = await http.get(Uri.parse('$baseUrl/providers/active'));
-      print('Response status: ${response.statusCode}'); // Debug print
-      print('Response body: ${response.body}'); // Debug print
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         return data.map<ProviderInfo>((providerJson) {
-          print('Processing provider JSON: $json'); // Debug raw JSON
           String docId = providerJson['id']?.toString() ?? '';
           List<String> locations = (providerJson['provider_locations'] ?? '')
               .toString()
               .split(',')
               .map((e) => e.trim())
               .toList();
-
-          print('Processing provider: $json'); // Debug print
           return ProviderInfo.fromDashboardApi(providerJson, docId, locations);
         }).toList();
       } else {
         throw Exception('Failed to load active providers');
       }
     } catch (e) {
-      print('Error in fetchActiveProviders: $e'); // Debug print
       throw Exception('Error fetching active providers: $e');
     }
   }
@@ -259,7 +239,6 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
         throw Exception('Failed to update provider. Status code: ${response.statusCode}, Body: ${response.body}');
       }
     } catch (e) {
-      print('Error in updateProvider: $e'); // Debug print
       throw Exception('Error updating provider: $e');
     }
   }
@@ -298,7 +277,6 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
         throw Exception('Failed to delete provider. Response: ${response.body}');
       }
     } catch (e) {
-      print('Error in deleteProvider: $e'); // debug to see which provider is failing
       throw Exception('Error deleting provider: $e');
     }
   }

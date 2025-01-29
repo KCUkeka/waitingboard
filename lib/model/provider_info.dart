@@ -22,14 +22,11 @@ class ProviderInfo {
 
   factory ProviderInfo.fromWaitTimeApi(
       Map<String, dynamic> json, String docId, List<String> locations) {
-      print('fromApi received JSON: $json'); // Add this debug print
-      print('last_changed value: ${json['last_changed']}'); // Debug specific field
 
     DateTime? lastChanged;
     if (json['last_changed'] != null) {
       try {
         lastChanged = DateTime.parse(json['last_changed']);
-        print('Parsed last_changed: $lastChanged'); // Debug print
       } catch (e) {
         print('Error parsing last_changed: $e');
       }
@@ -45,20 +42,15 @@ class ProviderInfo {
       waitTime: json['waitTime'], // Changed from 'wait_time'
       last_changed: lastChanged,  
     );
-    print('Created provider with last_changed: ${provider.last_changed}'); // Debug result
     return provider;
   }
 
     factory ProviderInfo.fromDashboardApi(
       Map<String, dynamic> json, String docId, List<String> locations) {
-      print('fromApi received JSON: $json'); // Add this debug print
-      print('last_changed value: ${json['last_changed']}'); // Debug specific field
-
     DateTime? lastChanged;
     if (json['last_changed'] != null) {
       try {
         lastChanged = DateTime.parse(json['last_changed']);
-        print('Parsed last_changed: $lastChanged'); // Debug print
       } catch (e) {
         print('Error parsing last_changed: $e');
       }
@@ -74,7 +66,6 @@ class ProviderInfo {
       waitTime: json['wait_time'], // Changed from 'wait_time'
       last_changed: lastChanged,  
     );
-    print('Created provider with last_changed: ${provider.last_changed}'); // Debug result
     return provider;
   }
 
