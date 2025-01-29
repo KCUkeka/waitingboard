@@ -176,7 +176,6 @@ def login():
 def get_providers():
     try:
         location_name_filter = request.args.get('provider_locations')  # Get provider_locations from query parameters
-        print(f"Received provider_locations filter: {location_name_filter}")
 
         cursor = mysql.connection.cursor()
 
@@ -215,7 +214,6 @@ def get_providers():
             }
             provider_list.append(provider)
 
-        print(f"Returning providers: {provider_list}")  # Debug print
         return jsonify(provider_list), 200
     except Exception as e:
         print(f"Error in /providers route: {e}")
@@ -394,16 +392,29 @@ def update_provider_wait_time(provider_id):
         data = request.get_json()
         
         wait_time = data.get('waitTime')
+        current_location = data.get('currentLocation')  # Get current location from request
+
         if wait_time is None:
             return jsonify({"error": "waitTime is required"}), 400
             
         cursor = mysql.connection.cursor()
-        cursor.execute("""
-            UPDATE waitingboard_providers 
-            SET wait_time = %s,
-                last_changed = NOW()
-            WHERE id = %s
-        """, (wait_time, provider_id))
+
+        if current_location:
+            cursor.execute("""
+                UPDATE waitingboard_providers 
+                SET wait_time = %s,
+                    current_location = %s,
+                    last_changed = NOW()
+                WHERE id = %s
+            """, (wait_time, current_location, provider_id))
+        else:
+            cursor.execute("""
+                UPDATE waitingboard_providers 
+                SET wait_time = %s,
+                    last_changed = NOW()
+                WHERE id = %s
+            """, (wait_time, provider_id))
+        
         
         if cursor.rowcount == 0:
             return jsonify({"error": f"No provider found with id {provider_id}"}), 404
@@ -427,7 +438,8 @@ def remove_provider_wait_time(provider_id):
         cursor.execute("""
             UPDATE waitingboard_providers 
             SET wait_time = NULL,
-                last_changed = NULL
+                last_changed = NULL,
+                current_location = NULL,
             WHERE id = %s
         """, (provider_id,))
         

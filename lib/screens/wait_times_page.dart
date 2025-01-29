@@ -43,7 +43,36 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
 
   // ------------------------------------------ Define methods ------------------------------------------------------ 
 
-  Future<void> loadProvidersFromApi() async {
+  void _initializeControllers() {
+    for (var provider in selectedProviders) {
+      _waitTimeControllers[provider.docId] = TextEditingController(
+        text: provider.waitTime?.toString() ?? '',
+      );
+    }
+  }
+
+    Future<bool?> _showConfirmationDialog(
+      BuildContext context, String title, String content) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('No')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text('Yes')),
+          ],
+        );
+      },
+    );
+  }
+
+    Future<void> loadProvidersFromApi() async {
     try {
       print('Loading providers for location: ${widget.selectedLocation}'); // Debug print
       final List<dynamic> fetchedProviders =
@@ -79,14 +108,6 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-  void _initializeControllers() {
-    for (var provider in selectedProviders) {
-      _waitTimeControllers[provider.docId] = TextEditingController(
-        text: provider.waitTime?.toString() ?? '',
-      );
-    }
-  }
-
   Future<void> saveAllWaitTimes() async {
     try {
       for (var provider in selectedProviders) {
@@ -94,9 +115,9 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         if (controller != null && controller.text.isNotEmpty) {
           final waitTime = int.tryParse(controller.text);
           if (waitTime != null) {
-            print('Saving wait time for ${provider.displayName}: $waitTime'); // Debug print
             await ApiService.updateProvider(provider.docId, {
               'waitTime': waitTime,
+              'currentLocation': widget.selectedLocation,
             });
           }
         }
@@ -123,6 +144,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         // Create the update data
         Map<String, dynamic> updateData = {
           'waitTime': updatedWaitTime,
+          'currentLocation': widget.selectedLocation,
           'id': provider.docId
         };
 
@@ -209,25 +231,28 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-  Future<bool?> _showConfirmationDialog(
-      BuildContext context, String title, String content) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(content),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text('No')),
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text('Yes')),
-          ],
-        );
-      },
+    void openProviderSelection() async {
+    
+    final availableProviders = providerList
+        .where((p) => p.locations.contains(widget.selectedLocation) && 
+          !selectedProviders.any((selected) => selected.docId == p.docId) // Check if provider is already selected  
+          )
+        .toList();
+        
+    final selected = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ProviderSelectionPage(providers: availableProviders),
+      ),
     );
+
+    if (selected != null) {
+      setState(() {
+        selectedProviders.add(selected);
+        _waitTimeControllers[selected.docId] = TextEditingController();
+      });
+    }
   }
 
   // ------------------------------------------ Build methods ------------------------------------------------------ 
@@ -312,30 +337,4 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     );
   }
 
-  void openProviderSelection() async {
-    print('Selected Location: ${widget.selectedLocation}'); // Debug print
-    
-    final availableProviders = providerList
-        .where((p) => p.locations.contains(widget.selectedLocation) && 
-          !selectedProviders.any((selected) => selected.docId == p.docId) // Check if provider is already selected  
-          )
-        .toList();
-    
-    print('Available Providers: $availableProviders'); // Debug print
-        
-    final selected = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            ProviderSelectionPage(providers: availableProviders),
-      ),
-    );
-
-    if (selected != null) {
-      setState(() {
-        selectedProviders.add(selected);
-        _waitTimeControllers[selected.docId] = TextEditingController();
-      });
-    }
-  }
 }

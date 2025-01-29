@@ -247,9 +247,6 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
 //-------------------------------------------------------Update methods ---------------------------------------------- 
     // Update provider information
   static Future<void> updateProvider(String providerId, Map<String, dynamic> updateData) async {
-    // print('Sending update request:'); // Debug prints
-    // print('URL: $baseUrl/providers/$providerId');
-    // print('Update data: $updateData');
 
     try {
       final response = await http.put(
@@ -257,9 +254,6 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(updateData),
       );
-
-      // print('Response status: ${response.statusCode}'); // Debug print
-      // print('Response body: ${response.body}'); // Debug print
 
       if (response.statusCode != 200) {
         throw Exception('Failed to update provider. Status code: ${response.statusCode}, Body: ${response.body}');
