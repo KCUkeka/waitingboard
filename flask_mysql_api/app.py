@@ -215,6 +215,7 @@ def get_providers():
             }
             provider_list.append(provider)
 
+        print(f"Returning providers: {provider_list}")  # Debug print
         return jsonify(provider_list), 200
     except Exception as e:
         print(f"Error in /providers route: {e}")
@@ -255,7 +256,7 @@ def add_provider():
         valid_locations = []
         for location in location_list:
             cursor.execute("SELECT id FROM waitingboard_locations WHERE name = %s", (location,))
-            if cursor.fetchone():  # Location exists
+            if cursor.fetchone():
                 valid_locations.append(location)
             else:
                 print(f"Invalid location: {location}")  # Debug invalid locations
@@ -265,9 +266,8 @@ def add_provider():
 
         # Combine valid locations into a single string for `provider_locations`
         combined_locations = ','.join(valid_locations)
-        print(f"Combined Locations: {combined_locations}")  # Debug print
+        print(f"Combined Locations: {combined_locations}")
 
-        # Insert the provider with the combined provider_locations
         query = """
         INSERT INTO waitingboard_providers (first_name, last_name, specialty, title, provider_locations, provider_modified)
         VALUES (%s, %s, %s, %s, %s, NOW())
@@ -278,13 +278,54 @@ def add_provider():
         cursor.close()
 
         return jsonify({"message": "Provider added successfully", "locations": combined_locations}), 201
-
-    except Exception as e:
-        print("Error:", e)  # Log the error for debugging
-        mysql.connection.rollback()  # Rollback on error
+    except Exception as e:  # Added missing except block
+        print(f"Error adding provider: {e}")
         return jsonify({"error": str(e)}), 500
 
 
+
+        
+    except Exception as e:
+        print(f"Error fetching active providers: {e}")
+        return jsonify({"error": str(e)}), 500
+   
+
+# Get active providers
+@app.route('/providers/active', methods=['GET'])
+def get_active_providers():
+    try:
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+            SELECT id, first_name, last_name, specialty, title, 
+                   provider_locations, wait_time, last_changed,
+                   deleteFlag
+            FROM waitingboard_providers 
+            WHERE wait_time IS NOT NULL 
+            AND (deleteFlag IS NULL OR deleteFlag = 0)
+            ORDER BY provider_modified DESC
+        """)
+        
+        providers = cursor.fetchall()
+        provider_list = []
+        for row in providers:
+            provider = {
+                "id": row['id'],
+                "first_name": row['first_name'],
+                "last_name": row['last_name'],
+                "specialty": row['specialty'],
+                "title": row['title'],
+                "provider_locations": row['provider_locations'],
+                "wait_time": row['wait_time'],
+                "last_changed": row['last_changed'].strftime("%Y-%m-%d %H:%M:%S") if row['last_changed'] else None
+            }
+            provider_list.append(provider)
+        
+        cursor.close()
+        return jsonify(provider_list)
+        
+    except Exception as e:
+        print(f"Error fetching active providers: {e}")
+        return jsonify({"error": str(e)}), 500
 # --------------------------------------------------- Update routes ---------------------------------------------------   
  
 
@@ -351,8 +392,6 @@ def update_provider(provider_id):
 def update_provider_wait_time(provider_id):
     try:
         data = request.get_json()
-        print(f"Received update request for provider {provider_id}")
-        print(f"Request data: {data}")
         
         wait_time = data.get('waitTime')
         if wait_time is None:
@@ -362,7 +401,7 @@ def update_provider_wait_time(provider_id):
         cursor.execute("""
             UPDATE waitingboard_providers 
             SET wait_time = %s,
-                provider_modified = NOW()
+                last_changed = NOW()
             WHERE id = %s
         """, (wait_time, provider_id))
         
@@ -388,7 +427,7 @@ def remove_provider_wait_time(provider_id):
         cursor.execute("""
             UPDATE waitingboard_providers 
             SET wait_time = NULL,
-                provider_modified = NOW()
+                last_changed = NULL
             WHERE id = %s
         """, (provider_id,))
         

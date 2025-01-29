@@ -41,12 +41,15 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     super.dispose();
   }
 
+  // ------------------------------------------ Define methods ------------------------------------------------------ 
+
   Future<void> loadProvidersFromApi() async {
     try {
+      print('Loading providers for location: ${widget.selectedLocation}'); // Debug print
       final List<dynamic> fetchedProviders =
           await ApiService.fetchProvidersByLocation(widget.selectedLocation);
-      // debug fetch error
-      print('Fetched providers: $fetchedProviders');
+      print('Fetched providers: $fetchedProviders'); // Debug print
+
 
       setState(() {
         providerList = fetchedProviders.map((providerData) {
@@ -66,6 +69,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         selectedProviders = providerList
             .where((provider) => provider.waitTime != null)
             .toList();
+        print('Selected providers count: ${selectedProviders.length}'); // Debug print
         _initializeControllers();
       });
     } catch (e) {
@@ -115,10 +119,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     int? updatedWaitTime = int.tryParse(newWaitTime);
     if (updatedWaitTime != null) {
       try {
-        print('Attempting to update wait time:'); // Debug prints
-        print('Provider ID: ${provider.docId}');
-        print('New wait time: $updatedWaitTime');
-
+       
         // Create the update data
         Map<String, dynamic> updateData = {
           'waitTime': updatedWaitTime,
@@ -126,6 +127,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         };
 
         await ApiService.updateProvider(provider.docId, updateData);
+        
         
         setState(() {
           provider.waitTime = updatedWaitTime;
@@ -227,6 +229,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
       },
     );
   }
+
+  // ------------------------------------------ Build methods ------------------------------------------------------ 
 
   @override
   Widget build(BuildContext context) {

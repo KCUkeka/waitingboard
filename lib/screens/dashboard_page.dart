@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import 'package:waitingboard/screens/fullscreendashboard.dart';
+import 'package:waitingboard/model/provider_info.dart' as model;
 import 'package:waitingboard/services/api_service.dart'; // Import the API service
 
 class DashboardPage extends StatefulWidget {
@@ -24,17 +25,14 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   // Method to fetch providers data from the API
-  Future<List<ProviderInfo>> _fetchProviders() async {
-    try {
-      final providers = await ApiService.fetchProviders();
-      return providers
-          .map((provider) => ProviderInfo.fromApi(provider))
-          .toList();
-    } catch (e) {
-      throw Exception('Error fetching providers: $e');
-    }
+Future<List<model.ProviderInfo>> _fetchProviders() {
+  try {
+    return ApiService.fetchActiveProviders();
+  } catch (e) {
+    print('Error fetching active providers: $e');
+    throw Exception('Error fetching active providers: $e');
   }
-
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,12 +72,13 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
       ),
-      body: FutureBuilder<List<ProviderInfo>>(
+      body: FutureBuilder<List<model.ProviderInfo>>(
         future: _fetchProviders(), // Fetch providers from the API
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
+             print('Error in FutureBuilder: ${snapshot.error}'); // Debug print
             return const Center(child: Text('Error loading providers'));
           }
 
@@ -114,7 +113,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              provider.displayName,
+                              provider.dashboardName,
                               style: const TextStyle(
                                   fontSize: 20, fontWeight: FontWeight.bold),
                               textAlign: TextAlign.center,
@@ -129,7 +128,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             const Text('Wait Time:',
                                 style: TextStyle(fontSize: 16)),
                             Text(
-                              '${provider.waitTime} mins',
+                              '${provider.formattedWaitTime} mins',
                               style: const TextStyle(
                                   fontSize: 18, fontWeight: FontWeight.bold),
                             ),
@@ -137,7 +136,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             const Text('Last Changed:',
                                 style: TextStyle(fontSize: 16)),
                             Text(
-                              formatTimestamp(provider.lastChanged),
+                              formatTimestamp(provider.last_changed),
                               style: const TextStyle(fontSize: 14),
                               textAlign: TextAlign.center,
                             ),
@@ -154,40 +153,4 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
-}
-
-// --------------------------------------------------- ProviderInfo for cards model ---------------------------------------------------  
-// ProviderInfo model
-class ProviderInfo {
-  final String firstName;
-  final String lastName;
-  final String specialty;
-  final String title;
-  final int? waitTime;
-  final DateTime? lastChanged;
-
-  ProviderInfo({
-    required this.firstName,
-    required this.lastName,
-    required this.specialty,
-    required this.title,
-    this.waitTime,
-    this.lastChanged,
-  });
-
-  // Factory method to create a ProviderInfo from API data
-  factory ProviderInfo.fromApi(Map<String, dynamic> data) {
-    return ProviderInfo(
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      specialty: data['specialty'] ?? '',
-      title: data['title'] ?? '',
-      waitTime: data['waitTime'],
-      lastChanged: data['lastChanged'] != null
-          ? DateTime.parse(data['lastChanged']) // Assuming lastChanged is a string or timestamp
-          : null,
-    );
-  }
-
-  String get displayName => '$lastName, ${firstName[0]}. | $title';
 }
