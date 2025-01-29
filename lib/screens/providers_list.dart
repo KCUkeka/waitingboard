@@ -53,7 +53,7 @@ class _ProviderListPageState extends State<ProviderListPage> {
               .map((e) => e.trim())
               .toList();
           
-          return ProviderInfo.fromApi(provider, provider['id']?.toString() ?? '', locations);
+          return ProviderInfo.fromWaitTimeApi(provider, provider['id']?.toString() ?? '', locations);
         }).toList();
 
         print("Final providers list: $providers"); // Debug print

@@ -113,7 +113,11 @@ Future<List<model.ProviderInfo>> _fetchProviders() {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              provider.dashboardName,
+                              (() {
+                                print('Provider data: ${provider.firstName}, ${provider.lastName}, ${provider.title}');
+                                print('Dashboard name: ${provider.dashboardName}');
+                                return provider.dashboardName;
+                              })(),
                               style: const TextStyle(
                                   fontSize: 20, fontWeight: FontWeight.bold),
                               textAlign: TextAlign.center,

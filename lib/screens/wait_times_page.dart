@@ -57,7 +57,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
             List<String> locations = [
               (providerData['locationName'] ?? '').toString()
             ];
-            return ProviderInfo.fromApi(
+            return ProviderInfo.fromWaitTimeApi(
                 providerData, providerData['id']?.toString() ?? '', locations);
           } else if (providerData is ProviderInfo) {
             return providerData; // If it's already a ProviderInfo object, just return it

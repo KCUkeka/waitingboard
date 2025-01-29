@@ -203,7 +203,7 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
             .split(',')
             .map((e) => e.trim())
             .toList();
-        return ProviderInfo.fromApi(providerJson, docId, locations);
+        return ProviderInfo.fromWaitTimeApi(providerJson, docId, locations);
       }).toList();
     } else {
       throw Exception('Failed to load providers for location: ${response.statusCode}');
@@ -224,14 +224,16 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         return data.map<ProviderInfo>((providerJson) {
+          print('Processing provider JSON: $json'); // Debug raw JSON
           String docId = providerJson['id']?.toString() ?? '';
           List<String> locations = (providerJson['provider_locations'] ?? '')
               .toString()
               .split(',')
               .map((e) => e.trim())
               .toList();
+
           print('Processing provider: $json'); // Debug print
-          return ProviderInfo.fromApi(providerJson, docId, locations);
+          return ProviderInfo.fromDashboardApi(providerJson, docId, locations);
         }).toList();
       } else {
         throw Exception('Failed to load active providers');
