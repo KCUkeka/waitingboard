@@ -225,7 +225,7 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
   }
 
 //-------------------------------------------------------Update methods ---------------------------------------------- 
-    // Update provider information
+    // Update provider time
   static Future<void> updateProvider(String providerId, Map<String, dynamic> updateData) async {
 
     try {

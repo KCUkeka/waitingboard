@@ -1,90 +1,77 @@
-import 'package:flutter/foundation.dart'; // Import to access kIsWeb
+import 'dart:async'; // Import for Timer
+import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Import for date formatting
-import 'package:http/http.dart' as http; // For HTTP requests
-import 'dart:convert'; // For JSON decoding
+import 'package:intl/intl.dart'; // For date formatting
+import 'package:waitingboard/model/provider_info.dart' as model;
+import 'package:waitingboard/services/api_service.dart'; // For API calls
 
-class ProviderInfo {
-  final String firstName;
-  final String lastName;
-  final String specialty;
-  final String title;
-  final int? waitTime;
-  final DateTime? lastChanged; // New field for last updated timestamp
+class FullScreenDashboardPage extends StatefulWidget {
+  final String selectedLocation;
 
-  ProviderInfo({
-    required this.firstName,
-    required this.lastName,
-    required this.specialty,
-    required this.title,
-    this.waitTime,
-    this.lastChanged,
-  });
+  const FullScreenDashboardPage({Key? key, required this.selectedLocation}) : super(key: key);
 
-  factory ProviderInfo.fromApi(Map<String, dynamic> data) {
-    return ProviderInfo(
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      specialty: data['specialty'] ?? '',
-      title: data['title'] ?? '',
-      waitTime: data['waitTime'],
-      lastChanged: data['lastChanged'] != null
-          ? DateTime.parse(data['lastChanged'])
-          : null,
-    );
-  }
-
-  String get displayName => '$lastName, ${firstName[0]}. | $title';
+  @override
+  _FullScreenDashboardPageState createState() => _FullScreenDashboardPageState();
 }
 
-class FullScreenDashboardPage extends StatelessWidget {
-  final String selectedLocation; // Add selectedLocation as a parameter
+class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
+  late Future<List<model.ProviderInfo>> _providersFuture;
+  Timer? _timer;
 
-  // Constructor to accept selectedLocation
-  FullScreenDashboardPage({required this.selectedLocation});
-
-  // Method to format the lastChanged timestamp
-  String formatTimestamp(DateTime? timestamp) {
-    if (timestamp == null) return "N/A";
-
-    final formattedDate = DateFormat('hh:mm a, MM/dd').format(timestamp);
-    return formattedDate;
+  @override
+  void initState() {
+    super.initState();
+    _providersFuture = _fetchProviders();
+    _startTimer(); // Start the timer to refresh data
   }
 
-  // API call to fetch provider data (replace with your API service call)
-  Future<List<ProviderInfo>> fetchProviders() async {
-    final url = 'http://127.0.0.1:5000/providers'; // Replace with your API URL
+  @override
+  void dispose() {
+    _timer?.cancel(); // Cancel the timer when the widget is disposed
+    super.dispose();
+  }
 
+  // Fetch providers data from API
+  Future<List<model.ProviderInfo>> _fetchProviders() async {
     try {
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((item) => ProviderInfo.fromApi(item)).toList();
-      } else {
-        throw Exception('Failed to load providers');
-      }
+      return ApiService.fetchActiveProviders();
     } catch (e) {
-      throw Exception('Error fetching providers: $e');
+      print('Error fetching active providers: $e');
+      throw Exception('Error fetching active providers: $e');
     }
+  }
+
+  // Refresh data every 10 seconds
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      setState(() {
+        _providersFuture = _fetchProviders();
+      });
+    });
+  }
+
+  // Format timestamp
+  String formatTimestamp(DateTime? timestamp) {
+    if (timestamp == null) return "N/A";
+    return DateFormat('hh:mm a, MM/dd').format(timestamp);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Container(
-          alignment: Alignment.center,
-          child: Text('Wait Times - $selectedLocation'), // Display selectedLocation in AppBar
+        title: Center(
+          child: Text('Wait Times - ${widget.selectedLocation}'),
         ),
-        automaticallyImplyLeading: !kIsWeb, // Hide back button on web platform
+        automaticallyImplyLeading: !kIsWeb, // Hide back button on web
       ),
-      body: FutureBuilder<List<ProviderInfo>>(
-        future: fetchProviders(),
+      body: FutureBuilder<List<model.ProviderInfo>>(
+        future: _providersFuture, // Use stored future
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
+            print('Error in FutureBuilder: ${snapshot.error}'); // Debug print
             return const Center(child: Text('Error loading providers'));
           }
 
@@ -93,18 +80,17 @@ class FullScreenDashboardPage extends StatelessWidget {
           return SingleChildScrollView(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // Determine the number of columns based on screen width
                 int crossAxisCount = (constraints.maxWidth / 200).floor();
-                crossAxisCount = crossAxisCount > 0 ? crossAxisCount : 1; // Ensure at least 1 column
+                crossAxisCount = crossAxisCount > 0 ? crossAxisCount : 1;
 
                 return GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(), // Disable GridView scrolling
-                  shrinkWrap: true, // Make GridView take only the necessary space
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
-                    childAspectRatio: 1, // Adjust aspect ratio to fit more content
-                    crossAxisSpacing: 16.0, // Space between columns
-                    mainAxisSpacing: 16.0, // Space between rows
+                    childAspectRatio: 1,
+                    crossAxisSpacing: 16.0,
+                    mainAxisSpacing: 16.0,
                   ),
                   padding: const EdgeInsets.all(16.0),
                   itemCount: providers.length,
@@ -114,32 +100,32 @@ class FullScreenDashboardPage extends StatelessWidget {
                     return Card(
                       elevation: 4.0,
                       child: Padding(
-                        padding: const EdgeInsets.all(8.0),
+                        padding: const EdgeInsets.all(6.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min, // Minimize height of the card
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               provider.displayName,
                               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                              textAlign: TextAlign.center, // Center text
+                              textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              provider.specialty, // Display specialty on the second line
+                              provider.specialty,
                               style: const TextStyle(fontSize: 16),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
                             const Text('Wait Time:', style: TextStyle(fontSize: 16)),
                             Text(
-                              '${provider.waitTime} mins',
+                              '${provider.waitTime ?? 0} mins',
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 8),
                             const Text('Last Changed:', style: TextStyle(fontSize: 16)),
                             Text(
-                              formatTimestamp(provider.lastChanged),
+                              formatTimestamp(provider.last_changed),
                               style: const TextStyle(fontSize: 14),
                               textAlign: TextAlign.center,
                             ),

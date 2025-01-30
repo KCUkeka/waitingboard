@@ -41,7 +41,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     super.dispose();
   }
 
-  // ------------------------------------------ Define methods ------------------------------------------------------ 
+  // ------------------------------------------ Define methods ------------------------------------------------------
 
   void _initializeControllers() {
     for (var provider in selectedProviders) {
@@ -51,7 +51,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-    Future<bool?> _showConfirmationDialog(
+  Future<bool?> _showConfirmationDialog(
       BuildContext context, String title, String content) {
     return showDialog<bool>(
       context: context,
@@ -72,11 +72,10 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     );
   }
 
-    Future<void> loadProvidersFromApi() async {
+  Future<void> loadProvidersFromApi() async {
     try {
       final List<dynamic> fetchedProviders =
           await ApiService.fetchProvidersByLocation(widget.selectedLocation);
-
 
       setState(() {
         providerList = fetchedProviders.map((providerData) {
@@ -106,38 +105,48 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   }
 
   Future<void> saveAllWaitTimes() async {
-    try {
-      for (var provider in selectedProviders) {
-        final controller = _waitTimeControllers[provider.docId];
-        if (controller != null && controller.text.isNotEmpty) {
-          final waitTime = int.tryParse(controller.text);
-          if (waitTime != null) {
-            await ApiService.updateProvider(provider.docId, {
-              'waitTime': waitTime,
-              'currentLocation': widget.selectedLocation,
-            });
+    // Show confirmation dialog
+    bool? shouldSave = await _showConfirmationDialog(
+      context,
+      'Confirm Update',
+      'Are you sure you want to update all wait times?',
+    );
+
+    // If the user confirmed, proceed with saving
+    if (shouldSave == true) {
+      try {
+        for (var provider in selectedProviders) {
+          final controller = _waitTimeControllers[provider.docId];
+          if (controller != null && controller.text.isNotEmpty) {
+            final waitTime = int.tryParse(controller.text);
+            if (waitTime != null) {
+              await ApiService.updateProvider(provider.docId, {
+                'waitTime': waitTime,
+                'currentLocation': widget.selectedLocation,
+              });
+            }
           }
         }
+
+        await loadProvidersFromApi(); // Refresh the list after saving
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Wait times saved successfully')),
+        );
+      } catch (e) {
+        print('Error saving wait times: $e'); // Debug print
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save wait times: $e')),
+        );
       }
-      
-      await loadProvidersFromApi(); // Refresh the list after saving
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Wait times saved successfully')),
-      );
-    } catch (e) {
-      print('Error saving wait times: $e'); // Debug print
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save wait times: $e')),
-      );
     }
   }
 
-  Future<void> _updateWaitTime(ProviderInfo provider, String newWaitTime) async {
+  Future<void> _updateWaitTime(
+      ProviderInfo provider, String newWaitTime) async {
     int? updatedWaitTime = int.tryParse(newWaitTime);
     if (updatedWaitTime != null) {
       try {
-       
         // Create the update data
         Map<String, dynamic> updateData = {
           'waitTime': updatedWaitTime,
@@ -146,8 +155,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         };
 
         await ApiService.updateProvider(provider.docId, updateData);
-        
-        
+
         setState(() {
           provider.waitTime = updatedWaitTime;
         });
@@ -178,7 +186,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     if (shouldDelete == true) {
       try {
         await ApiService.removeProviderWaitTime(provider.docId);
-        
+
         setState(() {
           selectedProviders.remove(provider);
           _waitTimeControllers.remove(provider.docId);
@@ -188,7 +196,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Wait time removed successfully')),
         );
-        
+
         await loadProvidersFromApi(); // Refresh the list
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -231,14 +239,16 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-    void openProviderSelection() async {
-    
+  void openProviderSelection() async {
     final availableProviders = providerList
-        .where((p) => p.locations.contains(widget.selectedLocation) && 
-          !selectedProviders.any((selected) => selected.docId == p.docId) // Check if provider is already selected  
-          )
+        .where((p) =>
+                p.locations.contains(widget.selectedLocation) &&
+                !selectedProviders.any((selected) =>
+                    selected.docId ==
+                    p.docId) // Check if provider is already selected
+            )
         .toList();
-        
+
     final selected = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -255,7 +265,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-  // ------------------------------------------ Build methods ------------------------------------------------------ 
+  // ------------------------------------------ Build methods ------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -336,5 +346,4 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
       ),
     );
   }
-
 }
