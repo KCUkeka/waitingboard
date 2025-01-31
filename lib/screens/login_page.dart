@@ -28,12 +28,12 @@ class _LoginPageState extends State<LoginPage> {
     _fetchData();
   }
 
+//-------------------------------------------------------Fetch User/Location data---------------------------------------------- 
+
   Future<void> _fetchData() async {
     try {
       var users = await ApiService.fetchUsers();
-// print('Fetched Users: $users');  // Debug the full response
       var locations = await ApiService.fetchLocations();
-// print('Fetched Locations: $locations'); // Debug the structure
 
       setState(() {
         _users = users.map((user) {
@@ -68,6 +68,8 @@ class _LoginPageState extends State<LoginPage> {
     // print('Hashed Password: $digest');  // Debug print
     return digest.toString(); // Return the hashed password as a hexadecimal string
   }
+
+//-------------------------------------------------------Add new location---------------------------------------------- 
 
   Future<void> _addNewLocation() async {
     final TextEditingController locationNameController = TextEditingController();
@@ -189,6 +191,8 @@ class _LoginPageState extends State<LoginPage> {
 
   }
 
+  //-------------------------------------------------------Login method---------------------------------------------- 
+
 Future<void> _login() async {
   final username = _selectedUsername;
   final enteredPassword = _passwordController.text.trim();
@@ -218,11 +222,6 @@ Future<void> _login() async {
       return;
     }
 
-    // Add this: Call loginUser to update last_logged_in
-    // print('Login attempt details:');
-    // print('Username: $username');
-    // print('Password hash: ${hashPassword(enteredPassword)}');
-    // print('Selected Location: $_selectedLocation');
     final loginSuccess = await ApiService.loginUser(
       username,
       hashPassword(enteredPassword),  // Make sure password is hashed
@@ -234,6 +233,8 @@ Future<void> _login() async {
       );
       return;
     }
+
+    //----------------------------------------------------Save login info------------------------------------------- 
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', true);
@@ -277,7 +278,7 @@ Future<void> _login() async {
   }
 }
 
-
+//-------------------------------------------------------Build page---------------------------------------------- 
   @override
   Widget build(BuildContext context) {
     return Scaffold(

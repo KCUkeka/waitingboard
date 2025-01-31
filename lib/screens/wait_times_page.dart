@@ -78,6 +78,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
           await ApiService.fetchProvidersByLocation(widget.selectedLocation);
 
       setState(() {
+        // providers that have null wait time and are same location as selected location
         providerList = fetchedProviders.map((providerData) {
           if (providerData is Map<String, dynamic>) {
             List<String> locations = [
@@ -91,7 +92,9 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
             throw Exception(
                 'Unexpected data type: ${providerData.runtimeType}');
           }
-        }).toList();
+        }).where((provider) =>
+          provider.locations.contains(widget.selectedLocation)) // Filter providers
+        .toList();
         selectedProviders = providerList
             .where((provider) => provider.waitTime != null)
             .toList();
@@ -242,12 +245,9 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   void openProviderSelection() async {
     final availableProviders = providerList
         .where((p) =>
-                p.locations.contains(widget.selectedLocation) &&
-                !selectedProviders.any((selected) =>
-                    selected.docId ==
-                    p.docId) // Check if provider is already selected
-            )
-        .toList();
+          p.locations.contains(widget.selectedLocation) &&
+          !selectedProviders.any((selected) => selected.docId == p.docId))
+      .toList();
 
     final selected = await Navigator.push(
       context,
