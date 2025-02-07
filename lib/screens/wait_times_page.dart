@@ -17,6 +17,7 @@ class WaitTimesPage extends StatefulWidget {
 class _WaitTimesPageState extends State<WaitTimesPage> {
   List<ProviderInfo> providerList = [];
   List<ProviderInfo> selectedProviders = [];
+  List<ProviderInfo> currentlocationProviders = [];
   final Map<String, TextEditingController> _waitTimeControllers = {};
 
   @override
@@ -41,7 +42,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     super.dispose();
   }
 
-  // ------------------------------------------ Define methods ------------------------------------------------------
+  // ------------------------------------------ Define functions  ------------------------------------------------------
 
   void _initializeControllers() {
     for (var provider in selectedProviders) {
@@ -79,22 +80,24 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
 
       setState(() {
         // providers that have null wait time and are same location as selected location
-        providerList = fetchedProviders.map((providerData) {
-          if (providerData is Map<String, dynamic>) {
-            List<String> locations = [
-              (providerData['locationName'] ?? '').toString()
-            ];
-            return ProviderInfo.fromWaitTimeApi(
-                providerData, providerData['id']?.toString() ?? '', locations);
-          } else if (providerData is ProviderInfo) {
-            return providerData; // If it's already a ProviderInfo object, just return it
-          } else {
-            throw Exception(
-                'Unexpected data type: ${providerData.runtimeType}');
-          }
-        }).where((provider) =>
-          provider.locations.contains(widget.selectedLocation)) // Filter providers
-        .toList();
+        providerList = fetchedProviders
+            .map((providerData) {
+              if (providerData is Map<String, dynamic>) {
+                List<String> locations = [
+                  (providerData['locationName'] ?? '').toString()
+                ];
+                return ProviderInfo.fromWaitTimeApi(providerData,
+                    providerData['id']?.toString() ?? '', locations);
+              } else if (providerData is ProviderInfo) {
+                return providerData; // If it's already a ProviderInfo object, just return it
+              } else {
+                throw Exception(
+                    'Unexpected data type: ${providerData.runtimeType}');
+              }
+            })
+            .where((provider) => provider.locations
+                .contains(widget.selectedLocation)) // Filter providers
+            .toList();
         selectedProviders = providerList
             .where((provider) => provider.waitTime != null)
             .toList();
@@ -104,6 +107,24 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load providers: ${e.toString()}')),
       );
+    }
+  }
+
+  Future<void> loadCurrentLocationProviders() async {
+    try {
+      currentlocationProviders = selectedProviders
+          .where((provider) =>
+              provider.current_location == widget.selectedLocation)
+          .toList();
+
+      // Debugging print statement
+      print("Updated Current Location Providers:");
+      for (var provider in currentlocationProviders) {
+        print(
+            "Name: ${provider.displayName}, Specialty: ${provider.specialty}, Location: ${provider.current_location}");
+      }
+    } catch (e) {
+      print('Failed to show current location providers: ${e.toString()}');
     }
   }
 
@@ -245,9 +266,9 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   void openProviderSelection() async {
     final availableProviders = providerList
         .where((p) =>
-          p.locations.contains(widget.selectedLocation) &&
-          !selectedProviders.any((selected) => selected.docId == p.docId))
-      .toList();
+            p.locations.contains(widget.selectedLocation) &&
+            !selectedProviders.any((selected) => selected.docId == p.docId))
+        .toList();
 
     final selected = await Navigator.push(
       context,
@@ -269,6 +290,12 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Populate currentlocationProviders based on selectedProviders
+    final List<ProviderInfo> currentlocationProviders = selectedProviders
+        .where(
+            (provider) => provider.locations.contains(widget.selectedLocation))
+        .toList();
+
     return Scaffold(
       appBar: AppBar(
         title: Align(
@@ -291,58 +318,90 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Expanded(
-              child: ListView.builder(
-                itemCount: selectedProviders.length,
-                itemBuilder: (context, index) {
-                  final provider = selectedProviders[index];
-                  final controller = _waitTimeControllers[provider.docId]!;
-
-                  return Column(
-                    children: [
-                      ListTile(
-                        title: Text(provider.displayName),
-                        subtitle: Text(provider.specialty),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+            // Display current location providers section
+            ...[
+              if (currentlocationProviders.isNotEmpty)
+                Container(
+                  child: Expanded(
+                    child: ListView.builder(
+                      itemCount: currentlocationProviders.length,
+                      itemBuilder: (context, index) {
+                        final provider = currentlocationProviders[index];
+                        final controller =
+                            _waitTimeControllers[provider.docId]!;
+                        return Column(
                           children: [
-                            SizedBox(
-                              width: 60,
-                              child: TextField(
-                                controller: controller,
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(labelText: 'Time'),
+                            ListTile(
+                              title: Text(provider.displayName),
+                              subtitle: Text(provider.specialty),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 60,
+                                    child: TextField(
+                                      controller: controller,
+                                      keyboardType: TextInputType.number,
+                                      decoration:
+                                          InputDecoration(labelText: 'Time'),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon:
+                                        Icon(Icons.update, color: Colors.blue),
+                                    onPressed: () => _updateWaitTime(
+                                        provider, controller.text),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => removeProvider(provider),
+                                  ),
+                                ],
                               ),
                             ),
-                            IconButton(
-                              icon: Icon(Icons.update, color: Colors.blue),
-                              onPressed: () =>
-                                  _updateWaitTime(provider, controller.text),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => removeProvider(provider),
-                            ),
+                            const Divider(),
                           ],
-                        ),
-                      ),
-                      const Divider(),
-                    ],
-                  );
-                },
-              ),
-            ),
-            IconButton(
-              icon: Icon(CupertinoIcons.checkmark_alt, size: 40),
-              onPressed: saveAllWaitTimes,
-            ),
+                        );
+                      },
+                    ),
+                  ),
+                )
+              else
+                // Display selected providers with time controls
+                Container(
+                  alignment: Alignment.center,
+                  child: Text(
+                    'No providers times in ${widget.selectedLocation}',
+                    style: TextStyle(fontStyle: FontStyle.italic),
+                  ),
+                ),
+            ],
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: deleteAllWaitTimes,
-        tooltip: 'Delete All Wait Times',
-        child: Icon(Icons.delete_forever),
+      floatingActionButton: Stack(
+        children: [
+          // FloatingActionButton for deleting all wait times
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: FloatingActionButton(
+              onPressed: deleteAllWaitTimes,
+              tooltip: 'Delete All Wait Times',
+              child: Icon(Icons.delete_forever),
+            ),
+          ),
+          // FloatingActionButton for saving all wait times
+          Positioned(
+            bottom: 16,
+            left: 30,
+            child: FloatingActionButton(
+              onPressed: saveAllWaitTimes,
+              tooltip: 'Save All Wait Times',
+              child: Icon(CupertinoIcons.checkmark_alt),
+            ),
+          ),
+        ],
       ),
     );
   }
