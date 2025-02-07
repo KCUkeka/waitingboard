@@ -30,21 +30,18 @@ class _ProviderListPageState extends State<ProviderListPage> {
       });
     }
 
-    print('Loaded selected location: $_selectedLocation');
   }
 
   // API call to fetch provider data
   Future<List<ProviderInfo>> fetchProviders() async {
     final String baseUrl = 'http://127.0.0.1:5000/providers';
     final String url = '$baseUrl?location_id=$_selectedLocation';
-    print("Selected Location: $_selectedLocation"); // Debug print
 
     try {
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        print("Raw API data: $data"); // Debug print
         
         final providers = data.map<ProviderInfo>((provider) {
           List<String> locations = (provider['locationName'] ?? '')
@@ -56,7 +53,6 @@ class _ProviderListPageState extends State<ProviderListPage> {
           return ProviderInfo.fromWaitTimeApi(provider, provider['id']?.toString() ?? '', locations);
         }).toList();
 
-        print("Final providers list: $providers"); // Debug print
         return providers;
       } else {
         throw Exception('Failed to load providers: ${response.body}');
@@ -70,8 +66,6 @@ class _ProviderListPageState extends State<ProviderListPage> {
   // API call to mark a provider as deleted (sets deleteFlag to 1)
   Future<void> deleteProvider(BuildContext context, String providerId) async {
     if (_isDeleting) return;
-
-    print('Attempting to delete provider with ID: $providerId'); // Debug print
 
     final shouldDelete = await showDialog<bool>(
       context: context,
@@ -95,9 +89,7 @@ class _ProviderListPageState extends State<ProviderListPage> {
     if (shouldDelete == true) {
       setState(() => _isDeleting = true);
       try {
-        print('Calling API to delete provider...'); // Debug print
         await ApiService.deleteProvider(providerId);
-        print('API call successful'); // Debug print
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Provider deleted successfully')),

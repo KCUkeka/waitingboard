@@ -140,7 +140,7 @@ def login():
     location = data.get('location')
     
     print(f"Login attempt - Username: {username}, Location: {location}")
-    print(f"Received password hash: {password}")
+    print(f"Received password hash: {password}") #check to be sure its hashed
     
     cursor = mysql.connection.cursor()
     try:

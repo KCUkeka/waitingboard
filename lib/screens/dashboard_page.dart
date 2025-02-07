@@ -6,6 +6,7 @@ import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:waitingboard/model/provider_info.dart' as model;
 import 'package:waitingboard/services/api_service.dart'; // Import the API service
 
+//------------------------------------------------------- Dashboard Page ---------------------------------------------- 
 class DashboardPage extends StatefulWidget {
   final String selectedLocation; // Accept location as a parameter
 
@@ -14,6 +15,8 @@ class DashboardPage extends StatefulWidget {
   @override
   _DashboardPageState createState() => _DashboardPageState();
 }
+
+//------------------------------------------------------- timestamp farmat ----------------------------------------------
 
 class _DashboardPageState extends State<DashboardPage> {
   // Method to format the lastChanged timestamp
@@ -33,6 +36,8 @@ Future<List<model.ProviderInfo>> _fetchProviders() {
     throw Exception('Error fetching active providers: $e');
   }
 }
+
+//------------------------------------------------------- Dashboard build ----------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -114,8 +119,6 @@ Future<List<model.ProviderInfo>> _fetchProviders() {
                           children: [
                             Text(
                               (() {
-                                print('Provider data: ${provider.firstName}, ${provider.lastName}, ${provider.title}');
-                                print('Dashboard name: ${provider.dashboardName}');
                                 return provider.dashboardName;
                               })(),
                               style: const TextStyle(

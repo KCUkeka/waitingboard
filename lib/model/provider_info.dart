@@ -6,6 +6,7 @@ class ProviderInfo {
   final String specialty;
   final String title;
   final List<String> locations;
+  final String current_location;
   int? waitTime;
   final DateTime? last_changed; 
 
@@ -16,34 +17,35 @@ class ProviderInfo {
     required this.specialty,
     required this.title,
     required this.locations,
+    required this.current_location,
     this.waitTime,
     this.last_changed, 
   });
 
-  factory ProviderInfo.fromWaitTimeApi(
-      Map<String, dynamic> json, String docId, List<String> locations) {
-
-    DateTime? lastChanged;
-    if (json['last_changed'] != null) {
-      try {
-        lastChanged = DateTime.parse(json['last_changed']);
-      } catch (e) {
-        print('Error parsing last_changed: $e');
-      }
+factory ProviderInfo.fromWaitTimeApi(
+    Map<String, dynamic> json, String docId, List<String> locations) {
+  DateTime? lastChanged;
+  if (json['last_changed'] != null) {
+    try {
+      lastChanged = DateTime.parse(json['last_changed']);
+    } catch (e) {
+      print('Error parsing last_changed: $e');
     }
-
-    final provider = ProviderInfo(  // Store in variable first
-      docId: docId,
-      firstName: json['firstName'] ?? '', // Changed from 'first_name'
-      lastName: json['lastName'] ?? '', // Changed from 'last_name'
-      specialty: json['specialty'] ?? '',
-      title: json['title'] ?? '',
-      locations: locations,
-      waitTime: json['waitTime'], // Changed from 'wait_time'
-      last_changed: lastChanged,  
-    );
-    return provider;
   }
+
+  return ProviderInfo(
+    docId: docId,
+    firstName: json['firstName'] ?? '', 
+    lastName: json['lastName'] ?? '', 
+    specialty: json['specialty'] ?? '',
+    title: json['title'] ?? '',
+    locations: locations,
+    current_location: json['current_location'] ?? '',
+    waitTime: json['waitTime'], 
+    last_changed: lastChanged,  
+  );
+}
+
 
     factory ProviderInfo.fromDashboardApi(
       Map<String, dynamic> json, String docId, List<String> locations) {
@@ -63,6 +65,7 @@ class ProviderInfo {
       specialty: json['specialty'] ?? '',
       title: json['title'] ?? '',
       locations: locations,
+      current_location: json['current_location'] ?? '',
       waitTime: json['wait_time'], // Changed from 'wait_time'
       last_changed: lastChanged,  
     );
