@@ -99,8 +99,10 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                 .contains(widget.selectedLocation)) // Filter providers
             .toList();
         selectedProviders = providerList
-            .where((provider) => provider.waitTime != null)
-            .toList();
+            .where((provider) => 
+          provider.waitTime != null && 
+          provider.current_location == widget.selectedLocation)
+      .toList();
         _initializeControllers();
       });
     } catch (e) {
@@ -289,6 +291,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     final availableProviders = providerList
         .where((p) =>
             p.locations.contains(widget.selectedLocation) &&
+            p.current_location == widget.selectedLocation && 
             !selectedProviders.any((selected) => selected.docId == p.docId))
         .toList();
 
@@ -316,9 +319,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   Widget build(BuildContext context) {
     // Populate currentlocationProviders based on selectedProviders
     final List<ProviderInfo> currentlocationProviders = selectedProviders
-        .where(
-            (provider) => provider.locations.contains(widget.selectedLocation))
-        .toList();
+    .where((provider) => provider.current_location == widget.selectedLocation)
+    .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -343,7 +345,6 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         child: Column(
           children: [
             // Display current location providers section
-            ...[
               if (currentlocationProviders.isNotEmpty)
                 Container(
                   child: Expanded(
@@ -395,11 +396,10 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                 Container(
                   alignment: Alignment.center,
                   child: Text(
-                    'No providers times in ${widget.selectedLocation}',
+                    'No active times in ${widget.selectedLocation}',
                     style: TextStyle(fontStyle: FontStyle.italic),
                   ),
                 ),
-            ],
           ],
         ),
       ),
