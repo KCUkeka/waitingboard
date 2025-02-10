@@ -1,14 +1,15 @@
-import 'dart:async'; // Import for Timer
-import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // For date formatting
+import 'package:intl/intl.dart';
 import 'package:waitingboard/model/provider_info.dart' as model;
-import 'package:waitingboard/services/api_service.dart'; // For API calls
+import 'package:waitingboard/services/api_service.dart';
 
 class FullScreenDashboardPage extends StatefulWidget {
   final String selectedLocation;
 
-  const FullScreenDashboardPage({Key? key, required this.selectedLocation}) : super(key: key);
+  const FullScreenDashboardPage({Key? key, required this.selectedLocation})
+      : super(key: key);
 
   @override
   _FullScreenDashboardPageState createState() => _FullScreenDashboardPageState();
@@ -22,26 +23,27 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
   void initState() {
     super.initState();
     _providersFuture = _fetchProviders();
-    _startTimer(); // Start the timer to refresh data
+    _startTimer();
   }
 
   @override
   void dispose() {
-    _timer?.cancel(); // Cancel the timer when the widget is disposed
+    _timer?.cancel();
     super.dispose();
   }
 
-  // Fetch providers data from API
   Future<List<model.ProviderInfo>> _fetchProviders() async {
     try {
-      return ApiService.fetchActiveProviders();
+      final providers = await ApiService.fetchProvidersByLocation(widget.selectedLocation);
+      return providers
+          .where((provider) => provider.current_location == widget.selectedLocation)
+          .toList();
     } catch (e) {
-      print('Error fetching active providers: $e');
-      throw Exception('Error fetching active providers: $e');
+      print('Error fetching providers: $e');
+      throw Exception('Error fetching providers: $e');
     }
   }
 
-  // Refresh data every 10 seconds
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
       setState(() {
@@ -50,10 +52,9 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
     });
   }
 
-  // Format timestamp
-  String formatTimestamp(DateTime? timestamp) {
-    if (timestamp == null) return "N/A";
-    return DateFormat('hh:mm a, MM/dd').format(timestamp);
+  String formatTimestamp(DateTime? dateTime) {
+    if (dateTime == null) return "N/A";
+    return DateFormat('hh:mm a, MM/dd').format(dateTime);
   }
 
   @override
@@ -61,21 +62,25 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
     return Scaffold(
       appBar: AppBar(
         title: Center(
-          child: Text('Wait Times - ${widget.selectedLocation}'),
+          child: Text('${widget.selectedLocation} Wait Times'),
         ),
-        automaticallyImplyLeading: !kIsWeb, // Hide back button on web
+        automaticallyImplyLeading: !kIsWeb,
       ),
       body: FutureBuilder<List<model.ProviderInfo>>(
-        future: _providersFuture, // Use stored future
+        future: _providersFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            print('Error in FutureBuilder: ${snapshot.error}'); // Debug print
+            print('Error in FutureBuilder: ${snapshot.error}');
             return const Center(child: Text('Error loading providers'));
           }
 
           final providers = snapshot.data ?? [];
+
+          if (providers.isEmpty) {
+            return const Center(child: Text('No providers available for this location'));
+          }
 
           return SingleChildScrollView(
             child: LayoutBuilder(
@@ -106,8 +111,9 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              provider.displayName,
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              provider.dashboardName,
+                              style: const TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
@@ -119,8 +125,9 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
                             const SizedBox(height: 8),
                             const Text('Wait Time:', style: TextStyle(fontSize: 16)),
                             Text(
-                              '${provider.waitTime ?? 0} mins',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              '${provider.formattedWaitTime} mins',
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 8),
                             const Text('Last Changed:', style: TextStyle(fontSize: 16)),
