@@ -31,17 +31,14 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<List<model.ProviderInfo>> _fetchProviders() async {
   try {
     final List<model.ProviderInfo> providers = await ApiService.fetchProvidersByLocation(widget.selectedLocation);
-    
+
     // Filter providers by current_location
     final filteredProviders = providers
         .where((provider) {
-          print("Checking provider: ${provider.dashboardName}, current_location: ${provider.current_location}");
           return provider.current_location == widget.selectedLocation;
         })
         .toList();
-
-    // Debug: Print filtered providers
-    print("Filtered providers for ${widget.selectedLocation}: $filteredProviders");
+;
 
     return filteredProviders;
   } catch (e) {
