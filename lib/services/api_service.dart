@@ -190,6 +190,9 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
             .split(',')
             .map((e) => e.trim())
             .toList();
+            
+        // Debug: Verify currentLocation exists
+        print("currentLocation in JSON: ${providerJson['currentLocation']}");
         return ProviderInfo.fromWaitTimeApi(providerJson, docId, locations);
       }).toList();
     } else {

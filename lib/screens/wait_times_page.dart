@@ -209,6 +209,21 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
 
     if (shouldDelete == true) {
       try {
+        // Check if the provider has a wait time
+        if (provider.waitTime == null) {
+          // If no wait time, just remove the provider from selectedProviders
+          setState(() {
+            selectedProviders.remove(provider);
+            _waitTimeControllers.remove(provider.docId);
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Provider removed from selection')),
+          );
+          return;
+        }
+
+        // If the provider has a wait time, call the API to remove it
         await ApiService.removeProviderWaitTime(provider.docId);
 
         setState(() {
@@ -239,25 +254,37 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
 
     if (shouldDeleteAll == true) {
       try {
+        // Create a list to store providers without wait times
+        List<ProviderInfo> providersWithoutWaitTime = [];
+
         for (var provider in selectedProviders) {
-          await ApiService.removeProviderWaitTime(provider.docId);
+          if (provider.waitTime == null) {
+            // Add providers without wait times to the list
+            providersWithoutWaitTime.add(provider);
+          } else {
+            // Call the API to remove wait times for providers with wait times
+            await ApiService.removeProviderWaitTime(provider.docId);
+          }
         }
 
+        // Update the state
         setState(() {
+          // Remove all providers from selectedProviders
           selectedProviders.clear();
           _waitTimeControllers.clear();
+
+          // Add providers without wait times back to providerList
+          providerList.addAll(providersWithoutWaitTime);
         });
 
-        await loadProvidersFromApi();
-
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('All wait times deleted successfully')),
+          const SnackBar(content: Text('All wait times removed successfully')),
         );
+
+        await loadProvidersFromApi(); // Refresh the list
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text('Failed to delete all wait times: ${e.toString()}')),
+          SnackBar(content: Text('Failed to delete all wait times: $e')),
         );
       }
     }
@@ -270,7 +297,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
             !selectedProviders.any((selected) => selected.docId == p.docId))
         .toList();
 
-    final selected = await Navigator.push(
+    final List<ProviderInfo>? selected = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
@@ -278,10 +305,12 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
       ),
     );
 
-    if (selected != null) {
+    if (selected != null && selected.isNotEmpty) {
       setState(() {
-        selectedProviders.add(selected);
-        _waitTimeControllers[selected.docId] = TextEditingController();
+        selectedProviders.addAll(selected);
+        for (var provider in selected) {
+          _waitTimeControllers[provider.docId] = TextEditingController();
+        }
       });
     }
   }

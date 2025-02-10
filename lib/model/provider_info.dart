@@ -25,13 +25,15 @@ class ProviderInfo {
 factory ProviderInfo.fromWaitTimeApi(
     Map<String, dynamic> json, String docId, List<String> locations) {
   DateTime? lastChanged;
-  if (json['last_changed'] != null) {
+  if (json['lastChanged'] != null) {
     try {
-      lastChanged = DateTime.parse(json['last_changed']);
+      lastChanged = DateTime.parse(json['lastChanged']);
     } catch (e) {
       print('Error parsing last_changed: $e');
     }
   }
+  // Debug: Print current_location
+  print("Mapping provider: ${json['firstName']} ${json['lastName']}, current_location: ${json['currentLocation']}");
 
   return ProviderInfo(
     docId: docId,
@@ -40,7 +42,7 @@ factory ProviderInfo.fromWaitTimeApi(
     specialty: json['specialty'] ?? '',
     title: json['title'] ?? '',
     locations: locations,
-    current_location: json['current_location'] ?? '',
+    current_location: json['currentLocation'] ?? '',
     waitTime: json['waitTime'], 
     last_changed: lastChanged,  
   );
@@ -65,7 +67,7 @@ factory ProviderInfo.fromWaitTimeApi(
       specialty: json['specialty'] ?? '',
       title: json['title'] ?? '',
       locations: locations,
-      current_location: json['current_location'] ?? '',
+      current_location: json['currentLocation'] ?? '',
       waitTime: json['wait_time'], // Changed from 'wait_time'
       last_changed: lastChanged,  
     );
@@ -82,6 +84,7 @@ factory ProviderInfo.fromWaitTimeApi(
       'waitTime': waitTime ?? 0,
       'lastChanged': last_changed,
       'locations': locations.isNotEmpty ? locations.first : null,
+      'current_location': current_location,
     };
   }
 

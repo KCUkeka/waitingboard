@@ -184,7 +184,7 @@ def get_providers():
             SELECT 
                 p.id, p.first_name, p.last_name, p.specialty, 
                 p.title, p.wait_time, p.last_changed, 
-                p.provider_locations
+                p.provider_locations, p.current_location
             FROM waitingboard_providers p
             WHERE p.deleteFlag = 0
         """
@@ -211,6 +211,7 @@ def get_providers():
                 "waitTime": row['wait_time'],
                 "lastChanged": row['last_changed'].strftime("%Y-%m-%d %H:%M:%S") if row['last_changed'] else None,
                 "locationName": row['provider_locations'],
+                "currentLocation": row['current_location'],  # Include current_location
             }
             provider_list.append(provider)
 
@@ -295,7 +296,7 @@ def get_active_providers():
         cursor.execute("""
             SELECT id, first_name, last_name, specialty, title, 
                    provider_locations, wait_time, last_changed,
-                   deleteFlag
+                   deleteFlag, current_location  
             FROM waitingboard_providers 
             WHERE wait_time IS NOT NULL 
             AND (deleteFlag IS NULL OR deleteFlag = 0)
@@ -312,7 +313,8 @@ def get_active_providers():
                 "title": row['title'],
                 "provider_locations": row['provider_locations'],
                 "wait_time": row['wait_time'],
-                "last_changed": row['last_changed'].strftime("%Y-%m-%d %H:%M:%S") if row['last_changed'] else None
+                "last_changed": row['last_changed'].strftime("%Y-%m-%d %H:%M:%S") if row['last_changed'] else None,
+                "current_location": row['current_location'],  # Include current_location
             }
             provider_list.append(provider)
         
