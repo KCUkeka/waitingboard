@@ -109,11 +109,6 @@ static Future<List<String>> fetchLocations() async {
         body: jsonEncode({'name': locationName}),
       );
 
-      // print('Request URL: $url');
-      // print('Request Body: ${jsonEncode({'name': locationName})}');
-      // print('Response Status: ${response.statusCode}');
-      // print('Response Body: ${response.body}');
-
       if (response.statusCode != 201) {
         throw Exception('Failed to add location. Response: ${response.body}');
       }
@@ -174,7 +169,6 @@ static Future<List<String>> fetchLocations() async {
 // Method to fetch providers based on selected location
 static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) async {
   try {
-    print("Fetching providers for location: $location");
 
     final response = await http.get(Uri.parse('$baseUrl/providers?location=$location'));
 
@@ -191,8 +185,6 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
             .map((e) => e.trim())
             .toList();
             
-        // Debug: Verify currentLocation exists
-        print("currentLocation in JSON: ${providerJson['currentLocation']}");
         return ProviderInfo.fromWaitTimeApi(providerJson, docId, locations);
       }).toList();
     } else {
@@ -274,7 +266,6 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
         Uri.parse('$baseUrl/providers/$providerId'), // Assuming this is the API endpoint
         headers: {'Content-Type': 'application/json'},
       );
-    print('Delete Response: ${response.statusCode}, Body: ${response.body}');
       
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Failed to delete provider. Response: ${response.body}');

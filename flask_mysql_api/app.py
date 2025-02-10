@@ -139,8 +139,8 @@ def login():
     password = data.get('password')  # This is the hashed password
     location = data.get('location')
     
-    print(f"Login attempt - Username: {username}, Location: {location}")
-    print(f"Received password hash: {password}") #check to be sure its hashed
+    # print(f"Login attempt - Username: {username}, Location: {location}")
+    # print(f"Received password hash: {password}") #check to be sure its hashed
     
     cursor = mysql.connection.cursor()
     try:
@@ -264,7 +264,6 @@ def add_provider():
 
         # Combine valid locations into a single string for `provider_locations`
         combined_locations = ','.join(valid_locations)
-        print(f"Combined Locations: {combined_locations}")
 
         query = """
         INSERT INTO waitingboard_providers (first_name, last_name, specialty, title, provider_locations, provider_modified)

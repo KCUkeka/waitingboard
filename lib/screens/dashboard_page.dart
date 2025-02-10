@@ -95,7 +95,7 @@ class _DashboardPageState extends State<DashboardPage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-             print('Error in FutureBuilder: ${snapshot.error}'); // Debug print// Debug print
+             print('Error in FutureBuilder: ${snapshot.error}'); // Debug print
       return const Center(child: Text('Error loading providers'));
     }
 

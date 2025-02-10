@@ -117,12 +117,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
               provider.current_location == widget.selectedLocation)
           .toList();
 
-      // Debugging print statement
-      print("Updated Current Location Providers:");
-      for (var provider in currentlocationProviders) {
-        print(
-            "Name: ${provider.displayName}, Specialty: ${provider.specialty}, Location: ${provider.current_location}");
-      }
+  
     } catch (e) {
       print('Failed to show current location providers: ${e.toString()}');
     }
