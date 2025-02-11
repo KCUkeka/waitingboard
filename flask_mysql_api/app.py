@@ -62,7 +62,7 @@ def add_user():
         cursor.execute(
             """
             INSERT INTO waitingboard_users (username, password, role, admin, created_at)
-            VALUES (%s, %s, %s, %s, %s, NOW())
+            VALUES (%s, %s, %s, %s, NOW())
             """,
             (username, password, role, int(admin)),
         )
