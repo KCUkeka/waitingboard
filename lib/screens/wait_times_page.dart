@@ -1,3 +1,4 @@
+import 'dart:async'; // Import for Timer
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:waitingboard/model/provider_info.dart';
@@ -19,15 +20,23 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   List<ProviderInfo> selectedProviders = [];
   List<ProviderInfo> currentlocationProviders = [];
   final Map<String, TextEditingController> _waitTimeControllers = {};
+  Timer? _tabRefreshTimer; // Timer for refreshing the TabController
 
   @override
   void initState() {
     super.initState();
     loadProvidersFromApi();
 
+    // Start a timer to refresh the TabController every 5 second
+    _tabRefreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted && widget.tabController.index == 0) {
+        loadProvidersFromApi(); // Refresh data if on the first tab
+      }
+    });
+
     // Add listener to refresh data when switching back to WaitTimesPage
     widget.tabController.addListener(() {
-      if (widget.tabController.index == 0) {
+      if (widget.tabController.index == 0 && mounted) {
         loadProvidersFromApi();
       }
     });
@@ -35,6 +44,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
 
   @override
   void dispose() {
+    _tabRefreshTimer?.cancel(); // Cancel the timer when the widget is disposed
     // Dispose all TextEditingControllers
     for (var controller in _waitTimeControllers.values) {
       controller.dispose();
@@ -78,6 +88,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
       final List<dynamic> fetchedProviders =
           await ApiService.fetchProvidersByLocation(widget.selectedLocation);
 
+      if (!mounted) return;
+
       setState(() {
         // providers that have null wait time and are same location as selected location
         providerList = fetchedProviders
@@ -99,27 +111,22 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                 .contains(widget.selectedLocation)) // Filter providers
             .toList();
         selectedProviders = providerList
-            .where((provider) =>
-                provider.waitTime != null &&
-                provider.current_location == widget.selectedLocation)
-            .toList();
+            .where((provider) => 
+          provider.waitTime != null && 
+          provider.current_location == widget.selectedLocation)
+      .toList();
         _initializeControllers();
+
+        // Update currentlocationProviders within setState
+        currentlocationProviders = selectedProviders
+            .where((provider) => provider.current_location == widget.selectedLocation)
+            .toList();
       });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load providers: ${e.toString()}')),
       );
-    }
-  }
-
-  Future<void> loadCurrentLocationProviders() async {
-    try {
-      currentlocationProviders = selectedProviders
-          .where((provider) =>
-              provider.current_location == widget.selectedLocation)
-          .toList();
-    } catch (e) {
-      print('Failed to show current location providers: ${e.toString()}');
     }
   }
 
@@ -316,21 +323,13 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Populate currentlocationProviders based on selectedProviders
-    final List<ProviderInfo> currentlocationProviders = selectedProviders
-        .where(
-            (provider) => provider.current_location == widget.selectedLocation)
-        .toList();
-
     return Scaffold(
       appBar: AppBar(
         title: Align(
           alignment: Alignment.center,
           child: Text(
             '${widget.selectedLocation} Wait Times',
-            style: const TextStyle(
-              fontSize: 20,
-            ),
+            style: const TextStyle(fontSize: 20),
           ),
         ),
         actions: [
@@ -346,47 +345,45 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
           children: [
             // Display current location providers section
             if (currentlocationProviders.isNotEmpty)
-              Container(
-                child: Expanded(
-                  child: ListView.builder(
-                    itemCount: currentlocationProviders.length,
-                    itemBuilder: (context, index) {
-                      final provider = currentlocationProviders[index];
-                      final controller = _waitTimeControllers[provider.docId]!;
-                      return Column(
-                        children: [
-                          ListTile(
-                            title: Text(provider.displayName),
-                            subtitle: Text(provider.specialty),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 60,
-                                  child: TextField(
-                                    controller: controller,
-                                    keyboardType: TextInputType.number,
-                                    decoration:
-                                        InputDecoration(labelText: 'Time'),
-                                  ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: currentlocationProviders.length,
+                  itemBuilder: (context, index) {
+                    final provider = currentlocationProviders[index];
+                    final controller = _waitTimeControllers[provider.docId]!;
+                    return Column(
+                      children: [
+                        ListTile(
+                          title: Text(provider.displayName),
+                          subtitle: Text(provider.specialty),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 60,
+                                child: TextField(
+                                  controller: controller,
+                                  keyboardType: TextInputType.number,
+                                  decoration:
+                                      InputDecoration(labelText: 'Time'),
                                 ),
-                                IconButton(
-                                  icon: Icon(Icons.update, color: Colors.blue),
-                                  onPressed: () => _updateWaitTime(
-                                      provider, controller.text),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => removeProvider(provider),
-                                ),
-                              ],
-                            ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.update, color: Colors.blue),
+                                onPressed: () => _updateWaitTime(
+                                    provider, controller.text),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => removeProvider(provider),
+                              ),
+                            ],
                           ),
-                          const Divider(),
-                        ],
-                      );
-                    },
-                  ),
+                        ),
+                        const Divider(),
+                      ],
+                    );
+                  },
                 ),
               )
             else
