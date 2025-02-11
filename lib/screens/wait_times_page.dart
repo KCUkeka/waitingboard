@@ -287,30 +287,33 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-  void openProviderSelection() async {
-    final availableProviders = providerList
-        .where((p) =>
-            p.locations.contains(widget.selectedLocation) &&
-            !selectedProviders.any((selected) => selected.docId == p.docId))
-        .toList();
+void openProviderSelection() async {
+  final availableProviders = providerList
+      .where((p) =>
+          p.locations.contains(widget.selectedLocation) &&
+          !selectedProviders.any((selected) => selected.docId == p.docId))
+      .toList();
 
-    final List<ProviderInfo>? selected = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            ProviderSelectionPage(providers: availableProviders),
+  final List<ProviderInfo>? selected = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ProviderSelectionPage(
+        providers: availableProviders,
+        selectedLocation: widget.selectedLocation, // Pass the location here
       ),
-    );
+    ),
+  );
 
-    if (selected != null && selected.isNotEmpty) {
-      setState(() {
-        selectedProviders.addAll(selected);
-        for (var provider in selected) {
-          _waitTimeControllers[provider.docId] = TextEditingController();
-        }
-      });
-    }
+  if (selected != null && selected.isNotEmpty) {
+    setState(() {
+      selectedProviders.addAll(selected);
+      for (var provider in selected) {
+        _waitTimeControllers[provider.docId] = TextEditingController();
+      }
+    });
   }
+}
+
 
   // ------------------------------------------ Build methods ------------------------------------------------------
 
