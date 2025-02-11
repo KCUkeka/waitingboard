@@ -59,6 +59,13 @@ def add_user():
             return jsonify({"error": "All fields are required"}), 400
 
         cursor = mysql.connection.cursor()
+
+        # Check if the username already exists
+        cursor.execute("SELECT id FROM waitingboard_users WHERE username = %s", (username,))
+        if cursor.fetchone():
+            cursor.close()
+            return jsonify({"error": "Username already created"}), 400
+        
         cursor.execute(
             """
             INSERT INTO waitingboard_users (username, password, role, admin, created_at)

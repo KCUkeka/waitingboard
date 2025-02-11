@@ -15,7 +15,6 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   String? _selectedRole; // Selected role (Front desk or Clinic)
 
   String hashPassword(String password) {
-    // Hash the password using SHA-256
     final bytes = utf8.encode(password); // Convert password to bytes
     final digest = sha256.convert(bytes); // Perform hashing
     return digest.toString();
@@ -26,15 +25,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       final username = _usernameController.text.trim();
       final password = _passwordController.text.trim();
 
-      if (username.isEmpty ||
-          password.isEmpty ||
-          _selectedRole == null) {
+      if (username.isEmpty || password.isEmpty || _selectedRole == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("All fields are required.")),
         );
         return;
       }
-
 
       if (password.length < 5) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -44,32 +40,40 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         return;
       }
 
-      // Hash the password before sending it to the API
-
       final hashedPassword = hashPassword(password);
 
-      // Include 'admin': 'false' in the API payload
-      final userPayload = {
-        'username': username,
-        'password': hashedPassword,
-        'role': _selectedRole,
-        'admin': false,
-      };
-      // Call API to create the user
       try {
         await ApiService.createUser(
           username,
           hashedPassword,
-          _selectedRole!, // Role is required
+          _selectedRole!,
         );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Account created successfully!")),
         );
-        Navigator.pop(context); // Navigate back to the previous page
+        Navigator.pop(context);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to create account: $e")),
-        );
+        String errorMessage = e.toString();
+        if (errorMessage.contains("Username already created")) {
+          ScaffoldMessenger.of(context).showMaterialBanner(
+            MaterialBanner(
+              content: Text("Username already created"),
+              backgroundColor: Colors.red.shade200,
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                  },
+                  child: const Text("Dismiss", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to create account: $errorMessage")),
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
