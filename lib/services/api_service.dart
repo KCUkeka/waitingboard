@@ -51,14 +51,13 @@ class ApiService {
 
   // Create a new user
   static Future<void> createUser(
-      String username, String email, String password, String role) async {
+      String username, String password, String role) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/users'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'username': username,
-          'email': email,
           'password': password,
           'role': role,
           'admin': false, // Default admin to false

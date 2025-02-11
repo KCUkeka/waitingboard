@@ -23,7 +23,7 @@ mysql = MySQL(app)
 def get_users():
     try:
         cursor = mysql.connection.cursor()
-        cursor.execute("SELECT id, username, email, role, admin, password, created_at FROM waitingboard_users")
+        cursor.execute("SELECT id, username, role, admin, password, created_at FROM waitingboard_users")
         users = cursor.fetchall()
         cursor.close()
 
@@ -33,7 +33,6 @@ def get_users():
             user = {
                 "id": row['id'],
                 "username": row['username'],
-                "email": row['email'],
                 "role": row['role'],
                 "admin": bool(row['admin']),
                 "password": row['password'],
@@ -52,21 +51,20 @@ def add_user():
     try:
         data = request.json
         username = data.get('username')
-        email = data.get('email')
         password = data.get('password')
         role = data.get('role')
         admin = data.get('admin', False)
 
-        if not all([username, email, password, role]):
+        if not all([username, password, role]):
             return jsonify({"error": "All fields are required"}), 400
 
         cursor = mysql.connection.cursor()
         cursor.execute(
             """
-            INSERT INTO waitingboard_users (username, email, password, role, admin, created_at)
+            INSERT INTO waitingboard_users (username, password, role, admin, created_at)
             VALUES (%s, %s, %s, %s, %s, NOW())
             """,
-            (username, email, password, role, int(admin)),
+            (username, password, role, int(admin)),
         )
         mysql.connection.commit()
         cursor.close()

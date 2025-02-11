@@ -10,7 +10,6 @@ class CreateAccountPage extends StatefulWidget {
 
 class _CreateAccountPageState extends State<CreateAccountPage> {
   final _usernameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   String? _selectedRole; // Selected role (Front desk or Clinic)
@@ -25,11 +24,9 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   Future<void> _createAccount() async {
     try {
       final username = _usernameController.text.trim();
-      final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
       if (username.isEmpty ||
-          email.isEmpty ||
           password.isEmpty ||
           _selectedRole == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -38,12 +35,6 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         return;
       }
 
-      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$').hasMatch(email)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter a valid email address.")),
-        );
-        return;
-      }
 
       if (password.length < 5) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +51,6 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       // Include 'admin': 'false' in the API payload
       final userPayload = {
         'username': username,
-        'email': email,
         'password': hashedPassword,
         'role': _selectedRole,
         'admin': false,
@@ -69,7 +59,6 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       try {
         await ApiService.createUser(
           username,
-          email,
           hashedPassword,
           _selectedRole!, // Role is required
         );
@@ -102,11 +91,6 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
             TextField(
               controller: _usernameController,
               decoration: const InputDecoration(labelText: 'Username'),
-            ),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
             ),
             TextField(
               controller: _passwordController,
