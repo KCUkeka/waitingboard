@@ -74,6 +74,7 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
           const SnackBar(content: Text('Wait times saved successfully')),
         );
         setState(() {}); // Refresh the UI after saving.
+        Navigator.pop(context); // Go back to wait_times_page.
       } catch (e) {
         print('Error saving wait times: $e');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -104,6 +105,7 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Wait time updated successfully')),
         );
+        Navigator.pop(context); // Go back to wait_times_page.
       } catch (e) {
         print('Error updating wait time: $e');
         ScaffoldMessenger.of(context).showSnackBar(

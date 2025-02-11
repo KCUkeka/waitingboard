@@ -99,10 +99,10 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                 .contains(widget.selectedLocation)) // Filter providers
             .toList();
         selectedProviders = providerList
-            .where((provider) => 
-          provider.waitTime != null && 
-          provider.current_location == widget.selectedLocation)
-      .toList();
+            .where((provider) =>
+                provider.waitTime != null &&
+                provider.current_location == widget.selectedLocation)
+            .toList();
         _initializeControllers();
       });
     } catch (e) {
@@ -118,8 +118,6 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
           .where((provider) =>
               provider.current_location == widget.selectedLocation)
           .toList();
-
-  
     } catch (e) {
       print('Failed to show current location providers: ${e.toString()}');
     }
@@ -287,33 +285,32 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     }
   }
 
-void openProviderSelection() async {
-  final availableProviders = providerList
-      .where((p) =>
-          p.locations.contains(widget.selectedLocation) &&
-          !selectedProviders.any((selected) => selected.docId == p.docId))
-      .toList();
+  void openProviderSelection() async {
+    final availableProviders = providerList
+        .where((p) =>
+            p.locations.contains(widget.selectedLocation) &&
+            !selectedProviders.any((selected) => selected.docId == p.docId))
+        .toList();
 
-  final List<ProviderInfo>? selected = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => ProviderSelectionPage(
-        providers: availableProviders,
-        selectedLocation: widget.selectedLocation, // Pass the location here
+    final List<ProviderInfo>? selected = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProviderSelectionPage(
+          providers: availableProviders,
+          selectedLocation: widget.selectedLocation, // Pass the location here
+        ),
       ),
-    ),
-  );
+    );
 
-  if (selected != null && selected.isNotEmpty) {
-    setState(() {
-      selectedProviders.addAll(selected);
-      for (var provider in selected) {
-        _waitTimeControllers[provider.docId] = TextEditingController();
-      }
-    });
+    if (selected != null && selected.isNotEmpty) {
+      setState(() {
+        selectedProviders.addAll(selected);
+        for (var provider in selected) {
+          _waitTimeControllers[provider.docId] = TextEditingController();
+        }
+      });
+    }
   }
-}
-
 
   // ------------------------------------------ Build methods ------------------------------------------------------
 
@@ -321,8 +318,9 @@ void openProviderSelection() async {
   Widget build(BuildContext context) {
     // Populate currentlocationProviders based on selectedProviders
     final List<ProviderInfo> currentlocationProviders = selectedProviders
-    .where((provider) => provider.current_location == widget.selectedLocation)
-    .toList();
+        .where(
+            (provider) => provider.current_location == widget.selectedLocation)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -347,61 +345,59 @@ void openProviderSelection() async {
         child: Column(
           children: [
             // Display current location providers section
-              if (currentlocationProviders.isNotEmpty)
-                Container(
-                  child: Expanded(
-                    child: ListView.builder(
-                      itemCount: currentlocationProviders.length,
-                      itemBuilder: (context, index) {
-                        final provider = currentlocationProviders[index];
-                        final controller =
-                            _waitTimeControllers[provider.docId]!;
-                        return Column(
-                          children: [
-                            ListTile(
-                              title: Text(provider.displayName),
-                              subtitle: Text(provider.specialty),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 60,
-                                    child: TextField(
-                                      controller: controller,
-                                      keyboardType: TextInputType.number,
-                                      decoration:
-                                          InputDecoration(labelText: 'Time'),
-                                    ),
+            if (currentlocationProviders.isNotEmpty)
+              Container(
+                child: Expanded(
+                  child: ListView.builder(
+                    itemCount: currentlocationProviders.length,
+                    itemBuilder: (context, index) {
+                      final provider = currentlocationProviders[index];
+                      final controller = _waitTimeControllers[provider.docId]!;
+                      return Column(
+                        children: [
+                          ListTile(
+                            title: Text(provider.displayName),
+                            subtitle: Text(provider.specialty),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 60,
+                                  child: TextField(
+                                    controller: controller,
+                                    keyboardType: TextInputType.number,
+                                    decoration:
+                                        InputDecoration(labelText: 'Time'),
                                   ),
-                                  IconButton(
-                                    icon:
-                                        Icon(Icons.update, color: Colors.blue),
-                                    onPressed: () => _updateWaitTime(
-                                        provider, controller.text),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => removeProvider(provider),
-                                  ),
-                                ],
-                              ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.update, color: Colors.blue),
+                                  onPressed: () => _updateWaitTime(
+                                      provider, controller.text),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () => removeProvider(provider),
+                                ),
+                              ],
                             ),
-                            const Divider(),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                )
-              else
-                // Display selected providers with time controls
-                Container(
-                  alignment: Alignment.center,
-                  child: Text(
-                    'No active times in ${widget.selectedLocation}',
-                    style: TextStyle(fontStyle: FontStyle.italic),
+                          ),
+                          const Divider(),
+                        ],
+                      );
+                    },
                   ),
                 ),
+              )
+            else
+              // Display selected providers with time controls
+              Container(
+                alignment: Alignment.center,
+                child: Text(
+                  'No active times in ${widget.selectedLocation}',
+                  style: TextStyle(fontStyle: FontStyle.italic),
+                ),
+              ),
           ],
         ),
       ),
