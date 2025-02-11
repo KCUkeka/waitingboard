@@ -63,6 +63,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         'email': email,
         'password': hashedPassword,
         'role': _selectedRole,
+        'admin': false,
       };
       // Call API to create the user
       try {

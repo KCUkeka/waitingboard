@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/services/api_service.dart'; // Import ApiService
 import '../login_page.dart'; // Import the LoginPage
 import '../wait_times_page.dart';
 import 'add_provider_page.dart';
-import 'admin_dashboard_page.dart'; // Import DashboardPage
 import 'edit_providers_list.dart'; // Import EditProvidersList
 
 class AdminHomePage extends StatefulWidget {
@@ -129,7 +129,7 @@ class _AdminHomePageState extends State<AdminHomePage>
               tabController: _tabController,
               selectedLocation: widget.selectedLocation, // Pass selectedLocation here
             ),
-            AdminDashboardPage(
+            DashboardPage(
               selectedLocation: widget.selectedLocation, // Pass location to DashboardPage
             ),
           ],

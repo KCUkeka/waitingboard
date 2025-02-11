@@ -291,7 +291,6 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     final availableProviders = providerList
         .where((p) =>
             p.locations.contains(widget.selectedLocation) &&
-            p.current_location == widget.selectedLocation && 
             !selectedProviders.any((selected) => selected.docId == p.docId))
         .toList();
 
