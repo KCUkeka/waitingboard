@@ -27,8 +27,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     super.initState();
     loadProvidersFromApi();
 
-    // Start a timer to refresh the TabController every 5 second
-    _tabRefreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    // Start a timer to refresh the TabController every 10 second
+    _tabRefreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted && widget.tabController.index == 0) {
         loadProvidersFromApi(); // Refresh data if on the first tab
       }
