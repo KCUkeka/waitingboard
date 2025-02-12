@@ -1,14 +1,45 @@
 # Wait Board
 
-Work project to show provider's wait time.
+Project to show provider's wait time.
 
 ## Login Page ##
-![image](https://github.com/user-attachments/assets/3328bbd6-0fb4-437a-99cd-d1033b06082b)
+![image](https://github.com/user-attachments/assets/e2243932-2306-43fc-b020-715c1693ab9b)
+
+For the login page: 
 
 
-## Create new account page ##
+you'll find the username dropdown _(which get saved after creating an account)_
 
-![image](https://github.com/user-attachments/assets/c4037abd-3215-454b-bb2c-0eec83ae1bb2)
+location selection dropdown
 
-Selecting a role is important. Clinic allows you to edit provider
+
+password field _(created when creating account)_
+
+
+#### Add New Location
+> _the new location button allows you to add if you're an admin_
+
+
+![image](https://github.com/user-attachments/assets/f9d896be-c706-422d-a8f0-91fb9a5b18d7)
+
+
+
+
+
+## Create account page ##
+
+![image](https://github.com/user-attachments/assets/d87118fe-428b-4afc-8900-595e8a7faee0)
+
+
+Selecting a role is important. 
+There are 2 options: **Front desk** or **Clinic**
+
+![image](https://github.com/user-attachments/assets/c7189018-30b5-410a-9a5f-8d78ad84e1b1)
+
+
+
+**Clinic** role allows you to add and edit provider's time
+
+
+_*Code desinged to make all user account creation admin field to defaulted to false_
 
