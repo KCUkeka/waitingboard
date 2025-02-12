@@ -6,7 +6,8 @@ class ProviderSelectionPage extends StatefulWidget {
   final List<ProviderInfo> providers;
   final String selectedLocation;
 
-  ProviderSelectionPage({required this.providers, required this.selectedLocation});
+  ProviderSelectionPage(
+      {required this.providers, required this.selectedLocation});
 
   @override
   _ProviderSelectionPageState createState() => _ProviderSelectionPageState();
@@ -85,7 +86,8 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
   }
 
   /// Updates the wait time for a specific provider.
-  Future<void> _updateWaitTime(ProviderInfo provider, String newWaitTime) async {
+  Future<void> _updateWaitTime(
+      ProviderInfo provider, String newWaitTime) async {
     int? updatedWaitTime = int.tryParse(newWaitTime);
     if (updatedWaitTime != null) {
       try {
@@ -130,6 +132,7 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
         tooltip: 'Save All Wait Times',
         child: Icon(Icons.check),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat, // Center the button at the bottom
       body: ListView.builder(
         itemCount: widget.providers.length,
         itemBuilder: (context, index) {
