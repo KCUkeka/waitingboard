@@ -143,10 +143,6 @@ class _ProviderListPageState extends State<ProviderListPage> {
         return ListTile(
           title: Text('${provider.firstName} ${provider.lastName}'),
           subtitle: Text('${provider.specialty} - ${provider.title}'),
-          trailing: IconButton(
-            icon: Icon(Icons.delete),
-            onPressed: () => deleteProvider(context, provider.docId),
-          ),
         );
       },
     );
