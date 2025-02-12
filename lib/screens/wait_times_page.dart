@@ -111,15 +111,16 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                 .contains(widget.selectedLocation)) // Filter providers
             .toList();
         selectedProviders = providerList
-            .where((provider) => 
-          provider.waitTime != null && 
-          provider.current_location == widget.selectedLocation)
-      .toList();
+            .where((provider) =>
+                provider.waitTime != null &&
+                provider.current_location == widget.selectedLocation)
+            .toList();
         _initializeControllers();
 
         // Update currentlocationProviders within setState
         currentlocationProviders = selectedProviders
-            .where((provider) => provider.current_location == widget.selectedLocation)
+            .where((provider) =>
+                provider.current_location == widget.selectedLocation)
             .toList();
       });
     } catch (e) {
@@ -370,8 +371,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                               ),
                               IconButton(
                                 icon: Icon(Icons.update, color: Colors.blue),
-                                onPressed: () => _updateWaitTime(
-                                    provider, controller.text),
+                                onPressed: () =>
+                                    _updateWaitTime(provider, controller.text),
                               ),
                               IconButton(
                                 icon: Icon(Icons.delete, color: Colors.red),
@@ -403,21 +404,23 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
           // FloatingActionButton for deleting all wait times
           Positioned(
             bottom: 16,
-            right: 16,
-            child: FloatingActionButton(
-              onPressed: deleteAllWaitTimes,
-              tooltip: 'Delete All Wait Times',
-              child: Icon(Icons.delete_forever),
-            ),
-          ),
-          // FloatingActionButton for saving all wait times
-          Positioned(
-            bottom: 16,
-            left: 30,
-            child: FloatingActionButton(
-              onPressed: saveAllWaitTimes,
-              tooltip: 'Save All Wait Times',
-              child: Icon(CupertinoIcons.checkmark_alt),
+            left: MediaQuery.of(context).size.width / 2 -
+                60, // Center horizontally
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  onPressed: deleteAllWaitTimes,
+                  tooltip: 'Delete All Wait Times',
+                  child: Icon(Icons.delete_forever),
+                ),
+                SizedBox(width: 16), // Space between buttons
+                FloatingActionButton(
+                  onPressed: saveAllWaitTimes,
+                  tooltip: 'Save All Wait Times',
+                  child: Icon(CupertinoIcons.checkmark_alt),
+                ),
+              ],
             ),
           ),
         ],
