@@ -94,7 +94,17 @@ The full screen button open the times in another tab on your web browser.
 
 #### Removing provider time
 
-To remove the provider wait time from the board you can either delete one at a time or all at once
+To remove the provider wait time from the board you can either delete **one at a time** 
+
+![msedge_FMty6yLSJ8](https://github.com/user-attachments/assets/99ac5203-c378-4ca0-b1b9-88f1d487c865)
+
+
+Or **all at once**
+
+
+![msedge_5cRlc2LH8u](https://github.com/user-attachments/assets/85596f5d-691b-4399-8e92-30344796359e)
+
+
 
 ## Add Providers ##
 
@@ -102,9 +112,18 @@ To remove the provider wait time from the board you can either delete one at a t
 If you're account is marked as an _admin_, you'll see the option to "**Add Provider**"
 
 
-![msedge_R3ZLxxcWTQ](https://github.com/user-attachments/assets/b883ba9b-c5f3-4a0a-ba56-67f690097b0d)
+You can add the providers **First** & **Last name**, **Specialty**, **Title** and select thier **locations**
+
+
+![msedge_YAXvE7UKtq](https://github.com/user-attachments/assets/d12db356-d2ce-473a-85af-a4934b15b827)
+
 
 In which you can add a provider and select the location(s); _admins have the ability to add location in this spot as well_
+
+
+The provider in now showing
+
+![image](https://github.com/user-attachments/assets/9d9ac4ed-047d-4816-844b-4a0f0b57a7e4)
 
 
 
