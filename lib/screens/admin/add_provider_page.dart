@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'package:waitingboard/services/api_service.dart';
 
 class AddProviderPage extends StatefulWidget {
@@ -53,7 +52,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
 
   // Fetch locations from Flask Api
 Future<void> fetchLocations() async {
-  const String apiUrl = 'http://127.0.0.1:5000/locations'; // Replace with your Flask server URL
+  const String apiUrl = '${ApiService.baseUrl}/locations'; // Replace with your Flask server URL
 
   try {
     final response = await http.get(Uri.parse(apiUrl));
@@ -81,7 +80,7 @@ Future<void> fetchLocations() async {
 
   // Add a new location to Flask Api
 Future<void> addLocation() async {
-  const String apiUrl = 'http://127.0.0.1:5000/locations'; // Replace with your Flask server URL
+  const String apiUrl = '${ApiService.baseUrl}/locations'; // Replace with your Flask server URL
 
   final newLocation = newLocationController.text.trim();
 
