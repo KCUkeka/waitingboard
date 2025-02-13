@@ -100,15 +100,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
       );
       return;
     }
-    // Debug the data being sent
-    // print({
-    //   'firstName': firstNameController.text.trim(),
-    //   'lastName': lastNameController.text.trim(),
-    //   'specialty': selectedSpecialty,
-    //   'title': selectedTitle,
-    //   'locations':
-    //       selectedLocations.join(','), // Send as comma-separated string
-    // });
+ 
 
     try {
       await ApiService.updateProvider(

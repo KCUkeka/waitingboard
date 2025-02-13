@@ -144,7 +144,7 @@ static Future<List<String>> fetchLocations() async {
 
     try {
       final response = await http.post(
-        Uri.parse(baseUrl),
+        Uri.parse('$baseUrl/providers'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'firstName': firstName,

@@ -271,8 +271,8 @@ def add_provider():
         combined_locations = ','.join(valid_locations)
 
         query = """
-        INSERT INTO waitingboard_providers (first_name, last_name, specialty, title, provider_locations, provider_modified)
-        VALUES (%s, %s, %s, %s, %s, NOW())
+        INSERT INTO waitingboard_providers (first_name, last_name, specialty, title, provider_locations, deleteFlag, provider_modified)
+        VALUES (%s, %s, %s, %s, %s, 0, NOW())
         """
         cursor.execute(query, (first_name, last_name, specialty, title, combined_locations))
 
@@ -284,12 +284,6 @@ def add_provider():
         print(f"Error adding provider: {e}")
         return jsonify({"error": str(e)}), 500
 
-
-
-        
-    except Exception as e:
-        print(f"Error fetching active providers: {e}")
-        return jsonify({"error": str(e)}), 500
    
 
 # Get active providers

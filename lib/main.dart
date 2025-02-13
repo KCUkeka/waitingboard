@@ -110,7 +110,7 @@ Future<void> _fetchUsersData() async {
     List<dynamic> users = await ApiService.fetchUsers();
     // Print user data (or use it in the UI)
     for (var user in users) {
-      print('Username: ${user['username']}, Email: ${user['email']}');
+      print('Username: ${user['username']}}');
     }
   } catch (e) {
     print('Error fetching users: $e');
