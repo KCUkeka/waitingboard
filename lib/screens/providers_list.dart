@@ -34,8 +34,7 @@ class _ProviderListPageState extends State<ProviderListPage> {
 
   // API call to fetch provider data
   Future<List<ProviderInfo>> fetchProviders() async {
-    final String baseUrl = 'http://127.0.0.1:5000/providers';
-    final String url = '$baseUrl?location_id=$_selectedLocation';
+    final String url = '${ApiService.baseUrl}/providers?location_id=$_selectedLocation'; 
 
     try {
       final response = await http.get(Uri.parse(url));
