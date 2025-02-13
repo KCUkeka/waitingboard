@@ -103,7 +103,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
  
 
     try {
-      await ApiService.updateProvider(
+      await ApiService.updateProviderDetails(
         widget.docId,
         {
           'firstName': firstNameController.text.trim(),

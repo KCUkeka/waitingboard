@@ -237,6 +237,24 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
     }
   }
 
+
+  // Method to update general provider details
+static Future<void> updateProviderDetails(String providerId, Map<String, dynamic> updateData) async {
+  try {
+    final response = await http.put(
+      Uri.parse('$baseUrl/providers/$providerId'), // Note: no '/wait-time' here
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(updateData),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update provider details. Status code: ${response.statusCode}, Body: ${response.body}');
+    }
+  } catch (e) {
+    throw Exception('Error updating provider details: $e');
+  }
+}
+
+
   // Remove provider wait time
    static Future<void> removeProviderWaitTime(String providerId) async {
     try {
