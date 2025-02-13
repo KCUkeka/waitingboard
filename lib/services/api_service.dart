@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:waitingboard/model/provider_info.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:5000'; // Change to IP address for device testing
+  static const String baseUrl = 'http://127.0.0.1:5000'; // Change to IP address for device testing, currently set ti localhost ip port 500
 
 
 
