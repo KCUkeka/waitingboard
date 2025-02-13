@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:waitingboard/model/provider_info.dart' as model;
 import 'package:waitingboard/services/api_service.dart';
 
@@ -12,7 +11,8 @@ class FullScreenDashboardPage extends StatefulWidget {
       : super(key: key);
 
   @override
-  _FullScreenDashboardPageState createState() => _FullScreenDashboardPageState();
+  _FullScreenDashboardPageState createState() =>
+      _FullScreenDashboardPageState();
 }
 
 class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
@@ -34,9 +34,11 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
 
   Future<List<model.ProviderInfo>> _fetchProviders() async {
     try {
-      final providers = await ApiService.fetchProvidersByLocation(widget.selectedLocation);
+      final providers =
+          await ApiService.fetchProvidersByLocation(widget.selectedLocation);
       return providers
-          .where((provider) => provider.current_location == widget.selectedLocation)
+          .where((provider) =>
+              provider.current_location == widget.selectedLocation)
           .toList();
     } catch (e) {
       print('Error fetching providers: $e');
@@ -54,7 +56,20 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
 
   String formatTimestamp(DateTime? dateTime) {
     if (dateTime == null) return "N/A";
-    return DateFormat('hh:mm a, MM/dd').format(dateTime);
+
+    // Logic to show time change
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+    } else {
+      return 'Just now';
+    }
   }
 
   @override
@@ -79,7 +94,8 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
           final providers = snapshot.data ?? [];
 
           if (providers.isEmpty) {
-            return const Center(child: Text('No providers available for this location'));
+            return const Center(
+                child: Text('No providers available for this location'));
           }
 
           return SingleChildScrollView(
@@ -123,14 +139,16 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
-                            const Text('Wait Time:', style: TextStyle(fontSize: 16)),
+                            const Text('Wait Time:',
+                                style: TextStyle(fontSize: 16)),
                             Text(
                               '${provider.formattedWaitTime} mins',
                               style: const TextStyle(
                                   fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 8),
-                            const Text('Last Changed:', style: TextStyle(fontSize: 16)),
+                            const Text('Last Changed:',
+                                style: TextStyle(fontSize: 16)),
                             Text(
                               formatTimestamp(provider.last_changed),
                               style: const TextStyle(fontSize: 14),

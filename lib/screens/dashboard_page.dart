@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/intl.dart';
 import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:waitingboard/model/provider_info.dart' as model;
 import 'package:waitingboard/services/api_service.dart'; // Import the API service
@@ -23,8 +22,19 @@ class _DashboardPageState extends State<DashboardPage> {
   String formatTimestamp(DateTime? dateTime) {
     if (dateTime == null) return "N/A";
 
-    final formattedDate = DateFormat('hh:mm a, MM/dd').format(dateTime);
-    return formattedDate;
+  // Logic to show time change 
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+    } else {
+      return 'Just now';
+    }
   }
 
   // Method to fetch providers data from the API
