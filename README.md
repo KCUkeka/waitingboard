@@ -121,7 +121,7 @@ You can add the providers **First** & **Last name**, **Specialty**, **Title** an
 In which you can add a provider and select the location(s); _admins have the ability to add location in this spot as well_
 
 
-The provider in now showing
+The provider is now showing
 
 ![image](https://github.com/user-attachments/assets/9d9ac4ed-047d-4816-844b-4a0f0b57a7e4)
 
