@@ -24,10 +24,8 @@ String formatTimestamp(DateTime? dateTime) {
 
   // Logic to show time change 
   final now = DateTime.now();
-  print("Now: $now | Last Changed: $dateTime");
 
   final difference = now.difference(dateTime);
-  print("Time Difference: ${difference.inMinutes} minutes");
 
   if (difference.inDays > 0) {
     return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
