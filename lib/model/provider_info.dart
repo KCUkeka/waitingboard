@@ -32,8 +32,7 @@ factory ProviderInfo.fromWaitTimeApi(
       print('Error parsing last_changed: $e');
     }
   }
-  // Debug: Print current_location
-  print("Mapping provider: ${json['firstName']} ${json['lastName']}, current_location: ${json['currentLocation']}");
+
 
   return ProviderInfo(
     docId: docId,
@@ -51,10 +50,11 @@ factory ProviderInfo.fromWaitTimeApi(
 
     factory ProviderInfo.fromDashboardApi(
       Map<String, dynamic> json, String docId, List<String> locations) {
+  print("Raw last_changed value: ${json['last_changed']}"); // Debug
+
     DateTime? lastChanged;
     if (json['last_changed'] != null) {
       try {
-        lastChanged = DateTime.parse(json['last_changed']);
       } catch (e) {
         print('Error parsing last_changed: $e');
       }
@@ -82,7 +82,7 @@ factory ProviderInfo.fromWaitTimeApi(
       'specialty': specialty,
       'title': title,
       'waitTime': waitTime ?? 0,
-      'lastChanged': last_changed,
+      'lastChanged': last_changed?.toIso8601String(), // Convert DateTime to String
       'provider_locations': locations.isNotEmpty ? locations.first : null,
       'current_location': current_location,
     };

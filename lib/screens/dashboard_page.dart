@@ -19,23 +19,27 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   // Method to format the lastChanged timestamp
-  String formatTimestamp(DateTime? dateTime) {
-    if (dateTime == null) return "N/A";
+String formatTimestamp(DateTime? dateTime) {
+  if (dateTime == null) return "N/A";
 
   // Logic to show time change 
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
+  final now = DateTime.now();
+  print("Now: $now | Last Changed: $dateTime");
 
-    if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
-    } else {
-      return 'Just now';
-    }
+  final difference = now.difference(dateTime);
+  print("Time Difference: ${difference.inMinutes} minutes");
+
+  if (difference.inDays > 0) {
+    return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+  } else if (difference.inHours > 0) {
+    return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+  } else if (difference.inMinutes > 0) {
+    return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+  } else {
+    return 'Just now';
   }
+}
+
 
   // Method to fetch providers data from the API
   Future<List<model.ProviderInfo>> _fetchProviders() async {
