@@ -42,8 +42,8 @@ factory ProviderInfo.fromWaitTimeApi(
     specialty: json['specialty'] ?? '',
     title: json['title'] ?? '',
     locations: locations,
-    current_location: json['currentLocation'] ?? '',
-    waitTime: json['waitTime'], 
+    current_location: json['current_location'] ?? '',
+    waitTime: json['wait_time'], 
     last_changed: lastChanged,  
   );
 }
@@ -67,7 +67,7 @@ factory ProviderInfo.fromWaitTimeApi(
       specialty: json['specialty'] ?? '',
       title: json['title'] ?? '',
       locations: locations,
-      current_location: json['currentLocation'] ?? '',
+      current_location: json['current_location'] ?? '',
       waitTime: json['wait_time'], // Changed from 'wait_time'
       last_changed: lastChanged,  
     );

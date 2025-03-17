@@ -175,7 +175,7 @@ class ApiService {
         return data.map<ProviderInfo>((providerJson) {
           String docId = providerJson['id']?.toString() ?? '';
           // Convert single locationName to a list
-          List<String> locations = (providerJson['locationName'] ?? '')
+          List<String> locations = (providerJson['provider_locations'] ?? '')
               .toString()
               .split(',')
               .map((e) => e.trim())
