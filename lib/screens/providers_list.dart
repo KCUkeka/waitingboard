@@ -43,7 +43,7 @@ class _ProviderListPageState extends State<ProviderListPage> {
         final List<dynamic> data = json.decode(response.body);
         
         final providers = data.map<ProviderInfo>((provider) {
-          List<String> locations = (provider['locationName'] ?? '')
+          List<String> locations = (provider['provider_locations'] ?? '')
               .toString()
               .split(',')
               .map((e) => e.trim())

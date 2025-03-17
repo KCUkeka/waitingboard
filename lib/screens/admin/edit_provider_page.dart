@@ -31,7 +31,10 @@ class _EditProviderPageState extends State<EditProviderPage> {
     'Rheumatology',
     'Pain Management',
     'Urgent Care',
-    'Sports Medicine'
+    'Sports Medicine',
+    'Trauma',
+    'Pediatrics',
+    'ESP',
   ];
 
   final List<String> titles = ['Dr.', 'PA', 'PA-C', 'DPM Fellow'];
@@ -40,9 +43,9 @@ class _EditProviderPageState extends State<EditProviderPage> {
   void initState() {
     super.initState();
     firstNameController = TextEditingController(
-        text: widget.providerData['firstName']?.toString() ?? '');
+        text: widget.providerData['first_name']?.toString() ?? '');
     lastNameController = TextEditingController(
-        text: widget.providerData['lastName']?.toString() ?? '');
+        text: widget.providerData['last_name']?.toString() ?? '');
 
     // Ensure the selected values are valid
     selectedSpecialty = specialties.contains(widget.providerData['specialty'])
@@ -53,8 +56,8 @@ class _EditProviderPageState extends State<EditProviderPage> {
         : titles.first;
 
     // Initialize selected locations (convert from string if necessary)
-    if (widget.providerData['locationName'] != null) {
-    selectedLocations = widget.providerData['locationName']
+    if (widget.providerData['provider_locations'] != null) {
+    selectedLocations = widget.providerData['provider_locations']
         .toString()
         .split(',')
         .map((loc) => loc.trim())

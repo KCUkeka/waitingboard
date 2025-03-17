@@ -37,8 +37,8 @@ factory ProviderInfo.fromWaitTimeApi(
 
   return ProviderInfo(
     docId: docId,
-    firstName: json['firstName'] ?? '', 
-    lastName: json['lastName'] ?? '', 
+    firstName: json['first_name'] ?? '', 
+    lastName: json['last_name'] ?? '', 
     specialty: json['specialty'] ?? '',
     title: json['title'] ?? '',
     locations: locations,
@@ -77,13 +77,13 @@ factory ProviderInfo.fromWaitTimeApi(
   // Converts to API-friendly format
   Map<String, dynamic> toApi() {
     return {
-      'firstName': firstName,
-      'lastName': lastName,
+      'first_name': firstName,
+      'last_name': lastName,
       'specialty': specialty,
       'title': title,
       'waitTime': waitTime ?? 0,
       'lastChanged': last_changed,
-      'locations': locations.isNotEmpty ? locations.first : null,
+      'provider_locations': locations.isNotEmpty ? locations.first : null,
       'current_location': current_location,
     };
   }

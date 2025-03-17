@@ -102,7 +102,7 @@ class _EditProvidersListState extends State<EditProvidersList> {
               final provider = providerData[index];
 
               return ListTile(
-                title: Text('${provider['firstName']} ${provider['lastName']}'),
+                title: Text('${provider['first_name']} ${provider['last_name']}'),
                 subtitle: Text(
                   '${provider['specialty']} - ${provider['title']}',
                 ),

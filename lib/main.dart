@@ -14,7 +14,6 @@ void main() async {
 }
 
 class WaitingApp extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -104,17 +103,16 @@ class WaitingApp extends StatelessWidget {
   }
 
   // Fetch data from MySQL
-Future<void> _fetchUsersData() async {
-  try {
-    // Fetch users data from the API
-    List<dynamic> users = await ApiService.fetchUsers();
-    // Print user data (or use it in the UI)
-    for (var user in users) {
-      print('Username: ${user['username']}}');
+  Future<void> _fetchUsersData() async {
+    try {
+      // Fetch users data from the API
+      List<dynamic> users = await ApiService.fetchUsers();
+      // Print user data (or use it in the UI)
+      for (var user in users) {
+        print('Username: ${user['username']}}');
+      }
+    } catch (e) {
+      print('Error fetching users: $e');
     }
-  } catch (e) {
-    print('Error fetching users: $e');
   }
-}
-
 }

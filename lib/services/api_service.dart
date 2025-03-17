@@ -3,9 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:waitingboard/model/provider_info.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:5000'; // Change to IP address for device testing, currently set ti localhost ip port 500
-
-
+  static const String baseUrl =
+      'http://172.28.0.115:5000'; // Change to IP address for device testing, currently set to localhost ip port 500
 
 // ---------------------------------------------------------Users ----------------------------------------------
   // Fetch all users
@@ -15,7 +14,8 @@ class ApiService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        throw Exception('Failed to fetch users. Status code: ${response.statusCode}');
+        throw Exception(
+            'Failed to fetch users. Status code: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error fetching users: $e');
@@ -23,19 +23,15 @@ class ApiService {
   }
 
   // Login user
-  static Future<bool> loginUser(String username, String password, String location) async {
+  static Future<bool> loginUser(
+      String username, String password, String location) async {
     try {
-      
       final response = await http.post(
         Uri.parse('$baseUrl/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': username, 
-          'password': password,
-          'location': location
-        }),
+        body: jsonEncode(
+            {'username': username, 'password': password, 'location': location}),
       );
-      
 
       if (response.statusCode == 200) {
         return true;
@@ -71,32 +67,33 @@ class ApiService {
     }
   }
 
-
-
 //-------------------------------------------------------Locations ----------------------------------------------
   // Fetch all locations
-static Future<List<String>> fetchLocations() async {
-  try {
-    final response = await http.get(Uri.parse('$baseUrl/locations'));
-    if (response.statusCode == 200) {
-      // Decode response as List<dynamic>
-      List<dynamic> jsonResponse = json.decode(response.body);
+  static Future<List<String>> fetchLocations() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/locations'));
+      if (response.statusCode == 200) {
+        // Decode response as List<dynamic>
+        List<dynamic> jsonResponse = json.decode(response.body);
 
-      // Extract 'name' field from each object
-      return jsonResponse.map((item) {
-        if (item is Map<String, dynamic> && item.containsKey('name')) {
-          return item['name'].toString(); // Ensure 'name' is a String
-        }
-        return ''; // Fallback if 'name' is not found
-      }).where((name) => name.isNotEmpty).toList();
-    } else {
-      throw Exception('Failed to fetch locations. Status code: ${response.statusCode}');
+        // Extract 'name' field from each object
+        return jsonResponse
+            .map((item) {
+              if (item is Map<String, dynamic> && item.containsKey('name')) {
+                return item['name'].toString(); // Ensure 'name' is a String
+              }
+              return ''; // Fallback if 'name' is not found
+            })
+            .where((name) => name.isNotEmpty)
+            .toList();
+      } else {
+        throw Exception(
+            'Failed to fetch locations. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching locations: $e');
     }
-  } catch (e) {
-    throw Exception('Error fetching locations: $e');
   }
-}
-
 
   // Add a new location
   static Future<void> addLocation(String locationName) async {
@@ -117,7 +114,6 @@ static Future<List<String>> fetchLocations() async {
     }
   }
 
-
 //-------------------------------------------------------Providers ----------------------------------------------
   // Fetch all providers
   static Future<List<dynamic>> fetchProviders() async {
@@ -126,7 +122,8 @@ static Future<List<String>> fetchLocations() async {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        throw Exception('Failed to fetch providers. Status code: ${response.statusCode}');
+        throw Exception(
+            'Failed to fetch providers. Status code: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error fetching providers: $e');
@@ -139,9 +136,8 @@ static Future<List<String>> fetchLocations() async {
     String lastName,
     String specialty,
     String title,
-    String locations,  // Accept a String here
+    String locations, // Accept a String here
   ) async {
-
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/providers'),
@@ -151,7 +147,7 @@ static Future<List<String>> fetchLocations() async {
           'lastName': lastName,
           'specialty': specialty,
           'title': title,
-          'locations': locations,  // Pass as a String
+          'locations': locations, // Pass as a String
         }),
       );
 
@@ -164,36 +160,38 @@ static Future<List<String>> fetchLocations() async {
       throw Exception('Failed to add provider: $e');
     }
   }
-  
+
 // Method to fetch providers based on selected location
-static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) async {
-  try {
+  static Future<List<ProviderInfo>> fetchProvidersByLocation(
+      String location) async {
+    try {
+      final response =
+          await http.get(Uri.parse('$baseUrl/providers?location=$location'));
 
-    final response = await http.get(Uri.parse('$baseUrl/providers?location=$location'));
+      if (response.statusCode == 200) {
+        // Parse the response JSON
+        List<dynamic> data = jsonDecode(response.body);
 
-    if (response.statusCode == 200) {
-      // Parse the response JSON
-      List<dynamic> data = jsonDecode(response.body);
+        return data.map<ProviderInfo>((providerJson) {
+          String docId = providerJson['id']?.toString() ?? '';
+          // Convert single locationName to a list
+          List<String> locations = (providerJson['locationName'] ?? '')
+              .toString()
+              .split(',')
+              .map((e) => e.trim())
+              .toList();
 
-      return data.map<ProviderInfo>((providerJson) {
-        String docId = providerJson['id']?.toString() ?? '';
-        // Convert single locationName to a list
-        List<String> locations = (providerJson['locationName'] ?? '')
-            .toString()
-            .split(',')
-            .map((e) => e.trim())
-            .toList();
-            
-        return ProviderInfo.fromWaitTimeApi(providerJson, docId, locations);
-      }).toList();
-    } else {
-      throw Exception('Failed to load providers for location: ${response.statusCode}');
+          return ProviderInfo.fromWaitTimeApi(providerJson, docId, locations);
+        }).toList();
+      } else {
+        throw Exception(
+            'Failed to load providers for location: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Error in fetchProvidersByLocation: $e");
+      throw Exception('Error fetching providers: $e');
     }
-  } catch (e) {
-    print("Error in fetchProvidersByLocation: $e");
-    throw Exception('Error fetching providers: $e');
   }
-}
 
 // Active providers
   static Future<List<ProviderInfo>> fetchActiveProviders() async {
@@ -218,58 +216,60 @@ static Future<List<ProviderInfo>> fetchProvidersByLocation(String location) asyn
     }
   }
 
-//-------------------------------------------------------Update methods ---------------------------------------------- 
-    // Update provider time
-  static Future<void> updateProvider(String providerId, Map<String, dynamic> updateData) async {
-
+//-------------------------------------------------------Update methods ----------------------------------------------
+  // Update provider time
+  static Future<void> updateProvider(
+      String providerId, Map<String, dynamic> updateData) async {
     try {
       final response = await http.put(
-      Uri.parse('$baseUrl/providers/$providerId/wait-time'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(updateData),
+        Uri.parse('$baseUrl/providers/$providerId/wait-time'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(updateData),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to update provider. Status code: ${response.statusCode}, Body: ${response.body}');
+        throw Exception(
+            'Failed to update provider. Status code: ${response.statusCode}, Body: ${response.body}');
       }
     } catch (e) {
       throw Exception('Error updating provider: $e');
     }
   }
 
-
   // Method to update general provider details
-static Future<void> updateProviderDetails(String providerId, Map<String, dynamic> updateData) async {
-  try {
-    final response = await http.put(
-      Uri.parse('$baseUrl/providers/$providerId'), // Note: no '/wait-time' here
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(updateData),
-    );
-    if (response.statusCode != 200) {
-      throw Exception('Failed to update provider details. Status code: ${response.statusCode}, Body: ${response.body}');
+  static Future<void> updateProviderDetails(
+      String providerId, Map<String, dynamic> updateData) async {
+    try {
+      final response = await http.put(
+        Uri.parse(
+            '$baseUrl/providers/$providerId'), // Note: no '/wait-time' here
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(updateData),
+      );
+      if (response.statusCode != 200) {
+        throw Exception(
+            'Failed to update provider details. Status code: ${response.statusCode}, Body: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error updating provider details: $e');
     }
-  } catch (e) {
-    throw Exception('Error updating provider details: $e');
   }
-}
-
 
   // Remove provider wait time
-   static Future<void> removeProviderWaitTime(String providerId) async {
+  static Future<void> removeProviderWaitTime(String providerId) async {
     try {
-      final response = await http.put(  // Note: using PUT, not a new endpoint
-        Uri.parse('$baseUrl/providers/$providerId/wait-time'),  // Use existing endpoint
+      final response = await http.put(
+        // Note: using PUT, not a new endpoint
+        Uri.parse(
+            '$baseUrl/providers/$providerId/wait-time'), // Use existing endpoint
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'isRemoving': true,
-          'waitTime': null,
-          'currentLocation': null
-        }),
+        body: jsonEncode(
+            {'isRemoving': true, 'waitTime': null, 'currentLocation': null}),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to remove wait time. Status code: ${response.statusCode}, Body: ${response.body}');
+        throw Exception(
+            'Failed to remove wait time. Status code: ${response.statusCode}, Body: ${response.body}');
       }
     } catch (e) {
       throw Exception('Error removing wait time: $e');
@@ -277,23 +277,22 @@ static Future<void> updateProviderDetails(String providerId, Map<String, dynamic
   }
 
   // Method to delete a provider
-  static Future<void> deleteProvider(dynamic  providerId) async {
+  static Future<void> deleteProvider(dynamic providerId) async {
     try {
       final response = await http.patch(
-        Uri.parse('$baseUrl/providers/$providerId'), // Assuming this is the API endpoint
+        Uri.parse(
+            '$baseUrl/providers/$providerId'), // Assuming this is the API endpoint
         headers: {'Content-Type': 'application/json'},
       );
-      
+
       if (response.statusCode != 200 && response.statusCode != 204) {
-        throw Exception('Failed to delete provider. Response: ${response.body}');
+        throw Exception(
+            'Failed to delete provider. Response: ${response.body}');
       }
     } catch (e) {
       throw Exception('Error deleting provider: $e');
     }
   }
-
-
-
 
 //-------------------------------------------------------Tables ----------------------------------------------
   // Fetch all database tables
@@ -303,14 +302,15 @@ static Future<void> updateProviderDetails(String providerId, Map<String, dynamic
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Failed to fetch database tables. Status code: ${response.statusCode}');
+        throw Exception(
+            'Failed to fetch database tables. Status code: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error fetching database tables: $e');
     }
   }
 
-//-------------------------------------------------------Logout ----------------------------------------------  
+//-------------------------------------------------------Logout ----------------------------------------------
   // Define the logout method
   static Future<void> logout(String loginId) async {
     final response = await http.post(

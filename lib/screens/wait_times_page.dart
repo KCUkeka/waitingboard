@@ -96,7 +96,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
             .map((providerData) {
               if (providerData is Map<String, dynamic>) {
                 List<String> locations = [
-                  (providerData['locationName'] ?? '').toString()
+                  (providerData['provider_locations'] ?? '').toString()
                 ];
                 return ProviderInfo.fromWaitTimeApi(providerData,
                     providerData['id']?.toString() ?? '', locations);
