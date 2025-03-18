@@ -25,8 +25,9 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
   @override
   void initState() {
     super.initState();
-    _selectedLocation = widget.selectedLocation;
     _loadLocationAndProviders();
+    _providersFuture = _fetchProviders();
+    _startTimer();
   }
 
   Future<void> _loadLocationAndProviders() async {
@@ -69,15 +70,15 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
           .toList();
     } catch (e) {
       print('Error fetching providers: $e');
-      throw Exception('Failed to load providers');
+      return [];
     }
   }
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      if (_selectedLocation != null) {
-        setState(() => _providersFuture = _fetchProviders());
-      }
+      setState(() {
+        _providersFuture = _fetchProviders();
+      });
     });
   }
 
