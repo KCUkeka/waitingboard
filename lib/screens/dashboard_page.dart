@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:waitingboard/model/provider_info.dart' as model;
 import 'package:waitingboard/services/api_service.dart'; // Import the API service
+import 'dart:async'; // Import dart:async for Timer
 
 //------------------------------------------------------- Dashboard Page ----------------------------------------------
 class DashboardPage extends StatefulWidget {
@@ -18,26 +19,51 @@ class DashboardPage extends StatefulWidget {
 //------------------------------------------------------- timestamp farmat ----------------------------------------------
 
 class _DashboardPageState extends State<DashboardPage> {
-  // Method to format the lastChanged timestamp
-String formatTimestamp(DateTime? dateTime) {
-  if (dateTime == null) return "N/A";
+  Timer? _timer; // Declare the timer variable
+  late Future<List<model.ProviderInfo>>
+      _providersFuture; // Declare the future variable
 
-  // Logic to show time change 
-  final now = DateTime.now();
-
-  final difference = now.difference(dateTime);
-
-  if (difference.inDays > 0) {
-    return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
-  } else if (difference.inHours > 0) {
-    return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
-  } else if (difference.inMinutes > 0) {
-    return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
-  } else {
-    return 'Just now';
+  @override
+  void initState() {
+    super.initState();
+    _providersFuture = _fetchProviders(); // Initialize the future
+    _startTimer(); // Start the timer
   }
-}
 
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      setState(() {
+        _providersFuture =
+            _fetchProviders(); // Fetch providers every 10 seconds
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Cancel the timer when the widget is disposed
+    super.dispose();
+  }
+
+  // Method to format the lastChanged timestamp
+  String formatTimestamp(DateTime? dateTime) {
+    if (dateTime == null) return "N/A";
+
+    // Logic to show time change
+    final now = DateTime.now();
+
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+    } else {
+      return 'Just now';
+    }
+  }
 
   // Method to fetch providers data from the API
   Future<List<model.ProviderInfo>> _fetchProviders() async {
@@ -99,7 +125,7 @@ String formatTimestamp(DateTime? dateTime) {
         ),
       ),
       body: FutureBuilder<List<model.ProviderInfo>>(
-        future: _fetchProviders(), // Fetch providers from the API
+        future: _providersFuture, // Use the future variable
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
