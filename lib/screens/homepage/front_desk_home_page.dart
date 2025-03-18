@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/frontdeskproviders_list.dart';
-import 'package:waitingboard/services/api_service.dart'; // Flask API service
-import '../login_page.dart'; // Import the LoginPage
+import 'package:waitingboard/services/api_service.dart';
+import '../login_page.dart';
 
 class FrontHomePage extends StatefulWidget {
   final String selectedLocation; // Add selectedLocation as a parameter
@@ -16,13 +16,29 @@ class FrontHomePage extends StatefulWidget {
 }
 
 class _FrontHomePageState extends State<FrontHomePage> {
+  String? _selectedLocation;
+
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus(); // Check login status when the home page is initialized
+    _checkLoginStatus();
+    _loadSelectedLocation();
   }
 
-  // Check if the user is logged in when the home page is loaded
+  Future<void> _loadSelectedLocation() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _selectedLocation = prefs.getString('selectedLocation');
+    });
+    
+    if (_selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No location found, please login again')),
+      );
+      _logout();
+    }
+  }
+
   Future<void> _checkLoginStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool? isLoggedIn = prefs.getBool('isLoggedIn');
@@ -65,6 +81,10 @@ class _FrontHomePageState extends State<FrontHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_selectedLocation == null) {
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Container(
@@ -73,7 +93,7 @@ class _FrontHomePageState extends State<FrontHomePage> {
             children: [
               Text('Wait Time Dashboard'),
               Text(
-                'Location: ${widget.selectedLocation}', // Display the selected location in the AppBar
+                'Location: $_selectedLocation',
                 style: TextStyle(fontSize: 14),
               ),
             ],
@@ -113,7 +133,7 @@ class _FrontHomePageState extends State<FrontHomePage> {
         ],
       ),
       body: DashboardPage(
-        selectedLocation: widget.selectedLocation, // Pass the location
+        selectedLocation: _selectedLocation!,
       ),
     );
   }

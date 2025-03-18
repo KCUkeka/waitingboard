@@ -13,7 +13,20 @@ void main() async {
   runApp(WaitingApp());
 }
 
-class WaitingApp extends StatelessWidget {
+class WaitingApp extends StatefulWidget {
+  @override
+  _WaitingAppState createState() => _WaitingAppState();
+}
+
+class _WaitingAppState extends State<WaitingApp> {
+  String someLocation = 'defaultLocation';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsersData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -36,25 +49,10 @@ class WaitingApp extends StatelessWidget {
                 }
               },
             ),
-        '/dashboard': (context) => DashboardPage(
-              selectedLocation: 'Default Location',
-            ),
-        '/fullscreendashboard': (context) {
-          return FutureBuilder<String>(
-            future: _getSelectedLocation(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              } else if (snapshot.hasData) {
-                String selectedLocation = snapshot.data!;
-                return FullScreenDashboardPage(
-                    selectedLocation: selectedLocation);
-              } else {
-                return Center(child: Text('No location found!'));
-              }
-            },
-          );
-        },
+        '/dashboard': (context) =>
+            DashboardPage(selectedLocation: someLocation), 
+        '/fullscreendashboard': (context) =>
+            FullScreenDashboardPage(selectedLocation: someLocation), 
       },
     );
   }
@@ -72,19 +70,18 @@ class WaitingApp extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasData) {
-          String role = snapshot.data!;
-          if (role == 'admin') {
-            return AdminHomePage(selectedLocation: "Default Location");
-          } else if (role == 'Clinic') {
-            return ClinicHomePage(selectedLocation: "Default Location");
-          } else if (role == 'Front desk') {
-            return FrontHomePage(selectedLocation: "Default Location");
-          } else {
-            return ClinicHomePage(selectedLocation: "Default Location");
-          }
-        } else {
-          return ClinicHomePage(selectedLocation: "Default Location");
+        }
+
+        final role = snapshot.data ?? '';
+        switch (role.toLowerCase()) {
+          case 'admin':
+            return AdminHomePage(selectedLocation: someLocation);
+          case 'clinic':
+            return ClinicHomePage(selectedLocation: someLocation);
+          case 'front desk':
+            return FrontHomePage(selectedLocation: someLocation);
+          default:
+            return LoginPage(); // Fallback to login for unknown roles
         }
       },
     );
@@ -96,18 +93,10 @@ class WaitingApp extends StatelessWidget {
     return prefs.getString('userRole') ?? '';
   }
 
-  // Get selected location from SharedPreferences
-  Future<String> _getSelectedLocation() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('selectedLocation') ?? 'Default Location';
-  }
-
-  // Fetch data from MySQL
   Future<void> _fetchUsersData() async {
     try {
       // Fetch users data from the API
       List<dynamic> users = await ApiService.fetchUsers();
-      // Print user data (or use it in the UI)
       for (var user in users) {
         print('Username: ${user['username']}}');
       }

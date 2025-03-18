@@ -3,12 +3,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/providers_list.dart';
-import 'package:waitingboard/services/api_service.dart'; //Flask API service
+import 'package:waitingboard/services/api_service.dart';
 import '../login_page.dart';
 import '../wait_times_page.dart';
 
 class ClinicHomePage extends StatefulWidget {
-  final String selectedLocation; // Add selectedLocation as a parameter
+  final String selectedLocation; //Add selectedLocation as a parameter
 
   ClinicHomePage({required this.selectedLocation}); // Require selectedLocation
 
@@ -19,24 +19,30 @@ class ClinicHomePage extends StatefulWidget {
 class _ClinicHomePageState extends State<ClinicHomePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  String? _selectedLocation;
 
-@override
-void initState() {
-  super.initState();
-  _checkLoginStatus(); // Check login status when the home page is initialized
-  _tabController = TabController(length: 2, vsync: this); // Two tabs
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+    _loadSelectedLocation();
+    _tabController = TabController(length: 2, vsync: this);
+  }
 
-  _saveSelectedLocation(); // Save the selected location to SharedPreferences
-}
+  Future<void> _loadSelectedLocation() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _selectedLocation = prefs.getString('selectedLocation');
+    });
+    
+    if (_selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No location found, please login again')),
+      );
+      _logout();
+    }
+  }
 
-// Save the selected location to SharedPreferences
-Future<void> _saveSelectedLocation() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.setString('selectedLocation', widget.selectedLocation);
-}
-
-
-  // Check if the user is logged in when the home page is loaded
   Future<void> _checkLoginStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool? isLoggedIn = prefs.getBool('isLoggedIn');
@@ -85,6 +91,10 @@ Future<void> _saveSelectedLocation() async {
 
   @override
   Widget build(BuildContext context) {
+    if (_selectedLocation == null) {
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Container(
@@ -93,7 +103,7 @@ Future<void> _saveSelectedLocation() async {
             children: [
               const Text('Wait Time Dashboard'),
               Text(
-                'Location: ${widget.selectedLocation}', // Display selected location
+                'Location: $_selectedLocation',
                 style: TextStyle(fontSize: 14),
               ),
             ],
@@ -140,10 +150,10 @@ Future<void> _saveSelectedLocation() async {
           children: [
             WaitTimesPage(
               tabController: _tabController,
-              selectedLocation: widget.selectedLocation,
+              selectedLocation: _selectedLocation!,
             ),
             DashboardPage(
-              selectedLocation: widget.selectedLocation,
+              selectedLocation: _selectedLocation!,
             ),
           ],
         ),
