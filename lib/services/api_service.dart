@@ -4,7 +4,7 @@ import 'package:waitingboard/model/provider_info.dart';
 
 class ApiService {
   static const String baseUrl =
-      'http://172.28.0.115:5000'; // Change to IP address for device testing, currently set to localhost ip port 500
+      'https://dashboard.rockfordortho.com/'; // Change to IP address for device testing, currently set to localhost ip port 500
 
 // ---------------------------------------------------------Users ----------------------------------------------
   // Fetch all users

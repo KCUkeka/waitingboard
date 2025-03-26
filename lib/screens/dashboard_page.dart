@@ -101,25 +101,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             Align(
               alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (kIsWeb) {
-                    final url = Uri.base.origin + '/#/fullscreendashboard';
-                    await launchUrl(Uri.parse(url),
-                        webOnlyWindowName: '_blank');
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => FullScreenDashboardPage(
-                          selectedLocation: widget.selectedLocation,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Full Screen'),
-              ),
+              
             ),
           ],
         ),

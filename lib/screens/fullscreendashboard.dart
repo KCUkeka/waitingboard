@@ -176,31 +176,105 @@ class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
 
   Widget _buildProviderCard(model.ProviderInfo provider) {
     return Card(
-      elevation: 4.0,
-      child: Padding(
-        padding: const EdgeInsets.all(6.0),
-        child: Column(
+  elevation: 4.0,
+  margin: EdgeInsets.all(8.0),
+  child: Padding(
+    padding: EdgeInsets.symmetric(
+      vertical: 12.0,
+      horizontal: 8.0,
+    ),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isSmallScreen = screenWidth < 600;
+
+        return Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              provider.dashboardName,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
+            // Dashboard Name with responsive font size
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                provider.dashboardName,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 18 : 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(provider.specialty, style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 8),
-            const Text('Wait Time:', style: TextStyle(fontSize: 16)),
-            Text(
-              '${provider.formattedWaitTime} mins',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            SizedBox(height: constraints.maxHeight * 0.02),
+            
+            // Specialty with conditional display
+            if (provider.specialty.isNotEmpty)
+              Flexible(
+                child: Text(
+                  provider.specialty,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14 : 16,
+                    color: Colors.grey[600],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            SizedBox(height: constraints.maxHeight * 0.04),
+            
+            // Wait Time Section
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Wait Time',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14 : 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '${provider.formattedWaitTime} mins',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 16 : 18,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            const Text('Last Changed:', style: TextStyle(fontSize: 16)),
-            Text(formatTimestamp(provider.last_changed)),
+            SizedBox(height: constraints.maxHeight * 0.04),
+            
+            // Last Changed Section
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Last Changed',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 12 : 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  formatTimestamp(provider.last_changed),
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 12 : 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ],
-        ),
-      ),
-    );
+        );
+      },
+    ),
+  ),
+);
   }
 }
