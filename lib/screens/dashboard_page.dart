@@ -1,7 +1,4 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:waitingboard/model/provider_info.dart' as model;
 import 'package:waitingboard/services/api_service.dart'; // Import the API service
 
@@ -89,28 +86,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (kIsWeb) {
-                    final url = Uri.base.origin + '/#/fullscreendashboard';
-                    await launchUrl(Uri.parse(url),
-                        webOnlyWindowName: '_blank');
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => FullScreenDashboardPage(
-                          selectedLocation: widget.selectedLocation,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Full Screen'),
-              ),
-            ),
+            
           ],
         ),
       ),

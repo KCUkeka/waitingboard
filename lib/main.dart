@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waitingboard/screens/admin/admin_home_page.dart';
 import 'package:waitingboard/screens/dashboard_page.dart';
-import 'package:waitingboard/screens/fullscreendashboard.dart';
 import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
 import 'package:waitingboard/screens/login_page.dart';
 import 'package:waitingboard/services/api_service.dart';
@@ -40,22 +39,7 @@ class WaitingApp extends StatelessWidget {
         '/dashboard': (context) => DashboardPage(
               selectedLocation: 'Default Location',
             ),
-        '/fullscreendashboard': (context) {
-          return FutureBuilder<String>(
-            future: _getSelectedLocation(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              } else if (snapshot.hasData) {
-                String selectedLocation = snapshot.data!;
-                return FullScreenDashboardPage(
-                    selectedLocation: selectedLocation);
-              } else {
-                return Center(child: Text('No location found!'));
-              }
-            },
-          );
-        },
+        
       },
     );
   }
