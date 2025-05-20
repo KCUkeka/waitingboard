@@ -37,6 +37,24 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+    // Method to format wait time inputted
+  String _formatWaitTime(String waitTimeStr) {
+    final int? mins = int.tryParse(waitTimeStr);
+    if (mins == null) return 'N/A';
+
+    if (mins >= 60) {
+      final hours = mins ~/ 60;
+      final remainingMins = mins % 60;
+      if (remainingMins == 0) {
+        return '$hours hour${hours > 1 ? 's' : ''}';
+      } else {
+        return '$hours hour${hours > 1 ? 's' : ''} $remainingMins min${remainingMins > 1 ? 's' : ''}';
+      }
+    } else {
+      return '$mins min${mins != 1 ? 's' : ''}';
+    }
+  }
+
   // Method to fetch providers data from the API
   Future<List<model.ProviderInfo>> _fetchProviders() async {
     try {
@@ -163,9 +181,11 @@ class _DashboardPageState extends State<DashboardPage> {
                             const Text('Wait Time:',
                                 style: TextStyle(fontSize: 16)),
                             Text(
-                              '${provider.formattedWaitTime} mins',
+                              _formatWaitTime(provider.formattedWaitTime),
                               style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             const Text('Last Changed:',
