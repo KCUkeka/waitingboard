@@ -19,7 +19,7 @@ class _DashboardPageState extends State<DashboardPage> {
   String formatTimestamp(DateTime? dateTime) {
     if (dateTime == null) return "N/A";
 
-  // Logic to show time change 
+    // Logic to show time change
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
@@ -34,7 +34,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-    // Method to format wait time inputted
+  // Method to format wait time inputted
   String _formatWaitTime(String waitTimeStr) {
     final int? mins = int.tryParse(waitTimeStr);
     if (mins == null) return 'N/A';
@@ -86,99 +86,167 @@ class _DashboardPageState extends State<DashboardPage> {
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
-            
           ],
         ),
       ),
       body: FutureBuilder<List<model.ProviderInfo>>(
-        future: _fetchProviders(), // Fetch providers from the API
+        future: _fetchProviders(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            print('Error in FutureBuilder: ${snapshot.error}'); // Debug print
+            print('Error in FutureBuilder: ${snapshot.error}');
             return const Center(child: Text('Error loading providers'));
           }
 
-          // Should show Filtered providers based on selectedLocation
           final providers = snapshot.data ?? [];
 
-          if (providers.isEmpty) {
-            return Container(
-              alignment: Alignment.center,
-              child: Text(
-                'No active times in ${widget.selectedLocation}',
-                style: TextStyle(fontStyle: FontStyle.italic),
-              ),
-            );
-          }
+          return Row(
+            children: [
+              // Main Dashboard Grid - Expanded to take most of the width
+              Expanded(
+                flex: 3,
+                child: providers.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No active times in ${widget.selectedLocation}',
+                          style: TextStyle(fontStyle: FontStyle.italic),
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            int crossAxisCount =
+                                (constraints.maxWidth / 200).floor();
+                            crossAxisCount =
+                                crossAxisCount > 0 ? crossAxisCount : 1;
 
-          return SingleChildScrollView(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                int crossAxisCount = (constraints.maxWidth / 200).floor();
-                crossAxisCount = crossAxisCount > 0 ? crossAxisCount : 1;
+                            final nonAncProviders = providers
+                                .where(
+                                    (p) => p.specialty.toUpperCase() != 'ANC')
+                                .toList();
 
-                return GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    childAspectRatio: 1,
-                    crossAxisSpacing: 16.0,
-                    mainAxisSpacing: 16.0,
-                  ),
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: providers.length,
-                  itemBuilder: (context, index) {
-                    final provider = providers[index];
-
-                    return Card(
-                      elevation: 4.0,
-                      child: Padding(
-                        padding: const EdgeInsets.all(6.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              provider.dashboardName,
-                              style: const TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              provider.specialty,
-                              style: const TextStyle(fontSize: 16),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            const Text('Wait Time:',
-                                style: TextStyle(fontSize: 16)),
-                            Text(
-                              _formatWaitTime(provider.formattedWaitTime),
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                            return GridView.builder(
+                              physics: NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              padding: EdgeInsets.all(16),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                childAspectRatio: 1,
+                                crossAxisSpacing: 16.0,
+                                mainAxisSpacing: 16.0,
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text('Last Changed:',
-                                style: TextStyle(fontSize: 16)),
-                            Text(
-                              formatTimestamp(provider.last_changed),
-                              style: const TextStyle(fontSize: 14),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                              itemCount: nonAncProviders.length,
+                              itemBuilder: (context, index) {
+                                final provider = nonAncProviders[index];
+                                return Card(
+                                  elevation: 4.0,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(6.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          provider.dashboardName,
+                                          style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          provider.specialty,
+                                          style: TextStyle(fontSize: 16),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text('Wait Time:',
+                                            style: TextStyle(fontSize: 16)),
+                                        Text(
+                                          _formatWaitTime(
+                                              provider.formattedWaitTime),
+                                          style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text('Last Changed:',
+                                            style: TextStyle(fontSize: 16)),
+                                        Text(
+                                          formatTimestamp(
+                                              provider.last_changed),
+                                          style: TextStyle(fontSize: 14),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
                         ),
                       ),
-                    );
-                  },
-                );
-              },
-            ),
+              ),
+
+              // Slim Right Panel
+              Container(
+                width: 300,
+                color: Colors.grey.shade200,
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ancillary Services:',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 16),
+
+                    // ANC Specialty Cards
+                    ...providers
+                        .where((p) => p.specialty.toUpperCase() == 'ANC')
+                        .map((p) => Card(
+                              margin: EdgeInsets.only(bottom: 12),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      p.dashboardName,
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                        'Wait Time: ${_formatWaitTime(p.formattedWaitTime)}'),
+                                    SizedBox(height: 4),
+                                    Text(
+                                        'Updated: ${formatTimestamp(p.last_changed)}'),
+                                  ],
+                                ),
+                              ),
+                            ))
+                        .toList(),
+
+                    // Show message if no ANC providers found
+                    if (providers
+                        .where((p) => p.specialty.toUpperCase() == 'ANC')
+                        .isEmpty)
+                      Text(
+                        'No ANC services available.',
+                        style: TextStyle(fontStyle: FontStyle.italic),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           );
         },
       ),

@@ -31,7 +31,11 @@ class _EditProviderPageState extends State<EditProviderPage> {
     'Rheumatology',
     'Pain Management',
     'Urgent Care',
-    'Sports Medicine'
+    'Sports Medicine',
+    'Trauma',
+    'Pediatrics',
+    'ESP',
+    'ANC'
   ];
 
   final List<String> titles = ['Dr.', 'PA', 'PA-C', 'DPM Fellow'];
