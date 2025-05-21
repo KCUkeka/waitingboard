@@ -101,20 +101,27 @@ class _DashboardPageState extends State<DashboardPage> {
 
           final providers = snapshot.data ?? [];
 
-          return Row(
-            children: [
-              // Main Dashboard Grid - Expanded to take most of the width
-              Expanded(
-                flex: 3,
-                child: providers.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No active times in ${widget.selectedLocation}',
-                          style: TextStyle(fontStyle: FontStyle.italic),
-                        ),
-                      )
-                    : SingleChildScrollView(
-                        child: LayoutBuilder(
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start, 
+              children: [
+                // Main Dashboard Grid - Left Panel
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (providers.isEmpty)
+                        Center(
+                          child: Text(
+                            'No active times in ${widget.selectedLocation}',
+                            style: TextStyle(fontStyle: FontStyle.italic),
+                          ),
+                        )
+                      else
+                        LayoutBuilder(
                           builder: (context, constraints) {
                             int crossAxisCount =
                                 (constraints.maxWidth / 200).floor();
@@ -129,7 +136,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             return GridView.builder(
                               physics: NeverScrollableScrollPhysics(),
                               shrinkWrap: true,
-                              padding: EdgeInsets.all(16),
+                              padding: EdgeInsets.only(right: 16),
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: crossAxisCount,
@@ -189,64 +196,68 @@ class _DashboardPageState extends State<DashboardPage> {
                             );
                           },
                         ),
-                      ),
-              ),
-
-              // Slim Right Panel
-              Container(
-                width: 300,
-                color: Colors.grey.shade200,
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Ancillary Services:',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 16),
-
-                    // ANC Specialty Cards
-                    ...providers
-                        .where((p) => p.specialty.toUpperCase() == 'ANC')
-                        .map((p) => Card(
-                              margin: EdgeInsets.only(bottom: 12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      p.dashboardName,
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                        'Wait Time: ${_formatWaitTime(p.formattedWaitTime)}'),
-                                    SizedBox(height: 4),
-                                    Text(
-                                        'Updated: ${formatTimestamp(p.last_changed)}'),
-                                  ],
-                                ),
-                              ),
-                            ))
-                        .toList(),
-
-                    // Show message if no ANC providers found
-                    if (providers
-                        .where((p) => p.specialty.toUpperCase() == 'ANC')
-                        .isEmpty)
-                      Text(
-                        'No ANC services available.',
-                        style: TextStyle(fontStyle: FontStyle.italic),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+
+                // Slim Right Panel - Ancillary Services
+                Container(
+                  margin: EdgeInsets.only(left: 16),
+                  width: 300,
+                  color: Colors.grey.shade200,
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ancillary Services',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 16),
+
+                      // ANC Specialty Cards
+                      ...providers
+                          .where((p) => p.specialty.toUpperCase() == 'ANC')
+                          .map((p) => Card(
+                                margin: EdgeInsets.only(bottom: 12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        p.dashboardName,
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                          'Wait Time: ${_formatWaitTime(p.formattedWaitTime)}'),
+                                      SizedBox(height: 4),
+                                      Text(
+                                          'Updated: ${formatTimestamp(p.last_changed)}'),
+                                    ],
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+
+                      // Show message if no ANC providers found
+                      if (providers
+                          .where((p) => p.specialty.toUpperCase() == 'ANC')
+                          .isEmpty)
+                        Text(
+                          'No ANC services available.',
+                          style: TextStyle(fontStyle: FontStyle.italic),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
