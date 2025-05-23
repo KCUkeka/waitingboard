@@ -99,7 +99,6 @@ class _EditProviderPageState extends State<EditProviderPage> {
     if (firstNameController.text.isEmpty ||
         lastNameController.text.isEmpty ||
         selectedSpecialty.isEmpty ||
-        selectedTitle.isEmpty ||
         selectedLocations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('All fields are required')),
