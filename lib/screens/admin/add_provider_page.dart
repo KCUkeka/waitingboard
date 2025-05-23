@@ -39,12 +39,12 @@ class _AddProviderPageState extends State<AddProviderPage> {
   ];
 
   final List<String> titles = [
+    '',
     'Dr.',
     'PA',
     'PA-C',
     'DPM',
     'DPM Fellow',
-    'ANC',
   ];
 
   // List to hold locations fetched from MySQL
