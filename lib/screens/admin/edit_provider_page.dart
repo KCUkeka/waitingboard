@@ -39,7 +39,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
     'ANC',
   ];
 
-  final List<String> titles = ['Dr.', 'PA', 'PA-C', 'DPM', 'DPM Fellow'];
+  final List<String> titles = ['Dr.', 'PA', 'PA-C', 'DPM', 'DPM Fellow', 'ANC'];
 
   @override
   void initState() {
