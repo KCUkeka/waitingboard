@@ -39,7 +39,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
     'General',
   ];
 
-  final List<String> titles = ['Dr.', 'PA', 'PA-C', 'DPM Fellow', 'ANC'];
+  final List<String> titles = ['','Dr.', 'PA', 'PA-C', 'DPM Fellow'];
 
   @override
   void initState() {
@@ -98,7 +98,6 @@ class _EditProviderPageState extends State<EditProviderPage> {
     if (firstNameController.text.isEmpty ||
         lastNameController.text.isEmpty ||
         selectedSpecialty.isEmpty ||
-        selectedTitle.isEmpty ||
         selectedLocations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('All fields are required')),

@@ -43,7 +43,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'PA',
     'PA-C',
     'DPM Fellow',
-    'ANC',
+    'N/A',
   ];
 
   // List to hold locations fetched from MySQL
@@ -140,7 +140,7 @@ Future<void> saveProvider() async {
   print('Title: $title');
   print('Locations: $locationsString');
 
-  if (firstName.isEmpty || lastName.isEmpty || specialty == null || title == null || locationsString.isEmpty) {
+  if (firstName.isEmpty || lastName.isEmpty || specialty == null || locationsString.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('All fields are required')),
     );
@@ -153,7 +153,7 @@ Future<void> saveProvider() async {
       firstName,
       lastName,
       specialty,
-      title,
+      title ?? '',  // Allows for empty stirng if null
       locationsString,  // Pass the locations as a comma-separated string
     );
 

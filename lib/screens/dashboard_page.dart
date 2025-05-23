@@ -110,7 +110,7 @@ class _DashboardPageState extends State<DashboardPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Main Dashboard Grid - Left Panel
+                // ---------------Main Dashboard Grid - Left Panel-------------------------
                 Expanded(
                   flex: 3,
                   child: Column(
@@ -160,10 +160,17 @@ class _DashboardPageState extends State<DashboardPage> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
-                                          provider.dashboardName,
+                                          (provider.specialty.toUpperCase() ==
+                                                      'GENERAL' ||
+                                                  provider.specialty
+                                                          .toUpperCase() ==
+                                                      'ESP')
+                                              ? provider.lastName
+                                              : provider.dashboardName,
                                           style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold),
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                           textAlign: TextAlign.center,
                                         ),
                                         SizedBox(height: 8),
@@ -203,7 +210,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
 
-                // Right Panel — Only shown if there are ANC wait times
+                // -----------------Right Panel — Only shown if there are ANC wait times---------------------
                 if (ancProviders.isNotEmpty)
                   Container(
                     margin: EdgeInsets.only(left: 16),
@@ -229,14 +236,28 @@ class _DashboardPageState extends State<DashboardPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      p.dashboardName.split(',').first.trim(),
+                                      p.lastName,
                                       style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold),
                                     ),
                                     SizedBox(height: 4),
-                                    Text(
-                                        'Wait Time: ${_formatWaitTime(p.formattedWaitTime)}'),
+                                    Text.rich(
+                                      TextSpan(
+                                        text: 'Wait Time: ',
+                                        style: TextStyle(
+                                            fontSize:
+                                                14), // base style (optional)
+                                        children: [
+                                          TextSpan(
+                                            text: _formatWaitTime(
+                                                p.formattedWaitTime),
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                     SizedBox(height: 4),
                                     Text(
                                         'Updated: ${formatTimestamp(p.last_changed)}'),

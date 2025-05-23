@@ -98,7 +98,7 @@ factory ProviderInfo.fromWaitTimeApi(
     if (firstName.isEmpty || lastName.isEmpty) {
       return '$title';
     }
-    return '$lastName, ${firstName[0]} | $title';
+    return '$title $lastName, ${firstName[0]}';
   }
 
   // Getter for formatted wait time
