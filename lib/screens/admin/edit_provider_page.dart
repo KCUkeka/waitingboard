@@ -34,7 +34,6 @@ class _EditProviderPageState extends State<EditProviderPage> {
     'Sports Medicine',
     'Trauma',
     'Pediatrics',
-    'ESP',
     'ANC',
     'General',
   ];
