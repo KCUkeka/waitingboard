@@ -355,7 +355,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                     return Column(
                       children: [
                         ListTile(
-                          title: Text(provider.displayName),
+                          title: Text(provider.displayName.split('|').first.trim()),
                           subtitle: Text(provider.specialty),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
