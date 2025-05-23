@@ -45,6 +45,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'PA-C',
     'DPM',
     'DPM Fellow',
+    'N/A',
   ];
 
   // List to hold locations fetched from MySQL
