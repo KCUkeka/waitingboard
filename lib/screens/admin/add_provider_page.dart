@@ -24,6 +24,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'Total Joint',
     'Upper Extremity',
     'Shoulder',
+    'Hip',
     'Knee',
     'Podiatry',
     'Rheumatology',
