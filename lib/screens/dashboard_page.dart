@@ -101,11 +101,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
           final providers = snapshot.data ?? [];
 
+          final ancProviders = providers
+              .where((p) => p.specialty.toUpperCase() == 'ANC')
+              .toList();
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Row(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start, 
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Main Dashboard Grid - Left Panel
                 Expanded(
@@ -200,62 +203,50 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
 
-                // Slim Right Panel - Ancillary Services
-                Container(
-                  margin: EdgeInsets.only(left: 16),
-                  width: 300,
-                  color: Colors.grey.shade200,
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ancillary Services',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 16),
-
-                      // ANC Specialty Cards
-                      ...providers
-                          .where((p) => p.specialty.toUpperCase() == 'ANC')
-                          .map((p) => Card(
-                                margin: EdgeInsets.only(bottom: 12),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        p.dashboardName,
-                                        style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                          'Wait Time: ${_formatWaitTime(p.formattedWaitTime)}'),
-                                      SizedBox(height: 4),
-                                      Text(
-                                          'Updated: ${formatTimestamp(p.last_changed)}'),
-                                    ],
-                                  ),
-                                ),
-                              ))
-                          .toList(),
-
-                      // Show message if no ANC providers found
-                      if (providers
-                          .where((p) => p.specialty.toUpperCase() == 'ANC')
-                          .isEmpty)
+                // Right Panel — Only shown if there are ANC wait times
+                if (ancProviders.isNotEmpty)
+                  Container(
+                    margin: EdgeInsets.only(left: 16),
+                    width: 300,
+                    color: Colors.grey.shade200,
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          'No ANC wait times available.',
-                          style: TextStyle(fontStyle: FontStyle.italic),
+                          'Ancillary Services',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-                    ],
+                        SizedBox(height: 16),
+
+                        // ANC Specialty Cards
+                        ...ancProviders.map((p) => Card(
+                              margin: EdgeInsets.only(bottom: 12),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      p.dashboardName,
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                        'Wait Time: ${_formatWaitTime(p.formattedWaitTime)}'),
+                                    SizedBox(height: 4),
+                                    Text(
+                                        'Updated: ${formatTimestamp(p.last_changed)}'),
+                                  ],
+                                ),
+                              ),
+                            )),
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           );
