@@ -161,11 +161,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
-                                          (provider.specialty.toUpperCase() ==
-                                                      'GENERAL' ||
-                                                  provider.specialty
-                                                          .toUpperCase() ==
-                                                      'ESP')
+                                          provider.specialty.toUpperCase() ==
+                                                  'GENERAL'
                                               ? provider.lastName
                                               : provider.dashboardName,
                                           style: TextStyle(
