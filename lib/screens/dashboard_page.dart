@@ -250,7 +250,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           .where((p) => p.specialty.toUpperCase() == 'ANC')
                           .isEmpty)
                         Text(
-                          'No ANC services available.',
+                          'No ANC wait times available.',
                           style: TextStyle(fontStyle: FontStyle.italic),
                         ),
                     ],
