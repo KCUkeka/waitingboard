@@ -35,6 +35,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'Pediatrics',
     'ESP',
     'ANC',
+    'General',
   ];
 
   final List<String> titles = [
