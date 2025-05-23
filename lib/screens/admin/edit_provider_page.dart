@@ -36,6 +36,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
     'Trauma',
     'Pediatrics',
     'ESP',
+    'ANC',
   ];
 
   final List<String> titles = ['Dr.', 'PA', 'PA-C', 'DPM', 'DPM Fellow'];
