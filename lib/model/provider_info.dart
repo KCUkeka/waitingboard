@@ -90,7 +90,7 @@ factory ProviderInfo.fromWaitTimeApi(
 
   // Getter for display names for wait times page
   String get displayName {
-    return '$lastName, ${firstName.isNotEmpty ? firstName[0] : '?'} | $title';
+    return '$lastName, ${firstName.isNotEmpty ? firstName[0] : '?'} ';
   }
 
   // Getter for dashboard cards
