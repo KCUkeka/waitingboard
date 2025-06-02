@@ -67,6 +67,26 @@ class ApiService {
     }
   }
 
+  // Reset a user's password (admin authorized)
+static Future<void> resetPassword(String username, String newPassword) async {
+  try {
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/reset_password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'password': newPassword, // now plain text
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to reset password: ${response.body}');
+    }
+  } catch (e) {
+    throw Exception('Error resetting password: $e');
+  }
+}
+
 //-------------------------------------------------------Locations ----------------------------------------------
   // Fetch all locations
   static Future<List<String>> fetchLocations() async {

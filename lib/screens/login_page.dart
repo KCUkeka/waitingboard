@@ -91,7 +91,10 @@ class _LoginPageState extends State<LoginPage> {
                 value: usernameController.text.isEmpty
                     ? null
                     : usernameController.text,
-                items: _users.map((user) {
+                items: _users
+                    .where((user) =>
+                        user['admin'] == true || user['admin'] == 'true')
+                    .map((user) {
                   return DropdownMenuItem(
                     value: user['username']?.toString() ?? '',
                     child: Text(user['username']!),
@@ -190,6 +193,142 @@ class _LoginPageState extends State<LoginPage> {
               child: Text("Add"),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  // --------------------------------------------------------Password Reset--------------------------------------------
+
+  Future<void> _resetPassword() async {
+    final TextEditingController newPasswordController = TextEditingController();
+    final TextEditingController adminUsernameController =
+        TextEditingController();
+    final TextEditingController adminPasswordController =
+        TextEditingController();
+
+    String? selectedTargetUsername;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("Reset User Password"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedTargetUsername,
+                      items: _users.map((user) {
+                        return DropdownMenuItem<String>(
+                          value: user['username'],
+                          child: Text(user['username']),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedTargetUsername = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                          labelText: "Select Username to Reset"),
+                    ),
+                    TextField(
+                      controller: newPasswordController,
+                      obscureText: true,
+                      decoration: InputDecoration(labelText: "New Password"),
+                    ),
+                    Divider(height: 20),
+                    DropdownButtonFormField<String>(
+                      value: adminUsernameController.text.isNotEmpty
+                          ? adminUsernameController.text
+                          : null,
+                      items: _users
+                          .where((user) =>
+                              user['admin'] == true || user['admin'] == 'true')
+                          .map((user) {
+                        final username = user['username']?.toString() ?? '';
+                        return DropdownMenuItem<String>(
+                          value: username,
+                          child: Text(username),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        adminUsernameController.text = value!;
+                      },
+                      decoration:
+                          InputDecoration(labelText: "Select Admin Username"),
+                    ),
+                    TextField(
+                      controller: adminPasswordController,
+                      obscureText: true,
+                      decoration: InputDecoration(labelText: "Admin Password"),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final targetUsername = selectedTargetUsername?.trim();
+                    final newPassword = newPasswordController.text.trim();
+                    final adminUsername = adminUsernameController.text.trim();
+                    final adminPassword = adminPasswordController.text.trim();
+
+                    if ([
+                      targetUsername,
+                      newPassword,
+                      adminUsername,
+                      adminPassword
+                    ].any((v) => v == null || v.isEmpty)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("All fields are required.")));
+                      return;
+                    }
+
+                    final adminUser = _users.firstWhere(
+                      (user) => user['username'] == adminUsername,
+                      orElse: () => {},
+                    );
+
+                    if (adminUser.isEmpty ||
+                        hashPassword(adminPassword) != adminUser['password']) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text("Invalid admin credentials.")));
+                      return;
+                    }
+
+                    final isAdmin = adminUser['admin'] == true ||
+                        adminUser['admin'] == 'true';
+                    if (!isAdmin) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text("Only admins can reset passwords.")));
+                      return;
+                    }
+
+                    try {
+                      await ApiService.resetPassword(
+                          targetUsername!, hashPassword(newPassword));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text("Password reset successfully.")));
+                      Navigator.of(context).pop();
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text("Failed to reset password: $e")));
+                    }
+                  },
+                  child: Text("Reset"),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -350,6 +489,13 @@ class _LoginPageState extends State<LoginPage> {
             ElevatedButton(
               onPressed: _login,
               child: Text('Login'),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: TextButton(
+                onPressed: _resetPassword,
+                child: Text('Reset Password'),
+              ),
             ),
             SizedBox(height: 10),
             TextButton(
