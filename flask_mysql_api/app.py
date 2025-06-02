@@ -81,7 +81,39 @@ def add_user():
         print(f"Error in /users (POST) route: {e}")
         return jsonify({"error": str(e)}), 500
 
+# Route to reset a user's password (admin authorized)
+@app.route('/users/reset_password', methods=['PUT'])
+def reset_password():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        new_password = data.get('password')  # Plain text password sent from client
 
+        if not username or not new_password:
+            return jsonify({"error": "Username and password are required"}), 400
+
+        cursor = mysql.connection.cursor()
+
+        # Check if user exists
+        cursor.execute("SELECT id FROM waitingboard_users WHERE username = %s", (username,))
+        user = cursor.fetchone()
+        if not user:
+            cursor.close()
+            return jsonify({"error": "User not found"}), 404
+
+        # Update the password (you could hash it here if desired)
+        cursor.execute(
+            "UPDATE waitingboard_users SET password = %s WHERE username = %s",
+            (new_password, username)
+        )
+        mysql.connection.commit()
+        cursor.close()
+
+        return jsonify({"message": "Password reset successfully"}), 200
+
+    except Exception as e:
+        print(f"Error resetting password: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # --------------------------------------------------- Locations ---------------------------------------------------     
 # Route to fetch all locations
