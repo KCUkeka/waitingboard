@@ -18,6 +18,95 @@ class _LoginPageState extends State<LoginPage> {
 
   String? _selectedUsername;
   String? _selectedLocation;
+  Future<void> _requireAdminBeforeCreateAccount() async {
+    final TextEditingController usernameController = TextEditingController();
+    final TextEditingController passwordController = TextEditingController();
+
+    String? selectedAdminUsername;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("Admin Authorization Required"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selectedAdminUsername,
+                    items: _users
+                        .where((user) =>
+                            user['admin'] == true || user['admin'] == 'true')
+                        .map<DropdownMenuItem<String>>(
+                            (user) => DropdownMenuItem<String>(
+                                  value: user['username'] as String,
+                                  child: Text(user['username'] as String),
+                                ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedAdminUsername = value;
+                        usernameController.text = value!;
+                      });
+                    },
+                    decoration: InputDecoration(labelText: "Admin Username"),
+                  ),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(labelText: "Admin Password"),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final user = _users.firstWhere(
+                      (u) => u['username'] == selectedAdminUsername,
+                      orElse: () => {},
+                    );
+
+                    if (user.isEmpty ||
+                        hashPassword(passwordController.text.trim()) !=
+                            user['password']) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Invalid admin credentials.")),
+                      );
+                      return;
+                    }
+
+                    final isAdmin =
+                        user['admin'] == true || user['admin'] == 'true';
+                    if (!isAdmin) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text("Only admins can create accounts.")),
+                      );
+                      return;
+                    }
+
+                    Navigator.of(context).pop(); // Close the dialog
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => CreateAccountPage()),
+                    );
+                  },
+                  child: Text("Continue"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   List<Map<String, dynamic>> _users = []; // Store user objects with username and hashed password
   List<String> _locations = [];
@@ -53,7 +142,9 @@ class _LoginPageState extends State<LoginPage> {
         
         _locations = locations.map((location) {
               return location.toString(); // Fallback to empty string
-            }).where((name) => name.isNotEmpty).toList(); // Filter out empty names
+            })
+            .where((name) => name.isNotEmpty)
+            .toList(); // Filter out empty names
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,13 +157,15 @@ class _LoginPageState extends State<LoginPage> {
     final bytes = utf8.encode(password); // Encode the password in UTF-8
     final digest = sha256.convert(bytes); // Generate the hash
     // print('Hashed Password: $digest');  // Debug print
-    return digest.toString(); // Return the hashed password as a hexadecimal string
+    return digest
+        .toString(); // Return the hashed password as a hexadecimal string
   }
 
 //-------------------------------------------------------Add new location----------------------------------------------
 
   Future<void> _addNewLocation() async {
-    final TextEditingController locationNameController = TextEditingController();
+    final TextEditingController locationNameController =
+        TextEditingController();
     final TextEditingController usernameController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
 
@@ -153,7 +246,7 @@ class _LoginPageState extends State<LoginPage> {
                   return;
                 }
 
-                print("User admin value: ${user['admin']}"); // Debugging line to inspect the admin value
+              
 
                 // Check if the user is an admin
                 final isAdmin = user['admin'] == true || user['admin'] == 'true';
@@ -494,12 +587,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             SizedBox(height: 10),
             TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => CreateAccountPage()),
-                );
-              },
+              onPressed: _requireAdminBeforeCreateAccount,
               child: Text('Create Account'),
             ),
             SizedBox(height: 20),
