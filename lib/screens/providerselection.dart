@@ -75,15 +75,12 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
         'waitTime': waitTime,
         'currentLocation': widget.selectedLocation,
       });
-
       setState(() {
         provider.waitTime = waitTime;
       });
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Wait time updated for ${provider.displayName}')),
       );
-
       Navigator.pop(context); // Go back to wait_times_page
     } catch (e) {
       print('Update error: $e');
@@ -99,11 +96,9 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
       'Confirm Save',
       'Are you sure you want to update all wait times?',
     );
-
     if (confirmed != true) return;
 
     bool errorOccurred = false;
-
     for (var provider in widget.providers) {
       final waitTime = _getWaitTime(provider.docId);
       if (waitTime == null) {
@@ -128,29 +123,31 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
             errorOccurred ? 'Some wait times failed to save.' : 'All wait times saved.'),
       ),
     );
-
     Navigator.pop(context); // Go back to wait_times_page
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Select Provider')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _saveAllWaitTimes,
-        tooltip: 'Save All Wait Times',
-        child: Icon(Icons.check),
+      appBar: AppBar(
+        title: Text('Select Provider'),
+        actions: [
+          IconButton(
+            onPressed: _saveAllWaitTimes,
+            icon: Icon(Icons.check),
+            tooltip: 'Save All Wait Times',
+          ),
+        ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: ListView.builder(
         itemCount: widget.providers.length,
         itemBuilder: (context, index) {
           final provider = widget.providers[index];
           final docId = provider.docId;
-
           _waitTimeControllers.putIfAbsent(
               docId, () => TextEditingController());
           _statusMap.putIfAbsent(docId, () => ProviderStatus.time);
+
           final status = _statusMap[docId]!;
 
           return Padding(
@@ -179,7 +176,6 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
                         ],
                       ),
                     ),
-
                     // Toggle Buttons
                     Expanded(
                       flex: 4,
@@ -207,9 +203,7 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
                         ],
                       ),
                     ),
-
                     SizedBox(width: 6),
-
                     // Min Input if applicable
                     if (status == ProviderStatus.time)
                       SizedBox(
@@ -227,7 +221,6 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
                           ),
                         ),
                       ),
-
                     // Update Button
                     IconButton(
                       icon: Icon(Icons.update, color: Colors.blue),
