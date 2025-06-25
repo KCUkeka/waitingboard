@@ -96,7 +96,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
             .map((providerData) {
               if (providerData is Map<String, dynamic>) {
                 List<String> locations = [
-                  (providerData['locationName'] ?? '').toString()
+                  (providerData['provider_locations'] ?? '').toString()
                 ];
                 return ProviderInfo.fromWaitTimeApi(providerData,
                     providerData['id']?.toString() ?? '', locations);
@@ -355,7 +355,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                     return Column(
                       children: [
                         ListTile(
-                          title: Text(provider.displayName.split('|').first.trim()),
+                          title: Text(
+                              provider.displayName.split('|').first.trim()),
                           subtitle: Text(provider.specialty),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -410,12 +411,14 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 FloatingActionButton(
+                  heroTag: 'deleteBtn',
                   onPressed: deleteAllWaitTimes,
                   tooltip: 'Delete All Wait Times',
                   child: Icon(Icons.delete_forever),
                 ),
                 SizedBox(width: 16), // Space between buttons
                 FloatingActionButton(
+                  heroTag: 'saveBtn',
                   onPressed: saveAllWaitTimes,
                   tooltip: 'Save All Wait Times',
                   child: Icon(CupertinoIcons.checkmark_alt),

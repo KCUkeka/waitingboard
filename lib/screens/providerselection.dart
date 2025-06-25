@@ -2,182 +2,241 @@ import 'package:flutter/material.dart';
 import 'package:waitingboard/model/provider_info.dart';
 import 'package:waitingboard/services/api_service.dart';
 
+enum ProviderStatus { time, onTime, delayed }
+
 class ProviderSelectionPage extends StatefulWidget {
   final List<ProviderInfo> providers;
   final String selectedLocation;
 
-  ProviderSelectionPage(
-      {required this.providers, required this.selectedLocation});
+  ProviderSelectionPage({
+    required this.providers,
+    required this.selectedLocation,
+  });
 
   @override
   _ProviderSelectionPageState createState() => _ProviderSelectionPageState();
 }
 
 class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
-  // Map to store a TextEditingController for each provider's wait time field.
   final Map<String, TextEditingController> _waitTimeControllers = {};
+  final Map<String, ProviderStatus> _statusMap = {};
 
   @override
   void dispose() {
-    // Dispose all controllers to prevent memory leaks.
-    _waitTimeControllers.forEach((key, controller) => controller.dispose());
+    _waitTimeControllers.forEach((_, c) => c.dispose());
     super.dispose();
   }
 
-  /// This method shows a confirmation dialog and returns a boolean.
   Future<bool?> _showConfirmationDialog(
-      BuildContext context, String title, String content) async {
+      BuildContext context, String title, String content) {
     return showDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(content),
-          actions: [
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-            TextButton(
-              child: const Text('Confirm'),
-              onPressed: () => Navigator.of(context).pop(true),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Confirm')),
+        ],
+      ),
     );
   }
 
-  /// Saves all wait times for the providers.
-  Future<void> saveAllWaitTimes() async {
-    // Show confirmation dialog.
-    bool? shouldSave = await _showConfirmationDialog(
+  int? _getWaitTime(String docId) {
+    final status = _statusMap[docId] ?? ProviderStatus.time;
+    switch (status) {
+      case ProviderStatus.onTime:
+        return 0;
+      case ProviderStatus.delayed:
+        return 15;
+      case ProviderStatus.time:
+        final text = _waitTimeControllers[docId]?.text ?? '';
+        final parsed = int.tryParse(text);
+        if (parsed == null || parsed < 0) return null;
+        return parsed;
+    }
+  }
+
+  Future<void> _updateWaitTime(ProviderInfo provider) async {
+    final waitTime = _getWaitTime(provider.docId);
+    if (waitTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a valid wait time')),
+      );
+      return;
+    }
+
+    try {
+      await ApiService.updateProvider(provider.docId, {
+        'waitTime': waitTime,
+        'currentLocation': widget.selectedLocation,
+      });
+
+      setState(() {
+        provider.waitTime = waitTime;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Wait time updated for ${provider.displayName}')),
+      );
+
+      Navigator.pop(context); // Go back to wait_times_page
+    } catch (e) {
+      print('Update error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update: $e')),
+      );
+    }
+  }
+
+  Future<void> _saveAllWaitTimes() async {
+    bool? confirmed = await _showConfirmationDialog(
       context,
-      'Confirm Update',
+      'Confirm Save',
       'Are you sure you want to update all wait times?',
     );
 
-    if (shouldSave == true) {
-      try {
-        for (var provider in widget.providers) {
-          final controller = _waitTimeControllers[provider.docId];
-          if (controller != null && controller.text.isNotEmpty) {
-            final waitTime = int.tryParse(controller.text);
-            if (waitTime != null) {
-              await ApiService.updateProvider(provider.docId, {
-                'waitTime': waitTime,
-                'currentLocation': widget.selectedLocation,
-              });
-            }
-          }
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wait times saved successfully')),
-        );
-        setState(() {}); // Refresh the UI after saving.
-        Navigator.pop(context); // Go back to wait_times_page.
-      } catch (e) {
-        print('Error saving wait times: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save wait times: $e')),
-        );
-      }
-    }
-  }
+    if (confirmed != true) return;
 
-  /// Updates the wait time for a specific provider.
-  Future<void> _updateWaitTime(
-      ProviderInfo provider, String newWaitTime) async {
-    int? updatedWaitTime = int.tryParse(newWaitTime);
-    if (updatedWaitTime != null) {
+    bool errorOccurred = false;
+
+    for (var provider in widget.providers) {
+      final waitTime = _getWaitTime(provider.docId);
+      if (waitTime == null) {
+        errorOccurred = true;
+        continue;
+      }
+
       try {
-        // Prepare the update data.
-        Map<String, dynamic> updateData = {
-          'waitTime': updatedWaitTime,
+        await ApiService.updateProvider(provider.docId, {
+          'waitTime': waitTime,
           'currentLocation': widget.selectedLocation,
-          'id': provider.docId,
-        };
-
-        await ApiService.updateProvider(provider.docId, updateData);
-
-        setState(() {
-          provider.waitTime = updatedWaitTime;
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wait time updated successfully')),
-        );
-        Navigator.pop(context); // Go back to wait_times_page.
       } catch (e) {
-        print('Error updating wait time: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update wait time: $e')),
-        );
+        errorOccurred = true;
+        print('Error saving ${provider.displayName}: $e');
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid wait time')),
-      );
     }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            errorOccurred ? 'Some wait times failed to save.' : 'All wait times saved.'),
+      ),
+    );
+
+    Navigator.pop(context); // Go back to wait_times_page
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Select Provider'),
-      ),
+      appBar: AppBar(title: Text('Select Provider')),
       floatingActionButton: FloatingActionButton(
-        onPressed: saveAllWaitTimes,
+        onPressed: _saveAllWaitTimes,
         tooltip: 'Save All Wait Times',
         child: Icon(Icons.check),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat, // Center the button at the bottom
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: ListView.builder(
         itemCount: widget.providers.length,
         itemBuilder: (context, index) {
           final provider = widget.providers[index];
+          final docId = provider.docId;
 
-          // Ensure a TextEditingController exists for each provider.
-          if (!_waitTimeControllers.containsKey(provider.docId)) {
-            _waitTimeControllers[provider.docId] = TextEditingController();
-          }
-          final controller = _waitTimeControllers[provider.docId]!;
+          _waitTimeControllers.putIfAbsent(
+              docId, () => TextEditingController());
+          _statusMap.putIfAbsent(docId, () => ProviderStatus.time);
+          final status = _statusMap[docId]!;
 
-          return Column(
-            children: [
-              ListTile(
-                // The provider name is in the title.
-                title: Text(provider.displayName),
-                subtitle: Text(provider.specialty),
-                // Trailing is a Row containing the time input and the update button.
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            child: Card(
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    SizedBox(
-                      width: 80,
-                      child: TextField(
-                        controller: controller,
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.right,
-                        decoration: InputDecoration(
-                          hintText: 'Time',
-                          contentPadding: EdgeInsets.symmetric(vertical: 8),
-                        ),
+                    // Display Name + Specialty
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            provider.displayName,
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            provider.specialty,
+                            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                          ),
+                        ],
                       ),
                     ),
+
+                    // Toggle Buttons
+                    Expanded(
+                      flex: 4,
+                      child: ToggleButtons(
+                        isSelected: [
+                          status == ProviderStatus.time,
+                          status == ProviderStatus.onTime,
+                          status == ProviderStatus.delayed,
+                        ],
+                        onPressed: (i) {
+                          final selected = ProviderStatus.values[i];
+                          setState(() {
+                            _statusMap[docId] = selected;
+                            if (selected != ProviderStatus.time) {
+                              _waitTimeControllers[docId]?.clear();
+                            }
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        constraints: BoxConstraints(minHeight: 36, minWidth: 60),
+                        children: [
+                          Text("Time"),
+                          Text("On Time"),
+                          Text("Delay"),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(width: 6),
+
+                    // Min Input if applicable
+                    if (status == ProviderStatus.time)
+                      SizedBox(
+                        width: 50,
+                        height: 36,
+                        child: TextField(
+                          controller: _waitTimeControllers[docId],
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          decoration: InputDecoration(
+                            hintText: 'Min',
+                            contentPadding: EdgeInsets.symmetric(vertical: 8),
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+
+                    // Update Button
                     IconButton(
                       icon: Icon(Icons.update, color: Colors.blue),
-                      onPressed: () async {
-                        await _updateWaitTime(provider, controller.text);
-                        setState(() {}); // Refresh the UI after update.
-                      },
+                      onPressed: () => _updateWaitTime(provider),
                     ),
                   ],
                 ),
               ),
-              Divider(),
-            ],
+            ),
           );
         },
       ),
