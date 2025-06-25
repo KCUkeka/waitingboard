@@ -410,12 +410,14 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 FloatingActionButton(
+                  heroTag: 'deleteBtn',
                   onPressed: deleteAllWaitTimes,
                   tooltip: 'Delete All Wait Times',
                   child: Icon(Icons.delete_forever),
                 ),
                 SizedBox(width: 16), // Space between buttons
                 FloatingActionButton(
+                  heroTag: 'saveBtn',
                   onPressed: saveAllWaitTimes,
                   tooltip: 'Save All Wait Times',
                   child: Icon(CupertinoIcons.checkmark_alt),
