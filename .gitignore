@@ -46,3 +46,4 @@ app.*.map.json
 
 # Flask API db connection
 .env
+/assets/config.json
