@@ -46,23 +46,24 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
     );
   }
 
-  int? _getWaitTime(String docId) {
+  String? _getWaitTimeText(String docId) {
     final status = _statusMap[docId] ?? ProviderStatus.time;
     switch (status) {
       case ProviderStatus.onTime:
-        return 0;
+        return 'On Time';
       case ProviderStatus.delayed:
-        return 15;
+        return 'Delayed';
       case ProviderStatus.time:
         final text = _waitTimeControllers[docId]?.text ?? '';
-        final parsed = int.tryParse(text);
-        if (parsed == null || parsed < 0) return null;
-        return parsed;
+        if (text.isEmpty || int.tryParse(text) == null || int.parse(text) < 0)
+          return null;
+        return text;
     }
   }
 
   Future<void> _updateWaitTime(ProviderInfo provider) async {
-    final waitTime = _getWaitTime(provider.docId);
+    final waitTime = _getWaitTimeText(provider.docId);
+
     if (waitTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please enter a valid wait time')),
@@ -72,14 +73,15 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
 
     try {
       await ApiService.updateProvider(provider.docId, {
-        'waitTime': waitTime,
-        'currentLocation': widget.selectedLocation,
+        'wait_time': waitTime,
+        'current_location': widget.selectedLocation,
       });
       setState(() {
         provider.waitTime = waitTime;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Wait time updated for ${provider.displayName}')),
+        SnackBar(
+            content: Text('Wait time updated for ${provider.displayName}')),
       );
       Navigator.pop(context); // Go back to wait_times_page
     } catch (e) {
@@ -99,17 +101,23 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
     if (confirmed != true) return;
 
     bool errorOccurred = false;
-    for (var provider in widget.providers) {
-      final waitTime = _getWaitTime(provider.docId);
-      if (waitTime == null) {
-        errorOccurred = true;
-        continue;
-      }
+
+    // Only update providers with a valid wait time
+    final validProviders = widget.providers.where((provider) {
+      final waitTime = _getWaitTimeText(provider.docId);
+      return waitTime != null && waitTime.isNotEmpty;
+    }).toList();
+
+    for (var provider in validProviders) {
+      final waitTime = _getWaitTimeText(provider.docId);
+
+      // Optional: print debug info
+      print('Saving ${provider.displayName} with waitTime: $waitTime');
 
       try {
         await ApiService.updateProvider(provider.docId, {
-          'waitTime': waitTime,
-          'currentLocation': widget.selectedLocation,
+          'wait_time': waitTime,
+          'current_location': widget.selectedLocation,
         });
       } catch (e) {
         errorOccurred = true;
@@ -119,11 +127,20 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-            errorOccurred ? 'Some wait times failed to save.' : 'All wait times saved.'),
+        content: Text(errorOccurred
+            ? 'Some wait times failed to save.'
+            : 'All wait times saved.'),
       ),
     );
-    Navigator.pop(context); // Go back to wait_times_page
+    Navigator.pop(context); // Return to previous screen
+  }
+
+  bool _shouldShowTimeControls(String specialty) {
+    final lower = specialty.toLowerCase();
+    return lower == 'anc' ||
+        lower == 'general' ||
+        lower == 'infusion' ||
+        lower == 'rheumatology';
   }
 
   @override
@@ -143,12 +160,14 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
         itemCount: widget.providers.length,
         itemBuilder: (context, index) {
           final provider = widget.providers[index];
+          print('Provider: ${provider.displayName}, ${provider.specialty}');
           final docId = provider.docId;
           _waitTimeControllers.putIfAbsent(
               docId, () => TextEditingController());
           _statusMap.putIfAbsent(docId, () => ProviderStatus.time);
 
           final status = _statusMap[docId]!;
+          final showControls = _shouldShowTimeControls(provider.specialty);
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -171,41 +190,62 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
                           ),
                           Text(
                             provider.specialty,
-                            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                            style: TextStyle(
+                                color: Colors.grey[600], fontSize: 12),
                           ),
                         ],
                       ),
                     ),
-                    // Toggle Buttons
-                    Expanded(
-                      flex: 4,
-                      child: ToggleButtons(
-                        isSelected: [
-                          status == ProviderStatus.time,
-                          status == ProviderStatus.onTime,
-                          status == ProviderStatus.delayed,
-                        ],
-                        onPressed: (i) {
-                          final selected = ProviderStatus.values[i];
-                          setState(() {
-                            _statusMap[docId] = selected;
-                            if (selected != ProviderStatus.time) {
-                              _waitTimeControllers[docId]?.clear();
-                            }
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        constraints: BoxConstraints(minHeight: 36, minWidth: 60),
-                        children: [
-                          Text("Time"),
-                          Text("On Time"),
-                          Text("Delay"),
-                        ],
+
+                    if (showControls) ...[
+                      // Toggle Buttons (ANC or General only)
+                      Expanded(
+                        flex: 4,
+                        child: ToggleButtons(
+                          isSelected: [
+                            status == ProviderStatus.time,
+                            status == ProviderStatus.onTime,
+                            status == ProviderStatus.delayed,
+                          ],
+                          onPressed: (i) {
+                            final selected = ProviderStatus.values[i];
+                            setState(() {
+                              _statusMap[docId] = selected;
+                              if (selected != ProviderStatus.time) {
+                                _waitTimeControllers[docId]?.clear();
+                              }
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          constraints:
+                              BoxConstraints(minHeight: 36, minWidth: 60),
+                          children: [
+                            Text("Time"),
+                            Text("On Time"),
+                            Text("Delay"),
+                          ],
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 6),
-                    // Min Input if applicable
-                    if (status == ProviderStatus.time)
+                      SizedBox(width: 6),
+                      if (status == ProviderStatus.time)
+                        SizedBox(
+                          width: 50,
+                          height: 36,
+                          child: TextField(
+                            controller: _waitTimeControllers[docId],
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            decoration: InputDecoration(
+                              hintText: 'Min',
+                              contentPadding: EdgeInsets.symmetric(vertical: 8),
+                              isDense: true,
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                    ] else ...[
+                      // Default time input for other providers
+                      SizedBox(width: 6),
                       SizedBox(
                         width: 50,
                         height: 36,
@@ -221,6 +261,8 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
                           ),
                         ),
                       ),
+                    ],
+
                     // Update Button
                     IconButton(
                       icon: Icon(Icons.update, color: Colors.blue),

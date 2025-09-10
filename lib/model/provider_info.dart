@@ -7,7 +7,7 @@ class ProviderInfo {
   final String title;
   final List<String> locations;
   final String current_location;
-  int? waitTime;
+  String? waitTime;
   final DateTime? last_changed; 
 
   ProviderInfo({
@@ -23,30 +23,25 @@ class ProviderInfo {
   });
 
 factory ProviderInfo.fromWaitTimeApi(
-    Map<String, dynamic> json, String docId, List<String> locations) {
-  DateTime? lastChanged;
-  if (json['lastChanged'] != null) {
-    try {
-      lastChanged = DateTime.parse(json['lastChanged']);
-    } catch (e) {
-      print('Error parsing last_changed: $e');
-    }
-  }
-  // Debug: Print current_location
-  print("Mapping provider: ${json['firstName']} ${json['lastName']}, current_location: ${json['currentLocation']}");
-
+  Map<String, dynamic> json,
+  String docId,
+  List<String> locations,
+) {
   return ProviderInfo(
     docId: docId,
-    firstName: json['firstName'] ?? '', 
-    lastName: json['lastName'] ?? '', 
+    firstName: json['first_name'] ?? '',
+    lastName: json['last_name'] ?? '',
     specialty: json['specialty'] ?? '',
     title: json['title'] ?? '',
     locations: locations,
-    current_location: json['currentLocation'] ?? '',
-    waitTime: json['waitTime'], 
-    last_changed: lastChanged,  
+    current_location: json['current_location'] ?? '',
+    waitTime: json['wait_time'],
+    last_changed: json['last_changed'] != null
+        ? DateTime.tryParse(json['last_changed'].toString())
+        : null,
   );
 }
+
 
 
     factory ProviderInfo.fromDashboardApi(
@@ -62,13 +57,13 @@ factory ProviderInfo.fromWaitTimeApi(
 
     final provider = ProviderInfo(  // Store in variable first
       docId: docId,
-      firstName: json['first_name'] ?? '', // Changed from 'first_name'
-      lastName: json['last_name'] ?? '', // Changed from 'last_name'
+      firstName: json['first_name'] ?? '', 
+      lastName: json['last_name'] ?? '', 
       specialty: json['specialty'] ?? '',
       title: json['title'] ?? '',
       locations: locations,
-      current_location: json['currentLocation'] ?? '',
-      waitTime: json['wait_time'], // Changed from 'wait_time'
+      current_location: json['current_location'] ?? '',
+      waitTime: json['wait_time']?.toString(), 
       last_changed: lastChanged,  
     );
     return provider;
@@ -77,13 +72,13 @@ factory ProviderInfo.fromWaitTimeApi(
   // Converts to API-friendly format
   Map<String, dynamic> toApi() {
     return {
-      'firstName': firstName,
-      'lastName': lastName,
+      'first_name': firstName,
+      'last_name': lastName,
       'specialty': specialty,
       'title': title,
-      'waitTime': waitTime ?? 0,
+      'wait_time': waitTime ?? '',
       'lastChanged': last_changed,
-      'locations': locations.isNotEmpty ? locations.first : null,
+      'provider_locations': locations.isNotEmpty ? locations.first : null,
       'current_location': current_location,
     };
   }

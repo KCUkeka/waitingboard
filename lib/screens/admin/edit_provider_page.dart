@@ -26,14 +26,16 @@ class _EditProviderPageState extends State<EditProviderPage> {
     'Total Joint',
     'Upper Extremity',
     'Shoulder',
+    'Hip',
     'Knee',
     'Podiatry',
-    'Rheumatology',
     'Pain Management',
     'Urgent Care',
     'Sports Medicine',
     'Trauma',
     'Pediatrics',
+    'Rheumatology',
+    'Infusion',
     'ANC',
     'General',
   ];
@@ -44,9 +46,9 @@ class _EditProviderPageState extends State<EditProviderPage> {
   void initState() {
     super.initState();
     firstNameController = TextEditingController(
-        text: widget.providerData['firstName']?.toString() ?? '');
+        text: widget.providerData['first_name']?.toString() ?? '');
     lastNameController = TextEditingController(
-        text: widget.providerData['lastName']?.toString() ?? '');
+        text: widget.providerData['last_name']?.toString() ?? '');
 
     // Ensure the selected values are valid
     selectedSpecialty = specialties.contains(widget.providerData['specialty'])
@@ -57,8 +59,8 @@ class _EditProviderPageState extends State<EditProviderPage> {
         : titles.first;
 
     // Initialize selected locations (convert from string if necessary)
-    if (widget.providerData['locationName'] != null) {
-    selectedLocations = widget.providerData['locationName']
+    if (widget.providerData['provider_locations'] != null) {
+    selectedLocations = widget.providerData['provider_locations']
         .toString()
         .split(',')
         .map((loc) => loc.trim())
@@ -109,12 +111,13 @@ class _EditProviderPageState extends State<EditProviderPage> {
       await ApiService.updateProviderDetails(
         widget.docId,
         {
-          'firstName': firstNameController.text.trim(),
-          'lastName': lastNameController.text.trim(),
+          'first_name': firstNameController.text.trim(),
+          'last_name': lastNameController.text.trim(),
           'specialty': selectedSpecialty,
           'title': selectedTitle,
-          'locations':
-              selectedLocations.join(','), // Send as comma-separated string
+          'provider_locations':
+              selectedLocations.join(','), // Send as comma-separated string 
+        'last_changed': DateTime.now().toIso8601String(), // track update time
         },
       );
 

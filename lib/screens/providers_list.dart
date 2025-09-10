@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http; // For HTTP requests
-import 'dart:convert'; // For JSON decoding
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../model/provider_info.dart';
 import '../services/api_service.dart';
 
@@ -32,35 +31,38 @@ class _ProviderListPageState extends State<ProviderListPage> {
 
   }
 
-  // API call to fetch provider data
-  Future<List<ProviderInfo>> fetchProviders() async {
-    final String url = '${ApiService.baseUrl}/providers?location_id=$_selectedLocation'; 
-
-    try {
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+ // Fetch provider data from Supabase based on location
+Future<List<ProviderInfo>> fetchProviders() async {
+  try {
+    // Fetch providers filtered by location
+    final response = await Supabase.instance.client
+        .from('waitingboard_providers')
+        .select('*') 
+        .ilike('provider_locations', '%$_selectedLocation%');
         
-        final providers = data.map<ProviderInfo>((provider) {
-          List<String> locations = (provider['locationName'] ?? '')
-              .toString()
-              .split(',')
-              .map((e) => e.trim())
-              .toList();
-          
-          return ProviderInfo.fromWaitTimeApi(provider, provider['id']?.toString() ?? '', locations);
-        }).toList();
+    // response is List<dynamic>
+    final providers = (response as List<dynamic>).map<ProviderInfo>((provider) {
+      // Split location names if stored as comma-separated string
+      List<String> locations = (provider['provider_locations'] ?? '')
+          .toString()
+          .split(',')
+          .map((e) => e.trim())
+          .toList();
 
-        return providers;
-      } else {
-        throw Exception('Failed to load providers: ${response.body}');
-      }
-    } catch (e) {
-      print('Error fetching providers: $e');
-      throw Exception('Error fetching providers: $e');
-    }
+      return ProviderInfo.fromWaitTimeApi(
+        provider,
+        provider['id']?.toString() ?? '',
+        locations,
+      );
+    }).toList();
+
+    return providers;
+  } catch (e) {
+    print('Error fetching providers: $e');
+    throw Exception('Error fetching providers: $e');
   }
+}
+
 
   // API call to mark a provider as deleted (sets deleteFlag to 1)
   Future<void> deleteProvider(BuildContext context, String providerId) async {

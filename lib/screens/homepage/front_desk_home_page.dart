@@ -38,22 +38,13 @@ class _FrontHomePageState extends State<FrontHomePage> {
 
   // Log out functionality
   Future<void> _logout() async {
+  try {
+    // Sign out from Supabase
+    await ApiService.logout();
+    print('Logout successful.');
+
+    // Clear local session data
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? loginId = prefs.getString('loginId');
-
-    if (loginId != null) {
-      try {
-        // Call the Flask API to log out
-        await ApiService.logout(loginId);
-        print('Logout successful.');
-      } catch (e) {
-        print('Error logging out: $e');
-      }
-    } else {
-      print('Login ID not found in SharedPreferences.');
-    }
-
-    // Clear session data
     await prefs.clear();
 
     // Navigate back to the login page
@@ -61,7 +52,14 @@ class _FrontHomePageState extends State<FrontHomePage> {
       context,
       MaterialPageRoute(builder: (context) => LoginPage()),
     );
+  } catch (e) {
+    print('Error during logout: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to logout: $e')),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

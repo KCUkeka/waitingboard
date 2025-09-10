@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:waitingboard/screens/admin/admin_home_page.dart';
 import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
@@ -7,13 +11,23 @@ import 'package:waitingboard/screens/login_page.dart';
 import 'package:waitingboard/services/api_service.dart';
 import 'screens/homepage/clinic_home_page.dart';
 
-void main() async {
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load JSON config
+  final configString = await rootBundle.loadString('assets/config.json');
+  final config = json.decode(configString);
+
+  await Supabase.initialize(
+    url: config['SUPABASE_URL'],
+    anonKey: config['SUPABASE_ANON_KEY'],
+  );
+
   runApp(WaitingApp());
 }
 
 class WaitingApp extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -39,7 +53,6 @@ class WaitingApp extends StatelessWidget {
         '/dashboard': (context) => DashboardPage(
               selectedLocation: 'Default Location',
             ),
-        
       },
     );
   }
@@ -88,17 +101,16 @@ class WaitingApp extends StatelessWidget {
   }
 
   // Fetch data from MySQL
-Future<void> _fetchUsersData() async {
-  try {
-    // Fetch users data from the API
-    List<dynamic> users = await ApiService.fetchUsers();
-    // Print user data (or use it in the UI)
-    for (var user in users) {
-      print('Username: ${user['username']}}');
+  Future<void> _fetchUsersData() async {
+    try {
+      // Fetch users data from the API
+      List<dynamic> users = await ApiService.fetchUsers();
+      // Print user data (or use it in the UI)
+      for (var user in users) {
+        print('Username: ${user['username']}}');
+      }
+    } catch (e) {
+      print('Error fetching users: $e');
     }
-  } catch (e) {
-    print('Error fetching users: $e');
   }
-}
-
 }

@@ -41,27 +41,31 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
   }
 
-  // Logout user
-  Future<void> _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? loginId = prefs.getString('loginId');
-
-    if (loginId != null) {
-      try {
-        // Call the logout API
-        await ApiService.logout(loginId);
-      } catch (e) {
-        print('Error during logout: $e');
-      }
-    }
+// Logout user
+Future<void> _logout() async {
+  try {
+    // Sign out from Supabase
+    await ApiService.logout();
 
     // Clear local preferences
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+
+    // Navigate to LoginPage
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => LoginPage()),
     );
+
+    print("Logout successful");
+  } catch (e) {
+    print('Error during logout: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to logout: $e')),
+    );
   }
+}
+
 
   @override
   void dispose() {

@@ -52,22 +52,13 @@ Future<void> _saveSelectedLocation() async {
 
   // Log out functionality
   Future<void> _logout() async {
+  try {
+    // Sign out from Supabase
+    await ApiService.logout();
+    print('Logout successful.');
+
+    // Clear local session data
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? loginId = prefs.getString('loginId');
-
-    if (loginId != null) {
-      try {
-        // API call to update the logout timestamp
-        await ApiService.logout(loginId);
-        print('Logout timestamp updated successfully.');
-      } catch (e) {
-        print('Error updating logout timestamp: $e');
-      }
-    } else {
-      print('Login ID not found in SharedPreferences.');
-    }
-
-    // Clear session data
     await prefs.clear();
 
     // Navigate back to the login page
@@ -75,7 +66,14 @@ Future<void> _saveSelectedLocation() async {
       context,
       MaterialPageRoute(builder: (context) => LoginPage()),
     );
+  } catch (e) {
+    print('Error during logout: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to logout: $e')),
+    );
   }
+}
+
 
   @override
   void dispose() {

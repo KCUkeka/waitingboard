@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:waitingboard/model/provider_info.dart';
 import 'package:waitingboard/screens/admin/edit_provider_page.dart';
 import 'package:waitingboard/services/api_service.dart'; // Import the API service
 
@@ -11,17 +12,15 @@ class _EditProvidersListState extends State<EditProvidersList> {
   bool _isDeleting = false; // Track deletion state
 
   // Method to fetch the list of providers from the API
-  Future<List<Map<String, dynamic>>> _fetchProviders() async {
-    try {
-      // Fetching provider data from the API
-      final providers = await ApiService.fetchProviders();
-      return providers
-          .map((provider) => provider as Map<String, dynamic>)
-          .toList();
-    } catch (e) {
-      throw Exception('Error fetching providers: $e');
-    }
+Future<List<ProviderInfo>> _fetchProviders() async {
+  try {
+    final providers = await ApiService.fetchProviders();
+    return providers; // Already a list of ProviderInfo
+  } catch (e) {
+    throw Exception('Error fetching providers: $e');
   }
+}
+
 
   // Method to delete a provider from the API
   Future<void> deleteProvider(BuildContext context, String providerId) async {
@@ -81,72 +80,60 @@ class _EditProvidersListState extends State<EditProvidersList> {
           child: const Text('Providers List'),
         ),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _fetchProviders(), // Fetch providers via the API
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No providers available'));
-          }
+      body: FutureBuilder<List<ProviderInfo>>(
+  future: _fetchProviders(),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (snapshot.hasError) {
+      return Center(child: Text('Error: ${snapshot.error}'));
+    }
+    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+      return const Center(child: Text('No providers available'));
+    }
 
-          final providerData = snapshot.data!;
+    final providerData = snapshot.data!;
 
-          return ListView.builder(
-            itemCount: providerData.length,
-            itemBuilder: (context, index) {
-              final provider = providerData[index];
+    return ListView.builder(
+      itemCount: providerData.length,
+      itemBuilder: (context, index) {
+        final provider = providerData[index];
 
-              return ListTile(
-                title: Text('${provider['firstName']} ${provider['lastName']}'),
-                subtitle: Text(
-                  '${provider['specialty']} - ${provider['title']}',
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
-                      onPressed: () {
-                        // Log the provider details to debug
-                        print(provider); // Check the structure of the provider
-                        print(provider['id']
-                            .runtimeType); // Check the type of the 'id'
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EditProviderPage(
-                              docId: provider['id']
-                                  .toString(), // API returns a field 'id' to string
-                              providerData: provider,
-                            ),
-                          ),
-                        );
-                      },
+        return ListTile(
+          title: Text('${provider.firstName} ${provider.lastName}'),
+          subtitle: Text('${provider.specialty} - ${provider.title}'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, color: Colors.blue),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EditProviderPage(
+                        docId: provider.docId,
+                        providerData: provider.toApi(), // 👈 add toJson to ProviderInfo
+                      ),
                     ),
-                    IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red),
-                      onPressed: () {
-                        print(
-                            'Provider ID: ${provider['id']}, Type: ${provider['id'].runtimeType}');
-                        deleteProvider(
-                            context,
-                            provider['id']
-                                .toString()); // Provider ID is a string
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-      ),
+                  );
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.delete, color: Colors.red),
+                onPressed: () {
+                  deleteProvider(context, provider.docId);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  },
+),
+
     );
   }
 }

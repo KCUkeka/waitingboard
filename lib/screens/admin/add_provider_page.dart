@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:waitingboard/services/api_service.dart';
 
 class AddProviderPage extends StatefulWidget {
@@ -27,12 +25,13 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'Hip',
     'Knee',
     'Podiatry',
-    'Rheumatology',
     'Pain Management',
     'Urgent Care',
     'Sports Medicine',
     'Trauma',
     'Pediatrics',
+    'Rheumatology',
+    'Infusion',
     'ANC',
     'General',
   ];
@@ -54,24 +53,16 @@ class _AddProviderPageState extends State<AddProviderPage> {
     fetchLocations();
   }
 
-  // Fetch locations from Flask Api
+  // Fetch locations from Database
 Future<void> fetchLocations() async {
-  const String apiUrl = '${ApiService.baseUrl}/locations'; // Replace with your Flask server URL
-
   try {
-    final response = await http.get(Uri.parse(apiUrl));
+    // Call your Supabase API service
+    final data = await ApiService.fetchLocations();
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-
-      setState(() {
-        locations = data.map((location) => location['name'] as String).toList();
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to fetch locations: ${response.body}')),
-      );
-    }
+    // Update state
+    setState(() {
+      locations = data;
+    });
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Failed to fetch locations: $e')),
@@ -84,9 +75,7 @@ Future<void> fetchLocations() async {
 
   // Add a new location to Flask Api
 Future<void> addLocation() async {
-  const String apiUrl = '${ApiService.baseUrl}/locations'; // Replace with your Flask server URL
-
-  final newLocation = newLocationController.text.trim();
+final newLocation = newLocationController.text.trim();
 
   if (newLocation.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -96,25 +85,18 @@ Future<void> addLocation() async {
   }
 
   try {
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'name': newLocation}),
-    );
+    // Call Supabase service to add location
+    await ApiService.addLocation(newLocation);
 
-    if (response.statusCode == 201) {
-      await fetchLocations(); // Refresh the locations
-      newLocationController.clear();
+    // Refresh the locations list
+    await fetchLocations(); 
+    newLocationController.clear();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Location added successfully')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add location: ${response.body}')),
-      );
-    }
-  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Location added successfully')),
+    );;
+
+    } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Failed to add location: $e')),
     );
