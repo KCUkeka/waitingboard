@@ -7,7 +7,7 @@ class ProviderInfo {
   final String title;
   final List<String> locations;
   final String current_location;
-  int? waitTime;
+  String? waitTime;
   final DateTime? last_changed; 
 
   ProviderInfo({
@@ -23,17 +23,15 @@ class ProviderInfo {
   });
 
 factory ProviderInfo.fromWaitTimeApi(
-    Map<String, dynamic> json, String docId, List<String> locations) {
+  Map<String, dynamic> json, String docId, List<String> locations) {
   DateTime? lastChanged;
   if (json['lastChanged'] != null) {
     try {
       lastChanged = DateTime.parse(json['lastChanged']);
     } catch (e) {
-      print('Error parsing last_changed: $e');
+      print('Error parsing lastChanged: $e');
     }
   }
-  // Debug: Print current_location
-  print("Mapping provider: ${json['firstName']} ${json['lastName']}, current_location: ${json['currentLocation']}");
 
   return ProviderInfo(
     docId: docId,
@@ -49,12 +47,12 @@ factory ProviderInfo.fromWaitTimeApi(
 }
 
 
+
     factory ProviderInfo.fromDashboardApi(
       Map<String, dynamic> json, String docId, List<String> locations) {
     DateTime? lastChanged;
     if (json['last_changed'] != null) {
       try {
-        lastChanged = DateTime.parse(json['last_changed']);
       } catch (e) {
         print('Error parsing last_changed: $e');
       }
@@ -62,8 +60,8 @@ factory ProviderInfo.fromWaitTimeApi(
 
     final provider = ProviderInfo(  // Store in variable first
       docId: docId,
-      firstName: json['first_name'] ?? '', // Changed from 'first_name'
-      lastName: json['last_name'] ?? '', // Changed from 'last_name'
+      firstName: json['first_name'] ?? '', 
+      lastName: json['last_name'] ?? '',
       specialty: json['specialty'] ?? '',
       title: json['title'] ?? '',
       locations: locations,
@@ -90,7 +88,7 @@ factory ProviderInfo.fromWaitTimeApi(
 
   // Getter for display names for wait times page
   String get displayName {
-    return '$lastName, ${firstName.isNotEmpty ? firstName[0] : '?'} ';
+    return '$lastName, ${firstName.isNotEmpty ? firstName[0] : '?'}';
   }
 
   // Getter for dashboard cards

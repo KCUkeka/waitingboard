@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:waitingboard/model/provider_info.dart' as model;
 import 'package:waitingboard/services/api_service.dart'; // Import the API service
+import 'dart:async'; // Import dart:async for Timer
 
 //------------------------------------------------------- Dashboard Page ----------------------------------------------
 class DashboardPage extends StatefulWidget {
@@ -36,6 +37,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // Method to format wait time inputted
   String _formatWaitTime(String waitTimeStr) {
+    if (waitTimeStr == 'On Time' || waitTimeStr == 'Delayed') {
+      return waitTimeStr;
+    }
+
     final int? mins = int.tryParse(waitTimeStr);
     if (mins == null) return 'N/A';
 
@@ -101,8 +106,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
           final providers = snapshot.data ?? [];
 
-          final ancProviders = providers
-              .where((p) => p.specialty.toUpperCase() == 'ANC')
+          const rightPanelSpecialties = {'ANC', 'INFUSION', 'RHEUMATOLOGY'};
+
+          final rightPanelProviders = providers
+              .where((p) =>
+                  rightPanelSpecialties.contains(p.specialty.toUpperCase()))
               .toList();
 
           return SingleChildScrollView(
@@ -131,9 +139,9 @@ class _DashboardPageState extends State<DashboardPage> {
                             crossAxisCount =
                                 crossAxisCount > 0 ? crossAxisCount : 1;
 
-                            final nonAncProviders = providers
-                                .where(
-                                    (p) => p.specialty.toUpperCase() != 'ANC')
+                            final nonRightPanelProviders = providers
+                                .where((p) => !rightPanelSpecialties
+                                    .contains(p.specialty.toUpperCase()))
                                 .toList();
 
                             return GridView.builder(
@@ -147,9 +155,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                 crossAxisSpacing: 16.0,
                                 mainAxisSpacing: 16.0,
                               ),
-                              itemCount: nonAncProviders.length,
+                              itemCount: nonRightPanelProviders.length,
                               itemBuilder: (context, index) {
-                                final provider = nonAncProviders[index];
+                                final provider = nonRightPanelProviders[index];
                                 return Card(
                                   elevation: 4.0,
                                   child: Padding(
@@ -177,8 +185,14 @@ class _DashboardPageState extends State<DashboardPage> {
                                           textAlign: TextAlign.center,
                                         ),
                                         SizedBox(height: 8),
-                                        Text('Wait Time:',
-                                            style: TextStyle(fontSize: 16)),
+                                        if (_formatWaitTime(provider
+                                                    .formattedWaitTime) !=
+                                                'On Time' &&
+                                            _formatWaitTime(provider
+                                                    .formattedWaitTime) !=
+                                                'Delayed')
+                                          Text('Wait Time:',
+                                              style: TextStyle(fontSize: 16)),
                                         Text(
                                           _formatWaitTime(
                                               provider.formattedWaitTime),
@@ -208,7 +222,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
 
                 // -----------------Right Panel — Only shown if there are ANC wait times---------------------
-                if (ancProviders.isNotEmpty)
+                if (rightPanelProviders.isNotEmpty)
                   Container(
                     margin: EdgeInsets.only(left: 16),
                     width: 300,
@@ -225,7 +239,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         SizedBox(height: 16),
 
                         // ANC Specialty Cards
-                        ...ancProviders.map((p) => Card(
+                        ...rightPanelProviders.map((p) => Card(
                               margin: EdgeInsets.only(bottom: 12),
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
@@ -239,21 +253,34 @@ class _DashboardPageState extends State<DashboardPage> {
                                           fontWeight: FontWeight.bold),
                                     ),
                                     SizedBox(height: 4),
-                                    Text.rich(
-                                      TextSpan(
-                                        text: 'Wait Time: ',
-                                        style: TextStyle(
-                                            fontSize:
-                                                14), // base style (optional)
-                                        children: [
-                                          TextSpan(
-                                            text: _formatWaitTime(
-                                                p.formattedWaitTime),
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
-                                      ),
+                                    Builder(
+                                      builder: (_) {
+                                        final formatted = _formatWaitTime(
+                                            p.formattedWaitTime);
+                                        return formatted == 'On Time' ||
+                                                formatted == 'Delayed'
+                                            ? Text(
+                                                formatted,
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14),
+                                              )
+                                            : Text.rich(
+                                                TextSpan(
+                                                  text: 'Wait Time: ',
+                                                  style:
+                                                      TextStyle(fontSize: 14),
+                                                  children: [
+                                                    TextSpan(
+                                                      text: formatted,
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                      },
                                     ),
                                     SizedBox(height: 4),
                                     Text(
@@ -273,3 +300,4 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 }
+
