@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:waitingboard/services/api_service.dart'; 
+import 'package:waitingboard/services/api_service.dart';
 
 class EditProviderPage extends StatefulWidget {
   final String docId;
@@ -40,7 +40,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
     'General',
   ];
 
-  final List<String> titles = ['','Dr.', 'PA', 'PA-C', 'DPM Fellow'];
+  final List<String> titles = ['', 'Dr.', 'PA', 'PA-C', 'DPM Fellow'];
 
   @override
   void initState() {
@@ -58,42 +58,58 @@ class _EditProviderPageState extends State<EditProviderPage> {
         ? widget.providerData['title']
         : titles.first;
 
-    // Initialize selected locations (convert from string if necessary)
+    // Initialize selected locations (supports List<String> or comma-separated String)
     if (widget.providerData['provider_locations'] != null) {
-    selectedLocations = widget.providerData['provider_locations']
-        .toString()
-        .split(',')
+  final rawLocations = widget.providerData['provider_locations'];
+
+  if (rawLocations is List) {
+    selectedLocations = rawLocations
+        .map((loc) => loc.toString().trim())
+        .where((loc) => loc.isNotEmpty)
+        .toList();
+  } else if (rawLocations is String) {
+    selectedLocations = rawLocations
+        .split(RegExp(r'[,;]')) // split on commas or semicolons
         .map((loc) => loc.trim())
+        .where((loc) => loc.isNotEmpty)
         .toList();
   } else {
     selectedLocations = [];
-    }
+  }
+} else {
+  selectedLocations = [];
+}
 
-    _fetchLocations();
+
+  _fetchLocations();
   }
 
   Future<void> _fetchLocations() async {
-    try {
-      // Fetch locations from the API
-      final fetchedLocations = await ApiService.fetchLocations();
+  try {
+    final fetchedLocations = await ApiService.fetchLocations();
 
-      // Debug: Check what is being fetched
-      print(fetchedLocations);
 
-      setState(() {
-        locations = fetchedLocations;
+    setState(() {
+      locations = fetchedLocations;
 
-        // Ensure selectedLocations only contains valid locations from the fetched list
-        selectedLocations = selectedLocations
-            .where((location) => fetchedLocations.contains(location))
-            .toList();
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to fetch locations: $e')),
-      );
-    }
+      // Normalize both sides
+      final normalizedFetched = fetchedLocations
+          .map((loc) => loc.trim().toLowerCase())
+          .toList();
+
+      selectedLocations = selectedLocations
+          .map((loc) => loc.trim())
+          .where((loc) => normalizedFetched.contains(loc.toLowerCase()))
+          .toList();
+
+    });
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to fetch locations: $e')),
+    );
   }
+}
+
 
   Future<void> _updateProvider() async {
     if (firstNameController.text.isEmpty ||
@@ -105,7 +121,6 @@ class _EditProviderPageState extends State<EditProviderPage> {
       );
       return;
     }
- 
 
     try {
       await ApiService.updateProviderDetails(
@@ -115,9 +130,8 @@ class _EditProviderPageState extends State<EditProviderPage> {
           'last_name': lastNameController.text.trim(),
           'specialty': selectedSpecialty,
           'title': selectedTitle,
-          'provider_locations':
-              selectedLocations.join(','), // Send as comma-separated string 
-        'last_changed': DateTime.now().toIso8601String(), // track update time
+          'provider_locations': selectedLocations.join(','), // convert List<String> → string
+          'last_changed': DateTime.now().toIso8601String(), // track update time
         },
       );
 
@@ -147,15 +161,18 @@ class _EditProviderPageState extends State<EditProviderPage> {
               onSelected: (selected) {
                 setState(() {
                   if (selected) {
-                    selectedLocations.add(location);
+                    if (!selectedLocations.contains(location)) {
+                      selectedLocations.add(location);
+                    }
                   } else {
                     selectedLocations.remove(location);
                   }
                 });
+
               },
             );
           }).toList(),
-        ), 
+        ),
       ],
     );
   }

@@ -78,7 +78,8 @@ factory ProviderInfo.fromWaitTimeApi(
       'title': title,
       'wait_time': waitTime ?? '',
       'lastChanged': last_changed,
-      'provider_locations': locations.isNotEmpty ? locations.first : null,
+      // Join all locations with commas
+    'provider_locations': locations.isNotEmpty ? locations.join(',') : null,
       'current_location': current_location,
     };
   }

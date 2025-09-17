@@ -34,9 +34,11 @@ dev_dependencies:
 
 flutter_icons:
   android: 
-    image_path: "icons/waitboard_ortho_logo.png"
+    image_path: "assets/images/waitboard_dev.png"
   ios:
-    image_path: "icons/waitboard_ortho_logo.png"
+    image_path: "assets/images/waitboard_dev.png"
+  windows:
+    image_path: "assets/images/waitboard_dev.png"
 
   flutter_lints: ^4.0.0
 
