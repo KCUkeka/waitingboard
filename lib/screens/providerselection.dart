@@ -46,23 +46,24 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
     );
   }
 
-  int? _getWaitTime(String docId) {
+  String? _getWaitTimeText(String docId) {
     final status = _statusMap[docId] ?? ProviderStatus.time;
     switch (status) {
       case ProviderStatus.onTime:
-        return 0;
+        return 'On Time';
       case ProviderStatus.delayed:
-        return 15;
+        return 'Delayed';
       case ProviderStatus.time:
         final text = _waitTimeControllers[docId]?.text ?? '';
-        final parsed = int.tryParse(text);
-        if (parsed == null || parsed < 0) return null;
-        return parsed;
+        if (text.isEmpty || int.tryParse(text) == null || int.parse(text) < 0)
+          return null;
+        return text;
     }
   }
 
   Future<void> _updateWaitTime(ProviderInfo provider) async {
-    final waitTime = _getWaitTime(provider.docId);
+    final waitTime = _getWaitTimeText(provider.docId);
+
     if (waitTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please enter a valid wait time')),
@@ -79,7 +80,8 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
         provider.waitTime = waitTime;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Wait time updated for ${provider.displayName}')),
+        SnackBar(
+            content: Text('Wait time updated for ${provider.displayName}')),
       );
       Navigator.pop(context); // Go back to wait_times_page
     } catch (e) {
@@ -91,31 +93,37 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
   }
 
   Future<void> _saveAllWaitTimes() async {
-    bool? confirmed = await _showConfirmationDialog(
-      context,
-      'Confirm Save',
-      'Are you sure you want to update all wait times?',
-    );
-    if (confirmed != true) return;
+  bool? confirmed = await _showConfirmationDialog(
+    context,
+    'Confirm Save',
+    'Are you sure you want to update all wait times?',
+  );
+  if (confirmed != true) return;
 
-    bool errorOccurred = false;
-    for (var provider in widget.providers) {
-      final waitTime = _getWaitTime(provider.docId);
-      if (waitTime == null) {
-        errorOccurred = true;
-        continue;
-      }
+  bool errorOccurred = false;
 
-      try {
-        await ApiService.updateProvider(provider.docId, {
-          'waitTime': waitTime,
-          'currentLocation': widget.selectedLocation,
-        });
-      } catch (e) {
-        errorOccurred = true;
-        print('Error saving ${provider.displayName}: $e');
-      }
+  // Only update providers with a valid wait time
+  final validProviders = widget.providers.where((provider) {
+    final waitTime = _getWaitTimeText(provider.docId);
+    return waitTime != null && waitTime.isNotEmpty;
+  }).toList();
+
+  for (var provider in validProviders) {
+    final waitTime = _getWaitTimeText(provider.docId);
+    
+    // Optional: print debug info
+    print('Saving ${provider.displayName} with waitTime: $waitTime');
+
+    try {
+      await ApiService.updateProvider(provider.docId, {
+        'waitTime': waitTime,
+        'currentLocation': widget.selectedLocation,
+      });
+    } catch (e) {
+      errorOccurred = true;
+      print('Error saving ${provider.displayName}: $e');
     }
+  }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

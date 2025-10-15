@@ -7,7 +7,7 @@ class ProviderInfo {
   final String title;
   final List<String> locations;
   final String current_location;
-  int? waitTime;
+  String? waitTime;
   final DateTime? last_changed; 
 
   ProviderInfo({

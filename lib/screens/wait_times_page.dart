@@ -170,35 +170,34 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   }
 
   Future<void> _updateWaitTime(
-      ProviderInfo provider, String newWaitTime) async {
-    int? updatedWaitTime = int.tryParse(newWaitTime);
-    if (updatedWaitTime != null) {
-      try {
-        // Create the update data
-        Map<String, dynamic> updateData = {
-          'waitTime': updatedWaitTime,
-          'currentLocation': widget.selectedLocation,
-          'id': provider.docId
-        };
-
-        await ApiService.updateProvider(provider.docId, updateData);
-
-        setState(() {
-          provider.waitTime = updatedWaitTime;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wait time updated successfully')),
-        );
-      } catch (e) {
-        print('Error updating wait time: $e'); // Debug print
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update wait time: $e')),
-        );
-      }
-    } else {
+      ProviderInfo provider, String? newWaitTime) async {
+    if (newWaitTime == null || newWaitTime.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid wait time')),
+      );
+      return;
+    }
+
+    try {
+      final updateData = {
+        'waitTime': newWaitTime,
+        'currentLocation': widget.selectedLocation,
+        'id': provider.docId,
+      };
+
+      await ApiService.updateProvider(provider.docId, updateData);
+
+      setState(() {
+        provider.waitTime = newWaitTime;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wait time updated successfully')),
+      );
+    } catch (e) {
+      print('Error updating wait time: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update wait time: $e')),
       );
     }
   }
