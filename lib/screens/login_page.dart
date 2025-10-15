@@ -18,6 +18,95 @@ class _LoginPageState extends State<LoginPage> {
 
   String? _selectedUsername;
   String? _selectedLocation;
+  Future<void> _requireAdminBeforeCreateAccount() async {
+    final TextEditingController usernameController = TextEditingController();
+    final TextEditingController passwordController = TextEditingController();
+
+    String? selectedAdminUsername;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("Admin Authorization Required"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selectedAdminUsername,
+                    items: _users
+                        .where((user) =>
+                            user['admin'] == true || user['admin'] == 'true')
+                        .map<DropdownMenuItem<String>>(
+                            (user) => DropdownMenuItem<String>(
+                                  value: user['username'] as String,
+                                  child: Text(user['username'] as String),
+                                ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedAdminUsername = value;
+                        usernameController.text = value!;
+                      });
+                    },
+                    decoration: InputDecoration(labelText: "Admin Username"),
+                  ),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(labelText: "Admin Password"),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final user = _users.firstWhere(
+                      (u) => u['username'] == selectedAdminUsername,
+                      orElse: () => {},
+                    );
+
+                    if (user.isEmpty ||
+                        hashPassword(passwordController.text.trim()) !=
+                            user['password']) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Invalid admin credentials.")),
+                      );
+                      return;
+                    }
+
+                    final isAdmin =
+                        user['admin'] == true || user['admin'] == 'true';
+                    if (!isAdmin) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text("Only admins can create accounts.")),
+                      );
+                      return;
+                    }
+
+                    Navigator.of(context).pop(); // Close the dialog
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => CreateAccountPage()),
+                    );
+                  },
+                  child: Text("Continue"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   List<Map<String, dynamic>> _users =
       []; // Store user objects with username and hashed password
@@ -45,6 +134,11 @@ class _LoginPageState extends State<LoginPage> {
             'admin': user['admin'],
           };
         }).toList();
+
+        // Debugging the mapped users and their passwords
+        // for (var user in _users) {
+        //   print('Username: ${user['username']}, Password: ${user['password']}');
+        // }
 
         
 
@@ -91,7 +185,10 @@ class _LoginPageState extends State<LoginPage> {
                 value: usernameController.text.isEmpty
                     ? null
                     : usernameController.text,
-                items: _users.map((user) {
+                items: _users
+                    .where((user) =>
+                        user['admin'] == true || user['admin'] == 'true')
+                    .map((user) {
                   return DropdownMenuItem(
                     value: user['username']?.toString() ?? '',
                     child: Text(user['username']!),
@@ -132,9 +229,7 @@ class _LoginPageState extends State<LoginPage> {
                 final username = usernameController.text.trim();
                 final password = passwordController.text.trim();
 
-                if (locationName.isEmpty ||
-                    username.isEmpty ||
-                    password.isEmpty) {
+                if (locationName.isEmpty || username.isEmpty || password.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("All fields are required.")),
                   );
@@ -152,11 +247,12 @@ class _LoginPageState extends State<LoginPage> {
                     SnackBar(content: Text("Invalid username.")),
                   );
                   return;
-                }                ; 
+                }
+
+              
 
                 // Check if the user is an admin
-                final isAdmin =
-                    user['admin'] == true || user['admin'] == 'true';
+                final isAdmin = user['admin'] == true || user['admin'] == 'true';
                 if (!isAdmin) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Only admins can add locations.")),
@@ -195,15 +291,149 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+// --------------------------------------------------------Password Reset--------------------------------------------
+
+  Future<void> _resetPassword() async {
+    final TextEditingController newPasswordController = TextEditingController();
+    final TextEditingController adminUsernameController =
+        TextEditingController();
+    final TextEditingController adminPasswordController =
+        TextEditingController();
+
+    String? selectedTargetUsername;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("Reset User Password"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedTargetUsername,
+                      items: _users.map((user) {
+                        return DropdownMenuItem<String>(
+                          value: user['username'],
+                          child: Text(user['username']),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedTargetUsername = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                          labelText: "Select Username to Reset"),
+                    ),
+                    TextField(
+                      controller: newPasswordController,
+                      obscureText: true,
+                      decoration: InputDecoration(labelText: "New Password"),
+                    ),
+                    Divider(height: 20),
+                    DropdownButtonFormField<String>(
+                      value: adminUsernameController.text.isNotEmpty
+                          ? adminUsernameController.text
+                          : null,
+                      items: _users
+                          .where((user) =>
+                              user['admin'] == true || user['admin'] == 'true')
+                          .map((user) {
+                        final username = user['username']?.toString() ?? '';
+                        return DropdownMenuItem<String>(
+                          value: username,
+                          child: Text(username),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        adminUsernameController.text = value!;
+                      },
+                      decoration:
+                          InputDecoration(labelText: "Select Admin Username"),
+                    ),
+                    TextField(
+                      controller: adminPasswordController,
+                      obscureText: true,
+                      decoration: InputDecoration(labelText: "Admin Password"),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final targetUsername = selectedTargetUsername?.trim();
+                    final newPassword = newPasswordController.text.trim();
+                    final adminUsername = adminUsernameController.text.trim();
+                    final adminPassword = adminPasswordController.text.trim();
+
+                    if ([
+                      targetUsername,
+                      newPassword,
+                      adminUsername,
+                      adminPassword
+                    ].any((v) => v == null || v.isEmpty)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("All fields are required.")));
+                      return;
+                    }
+
+                    final adminUser = _users.firstWhere(
+                      (user) => user['username'] == adminUsername,
+                      orElse: () => {},
+                    );
+
+                    if (adminUser.isEmpty ||
+                        hashPassword(adminPassword) != adminUser['password']) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text("Invalid admin credentials.")));
+                      return;
+                    }
+
+                    final isAdmin = adminUser['admin'] == true ||
+                        adminUser['admin'] == 'true';
+                    if (!isAdmin) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text("Only admins can reset passwords.")));
+                      return;
+                    }
+
+                    try {
+                      await ApiService.resetPassword(
+                          targetUsername!, hashPassword(newPassword));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text("Password reset successfully.")));
+                      Navigator.of(context).pop();
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text("Failed to reset password: $e")));
+                    }
+                  },
+                  child: Text("Reset"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   //-------------------------------------------------------Login method----------------------------------------------
 
   Future<void> _login() async {
     final username = _selectedUsername;
     final enteredPassword = _passwordController.text.trim();
 
-    if (username == null ||
-        _selectedLocation == null ||
-        enteredPassword.isEmpty) {
+    if (username == null || _selectedLocation == null || enteredPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please complete all fields.")),
       );
@@ -211,8 +441,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     try {
-      final user = _users.firstWhere((user) => user['username'] == username,
-          orElse: () => {});
+      final user = _users.firstWhere((user) => user['username'] == username, orElse: () => {});
       if (user.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Invalid username.")),
@@ -235,8 +464,7 @@ class _LoginPageState extends State<LoginPage> {
           _selectedLocation!);
       if (!loginSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Failed to update login time and location.")),
+          const SnackBar(content: Text("Failed to update login time and location.")),
         );
         return;
       }
@@ -253,8 +481,8 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (context) =>
-                  AdminHomePage(selectedLocation: _selectedLocation!)),
+            builder: (context) => AdminHomePage(selectedLocation: _selectedLocation!),
+          ),
         );
         return;
       }
@@ -262,14 +490,16 @@ class _LoginPageState extends State<LoginPage> {
       if (user['role'] == 'Front desk') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => FrontHomePage(selectedLocation: _selectedLocation!)),
+          MaterialPageRoute(
+            builder: (context) => FrontHomePage(selectedLocation: _selectedLocation!),
+          ),
         );
       } else if (user['role'] == 'Clinic') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (context) =>
-                  ClinicHomePage(selectedLocation: _selectedLocation!)),
+            builder: (context) => ClinicHomePage(selectedLocation: _selectedLocation!),
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -307,7 +537,7 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Image.asset(
-              'assets/images/waitboard.png',
+              'assets/icons/waitboard.png',
               width: 200,
               height: 200,
             ),
@@ -351,14 +581,16 @@ class _LoginPageState extends State<LoginPage> {
               onPressed: _login,
               child: Text('Login'),
             ),
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: TextButton(
+                onPressed: _resetPassword,
+                child: Text('Reset Password'),
+              ),
+            ),
             SizedBox(height: 10),
             TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => CreateAccountPage()),
-                );
-              },
+              onPressed: _requireAdminBeforeCreateAccount,
               child: Text('Create Account'),
             ),
             SizedBox(height: 20),

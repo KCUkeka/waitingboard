@@ -4,7 +4,7 @@ import 'package:waitingboard/model/provider_info.dart';
 
 class ApiService {
   static const String baseUrl =
-      'http://172.28.0.115:5000'; // Change to IP address for device testing, currently set to localhost ip port 500
+      'https://dashboard.rockfordortho.com/'; // Change to IP address for device testing, currently set to localhost ip port 500
 
 // ---------------------------------------------------------Users ----------------------------------------------
   // Fetch all users
@@ -66,6 +66,26 @@ class ApiService {
       throw Exception('Error creating user: $e');
     }
   }
+
+  // Reset a user's password (admin authorized)
+static Future<void> resetPassword(String username, String newPassword) async {
+  try {
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/reset_password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'password': newPassword, // now plain text
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to reset password: ${response.body}');
+    }
+  } catch (e) {
+    throw Exception('Error resetting password: $e');
+  }
+}
 
 //-------------------------------------------------------Locations ----------------------------------------------
   // Fetch all locations

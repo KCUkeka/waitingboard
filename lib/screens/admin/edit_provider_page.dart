@@ -35,10 +35,11 @@ class _EditProviderPageState extends State<EditProviderPage> {
     'Sports Medicine',
     'Trauma',
     'Pediatrics',
-    'ESP',
+    'ANC',
+    'General',
   ];
 
-  final List<String> titles = ['Dr.', 'PA', 'PA-C', 'DPM', 'DPM Fellow'];
+  final List<String> titles = ['', 'Dr.', 'PA', 'PA-C', 'DPM', 'DPM Fellow'];
 
   @override
   void initState() {
@@ -97,7 +98,6 @@ class _EditProviderPageState extends State<EditProviderPage> {
     if (firstNameController.text.isEmpty ||
         lastNameController.text.isEmpty ||
         selectedSpecialty.isEmpty ||
-        selectedTitle.isEmpty ||
         selectedLocations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('All fields are required')),
