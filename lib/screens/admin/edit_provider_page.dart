@@ -76,7 +76,7 @@ class _EditProviderPageState extends State<EditProviderPage> {
       final fetchedLocations = await ApiService.fetchLocations();
 
       // Debug: Check what is being fetched
-      print(fetchedLocations);
+      // print(fetchedLocations);
 
       setState(() {
         locations = fetchedLocations;

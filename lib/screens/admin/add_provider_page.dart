@@ -132,11 +132,11 @@ Future<void> saveProvider() async {
   final locationsString = selectedLocations.join(',');
 
   //Print to debug what is being sent
-  print('First Name: $firstName');
-  print('Last Name: $lastName');
-  print('Specialty: $specialty');
-  print('Title: $title');
-  print('Locations: $locationsString');
+  // print('First Name: $firstName');
+  // print('Last Name: $lastName');
+  // print('Specialty: $specialty');
+  // print('Title: $title');
+  // print('Locations: $locationsString');
 
   if (firstName.isEmpty || lastName.isEmpty || specialty == null || title == null || locationsString.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(

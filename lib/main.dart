@@ -97,9 +97,9 @@ class _WaitingAppState extends State<WaitingApp> {
     try {
       // Fetch users data from the API
       List<dynamic> users = await ApiService.fetchUsers();
-      for (var user in users) {
-        print('Username: ${user['username']}}');
-      }
+      // for (var user in users) {
+      //   print('Username: ${user['username']}}');
+      // }
     } catch (e) {
       print('Error fetching users: $e');
     }

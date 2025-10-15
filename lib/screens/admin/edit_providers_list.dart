@@ -113,9 +113,9 @@ class _EditProvidersListState extends State<EditProvidersList> {
                       icon: const Icon(Icons.edit, color: Colors.blue),
                       onPressed: () {
                         // Log the provider details to debug
-                        print(provider); // Check the structure of the provider
-                        print(provider['id']
-                            .runtimeType); // Check the type of the 'id'
+                        // print(provider); // Check the structure of the provider
+                        // print(provider['id']
+                        //     .runtimeType); // Check the type of the 'id'
 
                         Navigator.push(
                           context,
