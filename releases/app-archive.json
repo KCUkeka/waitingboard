@@ -3,7 +3,7 @@
   "description": "An cross platform app used to update and monitor provider wait times.",
   "items": [
      {
-      "version": "1.4",
+      "version": "1.4.0",
       "shortVersion": 4,
       "changes": [
         {
@@ -13,11 +13,11 @@
       ],
       "date": "2025-03-26",
       "mandatory": false,
-      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.4/waitboard.exe",
+      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.4.0/waitboard.exe",
       "platform": "windows"
     },
     {
-      "version": "1.3",
+      "version": "1.3.0",
       "shortVersion": 3,
       "changes": [
         {
@@ -27,11 +27,11 @@
       ],
       "date": "2025-08-26",
       "mandatory": false,
-      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.3/waitboard.exe",
+      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.3.0/waitboard.exe",
       "platform": "windows"
     },
     {
-      "version": "1.2",
+      "version": "1.2.0",
       "shortVersion": 2,
       "changes": [
         {
@@ -41,7 +41,7 @@
       ],
       "date": "2025-03-26",
       "mandatory": false,
-      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.2/waitboard.exe",
+      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.2.0/waitboard.exe",
       "platform": "windows"
     }
   ]
