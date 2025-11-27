@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http; // For HTTP requests
-import 'dart:convert'; // For JSON decoding
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../model/provider_info.dart';
 import '../services/api_service.dart';
 
@@ -23,22 +23,18 @@ class _ProviderListPageState extends State<ProviderListPage> {
   Future<void> _loadSelectedLocation() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final selectedLocation = prefs.getString('selectedLocation') ?? '';
-
     if (mounted) {
       setState(() {
         _selectedLocation = selectedLocation;
       });
     }
-
   }
 
   // API call to fetch provider data
   Future<List<ProviderInfo>> fetchProviders() async {
     final String url = '${ApiService.baseUrl}/providers?location_id=$_selectedLocation'; 
-
     try {
       final response = await http.get(Uri.parse(url));
-
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         
@@ -51,7 +47,6 @@ class _ProviderListPageState extends State<ProviderListPage> {
           
           return ProviderInfo.fromWaitTimeApi(provider, provider['id']?.toString() ?? '', locations);
         }).toList();
-
         return providers;
       } else {
         throw Exception('Failed to load providers: ${response.body}');
@@ -65,7 +60,6 @@ class _ProviderListPageState extends State<ProviderListPage> {
   // API call to mark a provider as deleted (sets deleteFlag to 1)
   Future<void> deleteProvider(BuildContext context, String providerId) async {
     if (_isDeleting) return;
-
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -89,14 +83,11 @@ class _ProviderListPageState extends State<ProviderListPage> {
       setState(() => _isDeleting = true);
       try {
         await ApiService.deleteProvider(providerId);
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Provider deleted successfully')),
         );
-
         setState(() {}); // Refresh the list
       } catch (e) {
-        print('Error during deletion: $e'); // Debug print
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error deleting provider: $e')),
         );
@@ -138,15 +129,19 @@ class _ProviderListPageState extends State<ProviderListPage> {
                   itemCount: filteredProviders.length,
                   itemBuilder: (context, index) {
                     final provider = filteredProviders[index];
-
-        return ListTile(
-          title: Text('${provider.firstName} ${provider.lastName}'),
-          subtitle: Text('${provider.specialty} - ${provider.title}'),
-        );
-      },
-    );
-  },
-),
+                    return Column(
+                      children: [
+                        ListTile(
+                          title: Text('${provider.firstName} ${provider.lastName}'),
+                          subtitle: Text('${provider.specialty} - ${provider.title}'),
+                        ),
+                        Divider(),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
 }

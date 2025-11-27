@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:waitingboard/screens/admin/edit_provider_page.dart';
-import 'package:waitingboard/services/api_service.dart'; // Import the API service
+import 'package:waitingboard/services/api_service.dart';
 
 class EditProvidersList extends StatefulWidget {
   @override
@@ -8,12 +8,11 @@ class EditProvidersList extends StatefulWidget {
 }
 
 class _EditProvidersListState extends State<EditProvidersList> {
-  bool _isDeleting = false; // Track deletion state
+  bool _isDeleting = false;
 
   // Method to fetch the list of providers from the API
   Future<List<Map<String, dynamic>>> _fetchProviders() async {
     try {
-      // Fetching provider data from the API
       final providers = await ApiService.fetchProviders();
       return providers
           .map((provider) => provider as Map<String, dynamic>)
@@ -25,9 +24,8 @@ class _EditProvidersListState extends State<EditProvidersList> {
 
   // Method to delete a provider from the API
   Future<void> deleteProvider(BuildContext context, String providerId) async {
-    if (_isDeleting) return; // Prevent multiple requests
+    if (_isDeleting) return;
 
-    // Show a confirmation dialog
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -62,7 +60,6 @@ class _EditProvidersListState extends State<EditProvidersList> {
 
         setState(() {}); // Refresh the provider list
       } catch (e) {
-        // Show error snackbar
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error deleting provider: $e')),
         );
@@ -82,7 +79,7 @@ class _EditProvidersListState extends State<EditProvidersList> {
         ),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _fetchProviders(), // Fetch providers via the API
+        future: _fetchProviders(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -95,55 +92,53 @@ class _EditProvidersListState extends State<EditProvidersList> {
           }
 
           final providerData = snapshot.data!;
-
-          return ListView.builder(
-            itemCount: providerData.length,
-            itemBuilder: (context, index) {
-              final provider = providerData[index];
-
-              return ListTile(
-                title: Text('${provider['first_name']} ${provider['last_name']}'),
-                subtitle: Text(
-                  '${provider['specialty']} - ${provider['title']}',
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
+          
+          return Padding(
+            padding: EdgeInsets.all(16.0),
+            child: ListView.builder(
+              itemCount: providerData.length,
+              itemBuilder: (context, index) {
+                final provider = providerData[index];
+                return Column(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
-                      onPressed: () {
-                        // Log the provider details to debug
-                        print(provider); // Check the structure of the provider
-                        print(provider['id']
-                            .runtimeType); // Check the type of the 'id'
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EditProviderPage(
-                              docId: provider['id']
-                                  .toString(), // API returns a field 'id' to string
-                              providerData: provider,
-                            ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('${provider['first_name']}, ${provider['last_name'][0]}'),
+                      subtitle: Text(provider['specialty']),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () {
+                              print(provider);
+                              print(provider['id'].runtimeType);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditProviderPage(
+                                    docId: provider['id'].toString(),
+                                    providerData: provider,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
+                          IconButton(
+                            icon: Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              print('Provider ID: ${provider['id']}, Type: ${provider['id'].runtimeType}');
+                              deleteProvider(context, provider['id'].toString());
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                    IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red),
-                      onPressed: () {
-                        print(
-                            'Provider ID: ${provider['id']}, Type: ${provider['id'].runtimeType}');
-                        deleteProvider(
-                            context,
-                            provider['id']
-                                .toString()); // Provider ID is a string
-                      },
-                    ),
+                    Divider(),
                   ],
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),
