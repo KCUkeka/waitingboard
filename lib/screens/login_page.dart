@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
 import 'package:waitingboard/screens/admin/admin_home_page.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'package:waitingboard/screens/homepage/clinic_home_page.dart';
 import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
 import 'package:waitingboard/services/api_service.dart';
 import 'signup_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -18,6 +21,215 @@ class _LoginPageState extends State<LoginPage> {
 
   String? _selectedUsername;
   String? _selectedLocation;
+  
+  // Update checker variables
+  String _currentVersion = '1.3'; // Fallback version
+  bool _checkingForUpdates = false;
+  
+  List<Map<String, dynamic>> _users = []; // Store user objects with username and hashed password
+  List<String> _locations = [];
+
+  // Add this method to initialize package info
+  Future<void> _initializePackageInfo() async {
+    try {
+      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      setState(() {
+        _currentVersion = packageInfo.version;
+      });
+    } catch (e) {
+      debugPrint('Failed to get package info: $e');
+      // Keep the fallback version
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initializePackageInfo(); // This sets _currentVersion dynamically
+    _fetchData();
+    
+    // Auto-check for updates on app start
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _autoCheckForUpdates();
+    });
+  }
+
+  Future<void> _autoCheckForUpdates() async {
+    try {
+      await _checkForUpdates(showDialogIfUpToDate: false);
+    } catch (e) {
+      debugPrint('Auto update check failed: $e');
+    }
+  }
+
+  Future<void> _manualCheckForUpdates() async {
+    await _checkForUpdates(showDialogIfUpToDate: true);
+  }
+
+  Future<void> _checkForUpdates({bool showDialogIfUpToDate = true}) async {
+    if (_checkingForUpdates) return;
+    
+    setState(() {
+      _checkingForUpdates = true;
+    });
+
+    try {
+      final client = HttpClient();
+      final request = await client.getUrl(
+        Uri.parse('https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/app-archive.json'),
+      );
+      final response = await request.close();
+      
+      if (response.statusCode != 200) {
+        throw HttpException('Failed to fetch update info: ${response.statusCode}');
+      }
+      
+      final jsonStr = await response.transform(utf8.decoder).join();
+      final jsonData = jsonDecode(jsonStr);
+      
+      final latestVersion = jsonData['items'][0]['version'];
+      
+      // Use the dynamically fetched current version from package_info_plus
+      if (_isNewerVersion(latestVersion, _currentVersion)) {
+        final downloadUrl = jsonData['items'][0]['url'];
+        final changes = jsonData['items'][0]['changes'] as List;
+        _showUpdateDialog(downloadUrl, latestVersion, changes);
+      } else {
+        if (showDialogIfUpToDate && mounted) {
+          _showUpToDateDialog();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Update check failed: $e")),
+        );
+      }
+      debugPrint("Update check failed: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _checkingForUpdates = false;
+        });
+      }
+    }
+  }
+
+  bool _isNewerVersion(String latest, String current) {
+    try {
+      final latestParts = latest.split('.').map(int.parse).toList();
+      final currentParts = current.split('.').map(int.parse).toList();
+
+      for (int i = 0; i < latestParts.length; i++) {
+        if (i >= currentParts.length) return true;
+        if (latestParts[i] > currentParts[i]) return true;
+        if (latestParts[i] < currentParts[i]) return false;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  void _showUpdateDialog(String downloadUrl, String version, List changes) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Update Available'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Version $version is available!',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              const Text('What\'s new:'),
+              const SizedBox(height: 5),
+              ...changes
+                  .map(
+                    (change) => Padding(
+                      padding: const EdgeInsets.only(left: 8.0, bottom: 4),
+                      child: Text('• ${change['message']}'),
+                    ),
+                  )
+                  .toList(),
+              const SizedBox(height: 10),
+              const Text(
+                'Click "Download Update" to get the latest version.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _launchDownload(downloadUrl);
+            },
+            child: const Text('Download Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUpToDateDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Up to Date'),
+        content: const Text(
+          'You are using the latest version of Waitboard.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _launchDownload(String url) async {
+    try {
+      final uri = Uri.parse(url);
+
+      // Check if the URL can be launched
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Opening download page...'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not launch $url')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to open download: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _requireAdminBeforeCreateAccount() async {
     final TextEditingController usernameController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
@@ -108,16 +320,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  List<Map<String, dynamic>> _users =
-      []; // Store user objects with username and hashed password
-  List<String> _locations = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchData();
-  }
-
 //-------------------------------------------------------Fetch User/Location data----------------------------------------------
 
   Future<void> _fetchData() async {
@@ -139,8 +341,6 @@ class _LoginPageState extends State<LoginPage> {
         // for (var user in _users) {
         //   print('Username: ${user['username']}, Password: ${user['password']}');
         // }
-
-        
 
         _locations = locations
             .map((location) {
@@ -248,8 +448,6 @@ class _LoginPageState extends State<LoginPage> {
                   );
                   return;
                 }
-
-              
 
                 // Check if the user is an admin
                 final isAdmin = user['admin'] == true || user['admin'] == 'true';
@@ -530,6 +728,19 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
         ),
+        actions: [
+          IconButton(
+            icon: _checkingForUpdates 
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.system_update),
+            tooltip: 'Check for Updates',
+            onPressed: _checkingForUpdates ? null : _manualCheckForUpdates,
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
