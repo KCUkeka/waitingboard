@@ -18,18 +18,18 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
-
+  final _passwordFocusNode = FocusNode(); // Add focus node for password field
   String? _selectedUsername;
   String? _selectedLocation;
+  bool _rememberPassword = false; // Checkbox state
   
   // Update checker variables
-  String _currentVersion = '1.3'; // Fallback version
+  String _currentVersion = '1.3';
   bool _checkingForUpdates = false;
   
-  List<Map<String, dynamic>> _users = []; // Store user objects with username and hashed password
+  List<Map<String, dynamic>> _users = [];
   List<String> _locations = [];
 
-  // Add this method to initialize package info
   Future<void> _initializePackageInfo() async {
     try {
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
@@ -38,20 +38,67 @@ class _LoginPageState extends State<LoginPage> {
       });
     } catch (e) {
       debugPrint('Failed to get package info: $e');
-      // Keep the fallback version
     }
   }
 
   @override
   void initState() {
     super.initState();
-    _initializePackageInfo(); // This sets _currentVersion dynamically
+    _initializePackageInfo();
     _fetchData();
+    _loadSavedCredentials(); // Load saved credentials
     
-    // Auto-check for updates on app start
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoCheckForUpdates();
     });
+  }
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    _passwordFocusNode.dispose();
+    super.dispose();
+  }
+
+  // Load saved credentials from SharedPreferences
+  Future<void> _loadSavedCredentials() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final savedUsername = prefs.getString('savedUsername');
+    final savedPassword = prefs.getString('savedPassword');
+    final savedLocation = prefs.getString('savedLocation');
+    final rememberPwd = prefs.getBool('rememberPassword') ?? false;
+
+    if (mounted && rememberPwd && savedPassword != null) {
+      setState(() {
+        _selectedUsername = savedUsername;
+        _selectedLocation = savedLocation;
+        _passwordController.text = savedPassword;
+        _rememberPassword = true;
+      });
+    } else if (mounted && savedUsername != null) {
+      setState(() {
+        _selectedUsername = savedUsername;
+        _selectedLocation = savedLocation;
+      });
+    }
+  }
+
+  // Save credentials to SharedPreferences
+  Future<void> _saveCredentials() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    if (_rememberPassword) {
+      await prefs.setString('savedUsername', _selectedUsername ?? '');
+      await prefs.setString('savedPassword', _passwordController.text);
+      await prefs.setString('savedLocation', _selectedLocation ?? '');
+      await prefs.setBool('rememberPassword', true);
+    } else {
+      await prefs.remove('savedPassword');
+      await prefs.setBool('rememberPassword', false);
+      // Still save username and location for convenience
+      await prefs.setString('savedUsername', _selectedUsername ?? '');
+      await prefs.setString('savedLocation', _selectedLocation ?? '');
+    }
   }
 
   Future<void> _autoCheckForUpdates() async {
@@ -72,7 +119,6 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _checkingForUpdates = true;
     });
-
     try {
       final client = HttpClient();
       final request = await client.getUrl(
@@ -89,7 +135,6 @@ class _LoginPageState extends State<LoginPage> {
       
       final latestVersion = jsonData['items'][0]['version'];
       
-      // Use the dynamically fetched current version from package_info_plus
       if (_isNewerVersion(latestVersion, _currentVersion)) {
         final downloadUrl = jsonData['items'][0]['url'];
         final changes = jsonData['items'][0]['changes'] as List;
@@ -119,7 +164,6 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final latestParts = latest.split('.').map(int.parse).toList();
       final currentParts = current.split('.').map(int.parse).toList();
-
       for (int i = 0; i < latestParts.length; i++) {
         if (i >= currentParts.length) return true;
         if (latestParts[i] > currentParts[i]) return true;
@@ -142,26 +186,31 @@ class _LoginPageState extends State<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Version $version is available!',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              const Text('What\'s new:'),
-              const SizedBox(height: 5),
-              ...changes
-                  .map(
-                    (change) => Padding(
-                      padding: const EdgeInsets.only(left: 8.0, bottom: 4),
-                      child: Text('• ${change['message']}'),
-                    ),
-                  )
-                  .toList(),
-              const SizedBox(height: 10),
-              const Text(
-                'Click "Download Update" to get the latest version.',
-              ),
-            ],
+            Text(
+              'Version $version is available!',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            const Text('What\'s new:'),
+            const SizedBox(height: 5),
+            ...changes.expand((change) {
+              // Split the 'message' into sentences based on punctuation (.!?)
+              List<String> sentences = change['message']
+                  .split(RegExp(r'(?<=[.!?])\s+')); // Split on sentence-ending punctuation
+
+              // Create a bullet point for each sentence
+              return sentences.map(
+                (sentence) => Padding(
+                  padding: const EdgeInsets.only(left: 8.0, bottom: 4),
+                  child: Text('• $sentence'),
+                ),
+              );
+            }).toList(),
+            const SizedBox(height: 10),
+            const Text(
+              'Click "Download Update" to get the latest version.',
+            ),
+          ],
           ),
         ),
         actions: [
@@ -202,8 +251,6 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _launchDownload(String url) async {
     try {
       final uri = Uri.parse(url);
-
-      // Check if the URL can be launched
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
         if (mounted) {
@@ -233,9 +280,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _requireAdminBeforeCreateAccount() async {
     final TextEditingController usernameController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
-
     String? selectedAdminUsername;
-
     await showDialog(
       context: context,
       builder: (context) {
@@ -283,7 +328,6 @@ class _LoginPageState extends State<LoginPage> {
                       (u) => u['username'] == selectedAdminUsername,
                       orElse: () => {},
                     );
-
                     if (user.isEmpty ||
                         hashPassword(passwordController.text.trim()) !=
                             user['password']) {
@@ -292,7 +336,6 @@ class _LoginPageState extends State<LoginPage> {
                       );
                       return;
                     }
-
                     final isAdmin =
                         user['admin'] == true || user['admin'] == 'true';
                     if (!isAdmin) {
@@ -302,8 +345,7 @@ class _LoginPageState extends State<LoginPage> {
                       );
                       return;
                     }
-
-                    Navigator.of(context).pop(); // Close the dialog
+                    Navigator.of(context).pop();
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -320,13 +362,10 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-//-------------------------------------------------------Fetch User/Location data----------------------------------------------
-
   Future<void> _fetchData() async {
     try {
       var users = await ApiService.fetchUsers();
       var locations = await ApiService.fetchLocations();
-
       setState(() {
         _users = users.map((user) {
           return {
@@ -336,18 +375,12 @@ class _LoginPageState extends State<LoginPage> {
             'admin': user['admin'],
           };
         }).toList();
-
-        // Debugging the mapped users and their passwords
-        // for (var user in _users) {
-        //   print('Username: ${user['username']}, Password: ${user['password']}');
-        // }
-
         _locations = locations
             .map((location) {
-              return location.toString(); // Fallback to empty string
+              return location.toString();
             })
             .where((name) => name.isNotEmpty)
-            .toList(); // Filter out empty names
+            .toList();
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -357,21 +390,16 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   String hashPassword(String password) {
-    final bytes = utf8.encode(password); // Encode the password in UTF-8
-    final digest = sha256.convert(bytes); // Generate the hash
-    // print('Hashed Password: $digest');  // Debug print
-    return digest
-        .toString(); // Return the hashed password as a hexadecimal string
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
-
-//-------------------------------------------------------Add new location----------------------------------------------
 
   Future<void> _addNewLocation() async {
     final TextEditingController locationNameController =
         TextEditingController();
     final TextEditingController usernameController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
-
     await showDialog(
       context: context,
       builder: (context) {
@@ -380,7 +408,6 @@ class _LoginPageState extends State<LoginPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Dropdown for username selection
               DropdownButtonFormField<String>(
                 value: usernameController.text.isEmpty
                     ? null
@@ -402,16 +429,12 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: InputDecoration(labelText: "Select Username"),
               ),
               SizedBox(height: 10),
-
-              // Password input
               TextField(
                 controller: passwordController,
                 obscureText: true,
                 decoration: InputDecoration(labelText: "Password"),
               ),
               SizedBox(height: 10),
-
-              // Location name input
               TextField(
                 controller: locationNameController,
                 decoration: InputDecoration(labelText: "Location Name"),
@@ -428,28 +451,22 @@ class _LoginPageState extends State<LoginPage> {
                 final locationName = locationNameController.text.trim();
                 final username = usernameController.text.trim();
                 final password = passwordController.text.trim();
-
                 if (locationName.isEmpty || username.isEmpty || password.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("All fields are required.")),
                   );
                   return;
                 }
-
-                // Find the user by username
                 final user = _users.firstWhere(
                   (user) => user['username'] == username,
                   orElse: () => {},
                 );
-
                 if (user.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Invalid username.")),
                   );
                   return;
                 }
-
-                // Check if the user is an admin
                 final isAdmin = user['admin'] == true || user['admin'] == 'true';
                 if (!isAdmin) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -457,8 +474,6 @@ class _LoginPageState extends State<LoginPage> {
                   );
                   return;
                 }
-
-                // Verify the password
                 final hashedPassword = user['password'];
                 if (hashPassword(password) != hashedPassword) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -466,15 +481,13 @@ class _LoginPageState extends State<LoginPage> {
                   );
                   return;
                 }
-
-                // Add the new location via API
                 try {
                   await ApiService.addLocation(locationName);
-                  await _fetchData(); // Refresh locations
+                  await _fetchData();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Location added successfully.")),
                   );
-                  Navigator.of(context).pop(); // Close dialog
+                  Navigator.of(context).pop();
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Failed to add location: $e")),
@@ -489,17 +502,13 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-// --------------------------------------------------------Password Reset--------------------------------------------
-
   Future<void> _resetPassword() async {
     final TextEditingController newPasswordController = TextEditingController();
     final TextEditingController adminUsernameController =
         TextEditingController();
     final TextEditingController adminPasswordController =
         TextEditingController();
-
     String? selectedTargetUsername;
-
     await showDialog(
       context: context,
       builder: (context) {
@@ -572,7 +581,6 @@ class _LoginPageState extends State<LoginPage> {
                     final newPassword = newPasswordController.text.trim();
                     final adminUsername = adminUsernameController.text.trim();
                     final adminPassword = adminPasswordController.text.trim();
-
                     if ([
                       targetUsername,
                       newPassword,
@@ -583,19 +591,16 @@ class _LoginPageState extends State<LoginPage> {
                           SnackBar(content: Text("All fields are required.")));
                       return;
                     }
-
                     final adminUser = _users.firstWhere(
                       (user) => user['username'] == adminUsername,
                       orElse: () => {},
                     );
-
                     if (adminUser.isEmpty ||
                         hashPassword(adminPassword) != adminUser['password']) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text("Invalid admin credentials.")));
                       return;
                     }
-
                     final isAdmin = adminUser['admin'] == true ||
                         adminUser['admin'] == 'true';
                     if (!isAdmin) {
@@ -603,7 +608,6 @@ class _LoginPageState extends State<LoginPage> {
                           content: Text("Only admins can reset passwords.")));
                       return;
                     }
-
                     try {
                       await ApiService.resetPassword(
                           targetUsername!, hashPassword(newPassword));
@@ -625,19 +629,15 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  //-------------------------------------------------------Login method----------------------------------------------
-
   Future<void> _login() async {
     final username = _selectedUsername;
     final enteredPassword = _passwordController.text.trim();
-
     if (username == null || _selectedLocation == null || enteredPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please complete all fields.")),
       );
       return;
     }
-
     try {
       final user = _users.firstWhere((user) => user['username'] == username, orElse: () => {});
       if (user.isEmpty) {
@@ -646,19 +646,16 @@ class _LoginPageState extends State<LoginPage> {
         );
         return;
       }
-
       final hashedPassword = user['password'];
-
       if (hashPassword(enteredPassword) != hashedPassword) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Invalid password.")),
         );
         return;
       }
-
       final loginSuccess = await ApiService.loginUser(
           username,
-          hashPassword(enteredPassword), // Make sure password is hashed
+          hashPassword(enteredPassword),
           _selectedLocation!);
       if (!loginSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -667,13 +664,13 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      //----------------------------------------------------Save login info-------------------------------------------
+      // Save credentials if remember password is checked
+      await _saveCredentials();
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('selectedLocation', _selectedLocation!);
 
-      // Rest of your navigation logic remains the same
       final isAdmin = user['admin'] == true || user['admin'] == 'true';
       if (isAdmin) {
         Navigator.pushReplacement(
@@ -684,7 +681,6 @@ class _LoginPageState extends State<LoginPage> {
         );
         return;
       }
-
       if (user['role'] == 'Front desk') {
         Navigator.pushReplacement(
           context,
@@ -711,7 +707,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-//-------------------------------------------------------Build page----------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -784,8 +779,23 @@ class _LoginPageState extends State<LoginPage> {
             ),
             TextField(
               controller: _passwordController,
+              focusNode: _passwordFocusNode,
               obscureText: true,
               decoration: InputDecoration(labelText: 'Password'),
+              onSubmitted: (_) => _login(), // Trigger login on Enter key
+            ),
+            Row(
+              children: [
+                Checkbox(
+                  value: _rememberPassword,
+                  onChanged: (value) {
+                    setState(() {
+                      _rememberPassword = value ?? false;
+                    });
+                  },
+                ),
+                Text('Remember Password'),
+              ],
             ),
             SizedBox(height: 20),
             ElevatedButton(
