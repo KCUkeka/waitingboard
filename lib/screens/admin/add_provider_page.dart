@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:waitingboard/services/api_service.dart';
 
 class AddProviderPage extends StatefulWidget {
   @override
@@ -11,9 +12,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController newLocationController = TextEditingController();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
+  
   String? selectedSpecialty;
   String? selectedTitle;
   List<String> selectedLocations = [];
@@ -25,6 +24,7 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'Total Joint',
     'Upper Extremity',
     'Shoulder',
+    'Hip',
     'Knee',
     'Podiatry',
     'Rheumatology',
@@ -33,119 +33,151 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'Sports Medicine',
     'Trauma',
     'Pediatrics',
+    'ANC',
+    'General',
   ];
 
   final List<String> titles = [
+    '',
     'Dr.',
     'PA',
     'PA-C',
+    'DPM',
     'DPM Fellow',
+    'N/A',
   ];
 
-  // List to hold locations fetched from Firestore
+  // List to hold locations fetched from MySQL
   List<String> locations = [];
 
   @override
   void initState() {
     super.initState();
     fetchLocations();
-    fetchCurrentUserRole();
   }
 
-  // Fetch locations from Firestore
-  Future<void> fetchLocations() async {
-    final snapshot = await _firestore.collection('locations').get();
-    setState(() {
-      locations = snapshot.docs.map((doc) => doc['name'] as String).toList();
-    });
-  }
+  // Fetch locations from Flask Api
+Future<void> fetchLocations() async {
+  const String apiUrl = '${ApiService.baseUrl}/locations'; // Replace with your Flask server URL
 
-  // Fetch the current user's role from Firestore
-  Future<void> fetchCurrentUserRole() async {
-    final user = _auth.currentUser;
-    if (user != null) {
-      final snapshot = await _firestore.collection('users').doc(user.uid).get();
+  try {
+    final response = await http.get(Uri.parse(apiUrl));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+
       setState(() {
-        currentUserRole = snapshot['role']; // Assuming role is stored in Firestore
+        locations = data.map((location) => location['name'] as String).toList();
       });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch locations: ${response.body}')),
+      );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to fetch locations: $e')),
+    );
+  }
+}
+
+
+
+
+  // Add a new location to Flask Api
+Future<void> addLocation() async {
+  const String apiUrl = '${ApiService.baseUrl}/locations'; // Replace with your Flask server URL
+
+  final newLocation = newLocationController.text.trim();
+
+  if (newLocation.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Location name cannot be empty')),
+    );
+    return;
   }
 
-  // Add a new location to Firestore
-  Future<void> addLocation() async {
-    final newLocation = newLocationController.text.trim();
-    if (newLocation.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Location name cannot be empty')),
-      );
-      return;
-    }
-    if (locations.contains(newLocation)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Location already exists')),
-      );
-      return;
-    }
-    try {
-      await _firestore.collection('locations').add({'name': newLocation});
-      await fetchLocations(); // Refresh the list
+  try {
+    final response = await http.post(
+      Uri.parse(apiUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'name': newLocation}),
+    );
+
+    if (response.statusCode == 201) {
+      await fetchLocations(); // Refresh the locations
       newLocationController.clear();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Location added successfully')),
       );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add location: $e')),
-      );
-    }
-  }
-
-  // Save the provider information to Firestore
-  Future<void> saveProvider() async {
-    final firstName = firstNameController.text.trim();
-    final lastName = lastNameController.text.trim();
-    final specialty = selectedSpecialty;
-    final title = selectedTitle;
-
-    if (firstName.isNotEmpty && lastName.isNotEmpty && specialty != null && title != null && selectedLocations.isNotEmpty) {
-      // Query Firestore to check for duplicates
-      final querySnapshot = await _firestore.collection('providers')
-          .where('firstName', isEqualTo: firstName)
-          .where('lastName', isEqualTo: lastName)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Provider already listed')),
-        );
-      } else {
-        // Add new provider if no duplicate is found
-        await _firestore.collection('providers').add({
-          'firstName': firstName,
-          'lastName': lastName,
-          'specialty': specialty,
-          'title': title,
-          'locations': selectedLocations,
-          'waitTime': null,
-          'selectedLocation': null,
-        });
-
-        // Clear the text fields after saving
-        firstNameController.clear();
-        lastNameController.clear();
-        selectedSpecialty = null;
-        selectedTitle = null;
-        selectedLocations = [];
-
-        // Navigate back after saving
-        Navigator.pop(context);
-      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('All fields are required')),
+        SnackBar(content: Text('Failed to add location: ${response.body}')),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to add location: $e')),
+    );
   }
+}
+
+
+// Save the provider information to Flask API
+Future<void> saveProvider() async {
+  final firstName = firstNameController.text.trim();
+  final lastName = lastNameController.text.trim();
+  final specialty = selectedSpecialty;
+  final title = selectedTitle;
+
+  // Convert the selectedLocations list to a comma-separated string
+  final locationsString = selectedLocations.join(',');
+
+  //Print to debug what is being sent
+  print('First Name: $firstName');
+  print('Last Name: $lastName');
+  print('Specialty: $specialty');
+  print('Title: $title');
+  print('Locations: $locationsString');
+
+  if (firstName.isEmpty || lastName.isEmpty || specialty == null || locationsString.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('All fields are required')),
+    );
+    return;
+  }
+
+  try {
+    // Use the addProvider method from ApiService
+    await ApiService.addProvider(
+      firstName,
+      lastName,
+      specialty,
+      title ?? '',  // Allows for empty stirng if null
+      locationsString,  // Pass the locations as a comma-separated string
+    );
+
+    // Clear fields after successful save
+    firstNameController.clear();
+    lastNameController.clear();
+    selectedSpecialty = null;
+    selectedTitle = null;
+    selectedLocations = [];
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Provider added successfully')),
+    );
+
+    Navigator.pop(context); // Navigate back
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to save provider: $e')),
+    );
+  }
+}
+
+
 
   // Show the Add Location dialog
   void _showAddLocationDialog() {
@@ -254,10 +286,10 @@ class _AddProviderPageState extends State<AddProviderPage> {
                 }).toList(),
               ),
               SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _showAddLocationDialog,
-                  child: Text('Add New Location'),
-                ),
+              ElevatedButton(
+                onPressed: _showAddLocationDialog,
+                child: Text('Add New Location'),
+              ),
               SizedBox(height: 16),
               ElevatedButton(
                 onPressed: saveProvider,

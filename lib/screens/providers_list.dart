@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http; // For HTTP requests
+import 'dart:convert'; // For JSON decoding
+import '../model/provider_info.dart';
+import '../services/api_service.dart';
 
 class ProviderListPage extends StatefulWidget {
   @override
@@ -8,8 +11,8 @@ class ProviderListPage extends StatefulWidget {
 }
 
 class _ProviderListPageState extends State<ProviderListPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _selectedLocation;
+  bool _isDeleting = false;
 
   @override
   void initState() {
@@ -19,16 +22,88 @@ class _ProviderListPageState extends State<ProviderListPage> {
 
   Future<void> _loadSelectedLocation() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _selectedLocation = prefs.getString('selectedLocation');
-    });
+    final selectedLocation = prefs.getString('selectedLocation') ?? '';
+
+    if (mounted) {
+      setState(() {
+        _selectedLocation = selectedLocation;
+      });
+    }
+
   }
 
-  Future<void> deleteProvider(BuildContext context, String docId) async {
-    await _firestore.collection('providers').doc(docId).delete();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Provider deleted successfully')),
+  // API call to fetch provider data
+  Future<List<ProviderInfo>> fetchProviders() async {
+    final String url = '${ApiService.baseUrl}/providers?location_id=$_selectedLocation'; 
+
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        
+        final providers = data.map<ProviderInfo>((provider) {
+          List<String> locations = (provider['provider_locations'] ?? '')
+              .toString()
+              .split(',')
+              .map((e) => e.trim())
+              .toList();
+          
+          return ProviderInfo.fromWaitTimeApi(provider, provider['id']?.toString() ?? '', locations);
+        }).toList();
+
+        return providers;
+      } else {
+        throw Exception('Failed to load providers: ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching providers: $e');
+      throw Exception('Error fetching providers: $e');
+    }
+  }
+
+  // API call to mark a provider as deleted (sets deleteFlag to 1)
+  Future<void> deleteProvider(BuildContext context, String providerId) async {
+    if (_isDeleting) return;
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content: const Text('Are you sure you want to delete this provider?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
     );
+
+    if (shouldDelete == true) {
+      setState(() => _isDeleting = true);
+      try {
+        await ApiService.deleteProvider(providerId);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Provider deleted successfully')),
+        );
+
+        setState(() {}); // Refresh the list
+      } catch (e) {
+        print('Error during deletion: $e'); // Debug print
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting provider: $e')),
+        );
+      } finally {
+        setState(() => _isDeleting = false);
+      }
+    }
   }
 
   @override
@@ -42,11 +117,8 @@ class _ProviderListPageState extends State<ProviderListPage> {
       ),
       body: _selectedLocation == null
           ? Center(child: CircularProgressIndicator())
-          : StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('providers')
-                  .where('locations', arrayContains: _selectedLocation)
-                  .snapshots(),
+          : FutureBuilder<List<ProviderInfo>>(
+              future: fetchProviders(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
@@ -54,32 +126,27 @@ class _ProviderListPageState extends State<ProviderListPage> {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return Center(child: Text('No providers available for this location.'));
                 }
 
-                final providerDocs = snapshot.data!.docs;
+                final filteredProviders = snapshot.data!
+                    .where((p) => p.locations.contains(_selectedLocation))
+                    .toList();
 
                 return ListView.builder(
-                  itemCount: providerDocs.length,
+                  itemCount: filteredProviders.length,
                   itemBuilder: (context, index) {
-                    final provider = providerDocs[index];
-                    final providerData = provider.data() as Map<String, dynamic>;
+                    final provider = filteredProviders[index];
 
-                    return ListTile(
-                      title: Text('${providerData['firstName']} ${providerData['lastName']}'),
-                      subtitle: Text(
-                        '${providerData['specialty'] ?? "N/A"} - ${providerData['title'] ?? "N/A"}',
-                      ),
-                      trailing: IconButton(
-                        icon: Icon(Icons.delete),
-                        onPressed: () => deleteProvider(context, provider.id),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+        return ListTile(
+          title: Text('${provider.firstName} ${provider.lastName}'),
+          subtitle: Text('${provider.specialty} - ${provider.title}'),
+        );
+      },
+    );
+  },
+),
     );
   }
 }

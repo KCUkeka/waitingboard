@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:waitingboard/screens/dashboard_page.dart';
 import 'package:waitingboard/screens/providers_list.dart';
-import '../login_page.dart'; // Import the LoginPage
+import 'package:waitingboard/services/api_service.dart';
+import '../login_page.dart';
 import '../wait_times_page.dart';
 
 class ClinicHomePage extends StatefulWidget {
-  final String selectedLocation; // Add selectedLocation as a parameter
+  final String selectedLocation; //Add selectedLocation as a parameter
 
   ClinicHomePage({required this.selectedLocation}); // Require selectedLocation
 
@@ -19,18 +19,30 @@ class ClinicHomePage extends StatefulWidget {
 class _ClinicHomePageState extends State<ClinicHomePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  // Firestore instance
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  String? _selectedLocation;
 
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus(); // Check login status when the home page is initialized
-    _tabController = TabController(length: 2, vsync: this); // Two tabs
+    _checkLoginStatus();
+    _loadSelectedLocation();
+    _tabController = TabController(length: 2, vsync: this);
   }
 
-  // Check if the user is logged in when the home page is loaded
+  Future<void> _loadSelectedLocation() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _selectedLocation = prefs.getString('selectedLocation');
+    });
+    
+    if (_selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No location found, please login again')),
+      );
+      _logout();
+    }
+  }
+
   Future<void> _checkLoginStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool? isLoggedIn = prefs.getBool('isLoggedIn');
@@ -51,19 +63,9 @@ class _ClinicHomePageState extends State<ClinicHomePage>
 
     if (loginId != null) {
       try {
-        // Fetch the document to check if it exists
-        DocumentSnapshot snapshot =
-            await _firestore.collection('logins').doc(loginId).get();
-
-        if (snapshot.exists) {
-          // If the document exists, update the logout timestamp
-          await _firestore.collection('logins').doc(loginId).update({
-            'logout_timestamp': Timestamp.now(),
-          });
-          print('Logout timestamp updated successfully.');
-        } else {
-          print('Document with loginId does not exist.');
-        }
+        // API call to update the logout timestamp
+        await ApiService.logout(loginId);
+        print('Logout timestamp updated successfully.');
       } catch (e) {
         print('Error updating logout timestamp: $e');
       }
@@ -89,6 +91,10 @@ class _ClinicHomePageState extends State<ClinicHomePage>
 
   @override
   Widget build(BuildContext context) {
+    if (_selectedLocation == null) {
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Container(
@@ -97,7 +103,7 @@ class _ClinicHomePageState extends State<ClinicHomePage>
             children: [
               const Text('Wait Time Dashboard'),
               Text(
-                'Location: ${widget.selectedLocation}', // Display selected location
+                'Location: $_selectedLocation',
                 style: TextStyle(fontSize: 14),
               ),
             ],
@@ -127,9 +133,7 @@ class _ClinicHomePageState extends State<ClinicHomePage>
               itemBuilder: (context) => [
                 PopupMenuItem(
                     value: 'Providers List', child: Text('Providers List')),
-                PopupMenuItem(
-                    value: 'Logout',
-                    child: Text('Logout')), // Added logout option
+                PopupMenuItem(value: 'Logout', child: Text('Logout')),
               ],
               child: Icon(
                 CupertinoIcons.person_crop_circle_fill_badge_plus,
@@ -146,12 +150,10 @@ class _ClinicHomePageState extends State<ClinicHomePage>
           children: [
             WaitTimesPage(
               tabController: _tabController,
-              selectedLocation:
-                  widget.selectedLocation, // Pass selectedLocation here
+              selectedLocation: _selectedLocation!,
             ),
             DashboardPage(
-              selectedLocation:
-                  widget.selectedLocation, 
+              selectedLocation: _selectedLocation!,
             ),
           ],
         ),

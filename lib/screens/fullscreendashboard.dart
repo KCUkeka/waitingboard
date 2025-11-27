@@ -1,152 +1,280 @@
-import 'package:flutter/foundation.dart'; // Import to access kIsWeb
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart'; // Import for date formatting
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:waitingboard/model/provider_info.dart' as model;
+import 'package:waitingboard/screens/login_page.dart';
+import 'package:waitingboard/services/api_service.dart';
 
-class ProviderInfo {
-  final String firstName;
-  final String lastName;
-  final String specialty;
-  final String title;
-  final int? waitTime;
-  final DateTime? lastChanged; // New field for last updated timestamp
+class FullScreenDashboardPage extends StatefulWidget {
+  final String selectedLocation;
 
-  ProviderInfo({
-    required this.firstName,
-    required this.lastName,
-    required this.specialty,
-    required this.title,
-    this.waitTime,
-    this.lastChanged,
-  });
+  const FullScreenDashboardPage({Key? key, required this.selectedLocation})
+      : super(key: key);
 
-  factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return ProviderInfo(
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      specialty: data['specialty'] ?? '',
-      title: data['title'] ?? '',
-      waitTime: data['waitTime'],
-      lastChanged: data['lastChanged'] != null
-          ? (data['lastChanged'] as Timestamp).toDate()
-          : null,
-    );
-  }
-
-  String get displayName => '$lastName, ${firstName[0]}. | $title';
+  @override
+  _FullScreenDashboardPageState createState() =>
+      _FullScreenDashboardPageState();
 }
 
-class FullScreenDashboardPage extends StatelessWidget {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String selectedLocation; // Add selectedLocation as a parameter
+class _FullScreenDashboardPageState extends State<FullScreenDashboardPage> {
+  String? _selectedLocation;
+  late Future<List<model.ProviderInfo>> _providersFuture;
+  Timer? _timer;
 
-  // Constructor to accept selectedLocation
-  FullScreenDashboardPage({required this.selectedLocation});
-
-  // Method to format the lastChanged timestamp
-  String formatTimestamp(DateTime? timestamp) {
-    if (timestamp == null) return "N/A";
-
-    final formattedDate = DateFormat('hh:mm a, MM/dd').format(timestamp);
-    return formattedDate;
+  @override
+  void initState() {
+    super.initState();
+    _loadLocationAndProviders();
+    _providersFuture = _fetchProviders();
+    _startTimer();
   }
 
-  Stream<List<ProviderInfo>> getProvidersStream() {
-    return _firestore.collection('providers').snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ProviderInfo.fromFirestore(doc))
-          .where((provider) => provider.waitTime != null)
-          .toList();
+  Future<void> _loadLocationAndProviders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final location = prefs.getString('selectedLocation');
+
+    if (location == null) {
+      _handleMissingLocation();
+      return;
+    }
+
+    setState(() {
+      _selectedLocation = location;
+      _providersFuture = _fetchProviders();
     });
+
+    _startTimer();
+  }
+
+  void _handleMissingLocation() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No location found, please login again')),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => LoginPage()),
+      );
+    });
+  }
+
+  Future<List<model.ProviderInfo>> _fetchProviders() async {
+    if (_selectedLocation == null) return [];
+
+    try {
+      final providers =
+          await ApiService.fetchProvidersByLocation(_selectedLocation!);
+      return providers
+          .where((p) => p.current_location == _selectedLocation)
+          .toList();
+    } catch (e) {
+      print('Error fetching providers: $e');
+      return [];
+    }
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      setState(() {
+        _providersFuture = _fetchProviders();
+      });
+    });
+  }
+
+  String formatTimestamp(DateTime? dateTime) {
+    if (dateTime == null) return "N/A";
+
+    // Logic to show time change
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+    }
+    return 'Just now';
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Container(
-          alignment: Alignment.center,
-          child: Text('Wait Times - $selectedLocation'), // Display selectedLocation in AppBar
+        title: Center(
+          child: Text(
+            _selectedLocation != null
+                ? '$_selectedLocation Wait Times'
+                : 'Loading Dashboard...',
+          ),
         ),
-        automaticallyImplyLeading: !kIsWeb, // Hide back button on web platform
+        automaticallyImplyLeading: !kIsWeb,
       ),
-      body: StreamBuilder<List<ProviderInfo>>(
-        stream: getProvidersStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return const Center(child: Text('Error loading providers'));
-          }
+      body: _buildDashboardContent(),
+    );
+  }
 
-          final providers = snapshot.data ?? [];
+  Widget _buildDashboardContent() {
+    if (_selectedLocation == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-          return SingleChildScrollView(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Determine the number of columns based on screen width
-                int crossAxisCount = (constraints.maxWidth / 200).floor();
-                crossAxisCount = crossAxisCount > 0 ? crossAxisCount : 1; // Ensure at least 1 column
+    return FutureBuilder<List<model.ProviderInfo>>(
+      future: _providersFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-                return GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(), // Disable GridView scrolling
-                  shrinkWrap: true, // Make GridView take only the necessary space
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    childAspectRatio: 1, // Adjust aspect ratio to fit more content
-                    crossAxisSpacing: 16.0, // Space between columns
-                    mainAxisSpacing: 16.0, // Space between rows
-                  ),
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: providers.length,
-                  itemBuilder: (context, index) {
-                    final provider = providers[index];
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
 
-                    return Card(
-                      elevation: 4.0,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min, // Minimize height of the card
-                          children: [
-                            Text(
-                              provider.displayName,
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                              textAlign: TextAlign.center, // Center text
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              provider.specialty, // Display specialty on the second line
-                              style: const TextStyle(fontSize: 16),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            const Text('Wait Time:', style: TextStyle(fontSize: 16)),
-                            Text(
-                              '${provider.waitTime} mins',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text('Last Changed:', style: TextStyle(fontSize: 16)),
-                            Text(
-                              formatTimestamp(provider.lastChanged),
-                              style: const TextStyle(fontSize: 14),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+        final providers = snapshot.data ?? [];
+        return _buildProviderGrid(providers);
+      },
+    );
+  }
+
+  Widget _buildProviderGrid(List<model.ProviderInfo> providers) {
+    if (providers.isEmpty) {
+      return const Center(child: Text('No providers available'));
+    }
+
+    return SingleChildScrollView(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final crossAxisCount =
+              (constraints.maxWidth / 200).floor().clamp(1, 4);
+
+          return GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: 1,
+              crossAxisSpacing: 16.0,
+              mainAxisSpacing: 16.0,
             ),
+            padding: const EdgeInsets.all(16.0),
+            itemCount: providers.length,
+            itemBuilder: (context, index) =>
+                _buildProviderCard(providers[index]),
           );
         },
       ),
     );
   }
-}
 
+  Widget _buildProviderCard(model.ProviderInfo provider) {
+    return Card(
+  elevation: 4.0,
+  margin: EdgeInsets.all(8.0),
+  child: Padding(
+    padding: EdgeInsets.symmetric(
+      vertical: 12.0,
+      horizontal: 8.0,
+    ),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isSmallScreen = screenWidth < 600;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Dashboard Name with responsive font size
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                provider.dashboardName,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 18 : 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            SizedBox(height: constraints.maxHeight * 0.02),
+            
+            // Specialty with conditional display
+            if (provider.specialty.isNotEmpty)
+              Flexible(
+                child: Text(
+                  provider.specialty,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14 : 16,
+                    color: Colors.grey[600],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            SizedBox(height: constraints.maxHeight * 0.04),
+            
+            // Wait Time Section
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Wait Time',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14 : 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '${provider.formattedWaitTime} mins',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 16 : 18,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: constraints.maxHeight * 0.04),
+            
+            // Last Changed Section
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Last Changed',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 12 : 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  formatTimestamp(provider.last_changed),
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 12 : 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    ),
+  ),
+);
+  }
+}

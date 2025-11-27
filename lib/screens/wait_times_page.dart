@@ -1,63 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async'; // Import for Timer
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-
-class ProviderInfo {
-  final String firstName;
-  final String lastName;
-  final String specialty;
-  final String title;
-  int? waitTime;
-  final String docId;
-  final List<String> locations;
-  String? selectedLocation; // Add selectedLocation field
-
-  ProviderInfo({
-    required this.firstName,
-    required this.lastName,
-    required this.specialty,
-    required this.title,
-    this.waitTime,
-    required this.docId,
-    required this.locations,
-    this.selectedLocation, // Include in the constructor
-  });
-
-  factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return ProviderInfo(
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      specialty: data['specialty'] ?? '',
-      title: data['title'] ?? '',
-      waitTime: data['waitTime'],
-      docId: doc.id,
-      locations: List<String>.from(data['locations'] ?? []),
-      selectedLocation: data['selectedLocation'], // Retrieve from Firestore
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'firstName': firstName,
-      'lastName': lastName,
-      'specialty': specialty,
-      'title': title,
-      'waitTime': waitTime,
-      'locations': locations,
-      'selectedLocation': selectedLocation, // Save to Firestore
-    };
-  }
-
-  String get displayName {
-    final locationInfo = selectedLocation != null ? ' ($selectedLocation)' : '';
-    return '$lastName, ${firstName[0]}. | $title$locationInfo';
-  }
-}
+import 'package:waitingboard/model/provider_info.dart';
+import 'package:waitingboard/screens/providerselection.dart';
+import 'package:waitingboard/services/api_service.dart';
 
 class WaitTimesPage extends StatefulWidget {
   final TabController tabController;
-  final String selectedLocation; // Add selectedLocation here
+  final String selectedLocation;
 
   WaitTimesPage({required this.tabController, required this.selectedLocation});
 
@@ -66,42 +16,115 @@ class WaitTimesPage extends StatefulWidget {
 }
 
 class _WaitTimesPageState extends State<WaitTimesPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<ProviderInfo> providerList = [];
   List<ProviderInfo> selectedProviders = [];
-  Map<ProviderInfo, String> selectedLocations =
-      {}; // Map to store selected locations for each provider
+  List<ProviderInfo> currentlocationProviders = [];
+  final Map<String, TextEditingController> _waitTimeControllers = {};
+  Timer? _tabRefreshTimer; // Timer for refreshing the TabController
 
   @override
   void initState() {
     super.initState();
-    loadProvidersFromFirestore();
+    loadProvidersFromApi();
+
+    // Start a timer to refresh the TabController every 10 second
+    _tabRefreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (mounted && widget.tabController.index == 0) {
+        loadProvidersFromApi(); // Refresh data if on the first tab
+      }
+    });
 
     // Add listener to refresh data when switching back to WaitTimesPage
     widget.tabController.addListener(() {
-      if (widget.tabController.index == 0) {
-        loadProvidersFromFirestore(); // Refresh data when tab switches to WaitTimesPage
+      if (widget.tabController.index == 0 && mounted) {
+        loadProvidersFromApi();
       }
     });
   }
 
-  Future<void> loadProvidersFromFirestore() async {
+  @override
+  void dispose() {
+    _tabRefreshTimer?.cancel(); // Cancel the timer when the widget is disposed
+    // Dispose all TextEditingControllers
+    for (var controller in _waitTimeControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  // ------------------------------------------ Define functions  ------------------------------------------------------
+
+  void _initializeControllers() {
+    for (var provider in selectedProviders) {
+      _waitTimeControllers[provider.docId] = TextEditingController(
+        text: provider.waitTime?.toString() ?? '',
+      );
+    }
+  }
+
+  Future<bool?> _showConfirmationDialog(
+      BuildContext context, String title, String content) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('No')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text('Yes')),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> loadProvidersFromApi() async {
     try {
-      // Query providers based on the selected location
-      final snapshot = await _firestore
-          .collection('providers')
-          .where('locations', arrayContains: widget.selectedLocation)
-          .get();
+      final List<dynamic> fetchedProviders =
+          await ApiService.fetchProvidersByLocation(widget.selectedLocation);
+
+      if (!mounted) return;
 
       setState(() {
-        providerList = snapshot.docs
-            .map((doc) => ProviderInfo.fromFirestore(doc))
+        // providers that have null wait time and are same location as selected location
+        providerList = fetchedProviders
+            .map((providerData) {
+              if (providerData is Map<String, dynamic>) {
+                List<String> locations = [
+                  (providerData['provider_locations'] ?? '').toString()
+                ];
+                return ProviderInfo.fromWaitTimeApi(providerData,
+                    providerData['id']?.toString() ?? '', locations);
+              } else if (providerData is ProviderInfo) {
+                return providerData; // If it's already a ProviderInfo object, just return it
+              } else {
+                throw Exception(
+                    'Unexpected data type: ${providerData.runtimeType}');
+              }
+            })
+            .where((provider) => provider.locations
+                .contains(widget.selectedLocation)) // Filter providers
             .toList();
         selectedProviders = providerList
-            .where((provider) => provider.waitTime != null)
+            .where((provider) =>
+                provider.waitTime != null &&
+                provider.current_location == widget.selectedLocation)
+            .toList();
+        _initializeControllers();
+
+        // Update currentlocationProviders within setState
+        currentlocationProviders = selectedProviders
+            .where((provider) =>
+                provider.current_location == widget.selectedLocation)
             .toList();
       });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load providers: ${e.toString()}')),
       );
@@ -109,142 +132,205 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   }
 
   Future<void> saveAllWaitTimes() async {
-    for (var provider in selectedProviders) {
-      if (provider.waitTime != null) {
-        await _firestore.collection('providers').doc(provider.docId).update({
-          'waitTime': provider.waitTime,
-          'lastChanged': Timestamp.now(),
-        });
+    // Show confirmation dialog
+    bool? shouldSave = await _showConfirmationDialog(
+      context,
+      'Confirm Update',
+      'Are you sure you want to update all wait times?',
+    );
+
+    // If the user confirmed, proceed with saving
+    if (shouldSave == true) {
+      try {
+        for (var provider in selectedProviders) {
+          final controller = _waitTimeControllers[provider.docId];
+          if (controller != null && controller.text.isNotEmpty) {
+            final waitTime = int.tryParse(controller.text);
+            if (waitTime != null) {
+              await ApiService.updateProvider(provider.docId, {
+                'waitTime': waitTime,
+                'currentLocation': widget.selectedLocation,
+              });
+            }
+          }
+        }
+
+        await loadProvidersFromApi(); // Refresh the list after saving
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Wait times saved successfully')),
+        );
+      } catch (e) {
+        print('Error saving wait times: $e'); // Debug print
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save wait times: $e')),
+        );
       }
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Wait times saved successfully')),
-    );
   }
 
   Future<void> _updateWaitTime(
-      ProviderInfo provider, String newWaitTime) async {
-    int? updatedWaitTime = int.tryParse(newWaitTime);
-    if (updatedWaitTime != null) {
-      setState(() {
-        provider.waitTime = updatedWaitTime;
-      });
-      await _firestore.collection('providers').doc(provider.docId).update({
-        'waitTime': updatedWaitTime,
-        'lastChanged': Timestamp.now(),
-      });
+      ProviderInfo provider, String? newWaitTime) async {
+    if (newWaitTime == null || newWaitTime.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Wait time updated successfully')),
+        const SnackBar(content: Text('Please enter a valid wait time')),
       );
-    } else {
+      return;
+    }
+
+    try {
+      final updateData = {
+        'waitTime': newWaitTime,
+        'currentLocation': widget.selectedLocation,
+        'id': provider.docId,
+      };
+
+      await ApiService.updateProvider(provider.docId, updateData);
+
+      setState(() {
+        provider.waitTime = newWaitTime;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a valid wait time')),
+        const SnackBar(content: Text('Wait time updated successfully')),
+      );
+    } catch (e) {
+      print('Error updating wait time: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update wait time: $e')),
       );
     }
   }
 
-Future<void> removeProvider(ProviderInfo provider) async {
-  bool? shouldDelete = await showDialog<bool>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text("Delete Wait Time"),
-        content: Text(
-            "Are you sure you want to delete this provider's wait time?"),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(false); // User chose 'No'
-            },
-            child: Text("No"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(true); // User chose 'Yes'
-            },
-            child: Text("Yes"),
-          ),
-        ],
-      );
-    },
-  );
-
-  // If the user confirmed the deletion, proceed with removing the wait time
-  if (shouldDelete == true) {
-    setState(() {
-      selectedProviders.remove(provider);
-      provider.waitTime = null; // Set wait time to null in the local state
-      provider.selectedLocation = null; // Set selectedLocation to null locally
-    });
-
-    await _firestore.collection('providers').doc(provider.docId).update({
-      'waitTime': FieldValue.delete(), // Removes the waitTime field in Firestore
-      'selectedLocation': FieldValue.delete(), // Removes selectedLocation field
-      'lastChanged': FieldValue.delete(),
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content:
-              Text('Wait time and selected location removed successfully')),
+  Future<void> removeProvider(ProviderInfo provider) async {
+    bool? shouldDelete = await _showConfirmationDialog(
+      context,
+      'Delete Wait Time',
+      "Are you sure you want to delete this provider's wait time?",
     );
-  }
-}
 
+    if (shouldDelete == true) {
+      try {
+        // Check if the provider has a wait time
+        if (provider.waitTime == null) {
+          // If no wait time, just remove the provider from selectedProviders
+          setState(() {
+            selectedProviders.remove(provider);
+            _waitTimeControllers.remove(provider.docId);
+          });
 
-// Function to delete all wait times
-  Future<void> deleteAllWaitTimes() async {
-// Show confirmation dialog
-    bool? shouldDeleteAll = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Delete All Wait Times"),
-          content: Text("Are you sure you want to delete all wait times?"),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(false); // User chose 'No'
-              },
-              child: Text("No"),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(true); // User chose 'Yes'
-              },
-              child: Text("Yes"),
-            ),
-          ],
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Provider removed from selection')),
+          );
+          return;
+        }
+
+        // If the provider has a wait time, call the API to remove it
+        await ApiService.removeProviderWaitTime(provider.docId);
+
+        setState(() {
+          selectedProviders.remove(provider);
+          _waitTimeControllers.remove(provider.docId);
+          provider.waitTime = null;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Wait time removed successfully')),
         );
-      },
+
+        await loadProvidersFromApi(); // Refresh the list
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to remove wait time: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> deleteAllWaitTimes() async {
+    bool? shouldDeleteAll = await _showConfirmationDialog(
+      context,
+      'Delete All Wait Times',
+      'Are you sure you want to delete all wait times?',
     );
 
     if (shouldDeleteAll == true) {
-      // Delete all wait times in Firestore
-      for (var provider in selectedProviders) {
-        await _firestore.collection('providers').doc(provider.docId).update({
-          'waitTime': FieldValue.delete(), // Removes the waitTime field
-          'lastChanged': FieldValue.delete(),
+      try {
+        // Create a list to store providers without wait times
+        List<ProviderInfo> providersWithoutWaitTime = [];
+
+        for (var provider in selectedProviders) {
+          if (provider.waitTime == null) {
+            // Add providers without wait times to the list
+            providersWithoutWaitTime.add(provider);
+          } else {
+            // Call the API to remove wait times for providers with wait times
+            await ApiService.removeProviderWaitTime(provider.docId);
+          }
+        }
+
+        // Update the state
+        setState(() {
+          // Remove all providers from selectedProviders
+          selectedProviders.clear();
+          _waitTimeControllers.clear();
+
+          // Add providers without wait times back to providerList
+          providerList.addAll(providersWithoutWaitTime);
         });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All wait times removed successfully')),
+        );
+
+        await loadProvidersFromApi(); // Refresh the list
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete all wait times: $e')),
+        );
       }
-
-      setState(() {
-        selectedProviders.clear(); // Clear the selectedProviders list
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('All wait times deleted successfully')),
-      );
     }
   }
+
+  void openProviderSelection() async {
+    final availableProviders = providerList
+        .where((p) =>
+            p.locations.contains(widget.selectedLocation) &&
+            !selectedProviders.any((selected) => selected.docId == p.docId))
+        .toList();
+
+    final List<ProviderInfo>? selected = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProviderSelectionPage(
+          providers: availableProviders,
+          selectedLocation: widget.selectedLocation, // Pass the location here
+        ),
+      ),
+    );
+
+    if (selected != null && selected.isNotEmpty) {
+      setState(() {
+        selectedProviders.addAll(selected);
+        for (var provider in selected) {
+          _waitTimeControllers[provider.docId] = TextEditingController();
+        }
+      });
+    }
+  }
+
+  // ------------------------------------------ Build methods ------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Container(
+        title: Align(
           alignment: Alignment.center,
-          child: Text('${widget.selectedLocation} Wait Times'),
+          child: Text(
+            '${widget.selectedLocation} Wait Times',
+            style: const TextStyle(fontSize: 20),
+          ),
         ),
         actions: [
           IconButton(
@@ -257,242 +343,88 @@ Future<void> removeProvider(ProviderInfo provider) async {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Expanded(
-              child: ListView.builder(
-                itemCount: selectedProviders.length,
-                itemBuilder: (context, index) {
-                  final provider = selectedProviders[index];
-                  final TextEditingController waitTimeController =
-                      TextEditingController(
-                    text: provider.waitTime?.toString() ?? '',
-                  );
-
-                  return Column(
-                    children: [
-                      ListTile(
-                        title: Text(provider.displayName),
-                        subtitle: Text('${provider.specialty}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 60,
-                              child: TextField(
-                                controller: waitTimeController,
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(labelText: 'Time'),
-                                onChanged: (value) {
-                                  provider.waitTime = int.tryParse(value);
-                                },
+            // Display current location providers section
+            if (currentlocationProviders.isNotEmpty)
+              Expanded(
+                child: ListView.builder(
+                  itemCount: currentlocationProviders.length,
+                  itemBuilder: (context, index) {
+                    final provider = currentlocationProviders[index];
+                    final controller = _waitTimeControllers[provider.docId]!;
+                    return Column(
+                      children: [
+                        ListTile(
+                          title: Text(provider.displayName.split('|').first.trim()),
+                          subtitle: Text(provider.specialty),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 60,
+                                child: TextField(
+                                  controller: controller,
+                                  keyboardType: TextInputType.number,
+                                  decoration:
+                                      InputDecoration(labelText: 'Time'),
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.update, color: Colors.blue),
-                              onPressed: () => _updateWaitTime(
-                                  provider, waitTimeController.text),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => removeProvider(provider),
-                            ),
-                          ],
+                              IconButton(
+                                icon: Icon(Icons.update, color: Colors.blue),
+                                onPressed: () =>
+                                    _updateWaitTime(provider, controller.text),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => removeProvider(provider),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const Divider(),
-                    ],
-                  );
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20.0),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Save All',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    IconButton(
-                      icon: Icon(CupertinoIcons.checkmark_alt, size: 40),
-                      onPressed: saveAllWaitTimes,
-                    ),
-                  ],
+                        const Divider(),
+                      ],
+                    );
+                  },
+                ),
+              )
+            else
+              // Display selected providers with time controls
+              Container(
+                alignment: Alignment.center,
+                child: Text(
+                  'No active times in ${widget.selectedLocation}',
+                  style: TextStyle(fontStyle: FontStyle.italic),
                 ),
               ),
-            ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed:
-            deleteAllWaitTimes, // Trigger the deleteAllWaitTimes function
-        tooltip: 'Delete All Wait Times',
-        child: Icon(Icons.delete_forever),
-      ),
-    );
-  }
-
-  // Provider selection function (if needed)
-  void openProviderSelection() async {
-    final availableProviders =
-        providerList.where((provider) => provider.waitTime == null).toList();
-    final selected = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            ProviderSelectionPage(providerList: availableProviders),
-      ),
-    );
-    if (selected != null && selected is List<Map<String, dynamic>>) {
-      setState(() {
-        selected.forEach((selection) {
-          final provider = selection['provider'] as ProviderInfo;
-          final location = selection['location'] as String;
-
-          // Add the provider and location to your selectedProviders
-          selectedProviders.add(provider);
-          // Optionally, you can store the location in the selectedLocations map if you need to use it later
-          selectedLocations[provider] = location;
-        });
-      });
-    }
-  }
-}
-
-class ProviderSelectionPage extends StatefulWidget {
-  final List<ProviderInfo> providerList;
-
-  ProviderSelectionPage({required this.providerList});
-
-  @override
-  _ProviderSelectionPageState createState() => _ProviderSelectionPageState();
-}
-
-class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
-  List<ProviderInfo> selectedProviders = [];
-  Map<ProviderInfo, String> selectedLocations =
-      {}; // Map to store selected locations for each provider
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Container(
-          alignment: Alignment.center,
-          child: Text('Select Providers'),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(CupertinoIcons.checkmark_alt),
-            onPressed: () {
-              Navigator.pop(
-                context,
-                selectedProviders.map((provider) {
-                  return {
-                    'provider': provider,
-                    'location': selectedLocations[
-                        provider], // Use the selected location
-                  };
-                }).toList(),
-              );
-            },
+      floatingActionButton: Stack(
+        children: [
+          // FloatingActionButton for deleting all wait times
+          Positioned(
+            bottom: 16,
+            left: MediaQuery.of(context).size.width / 2 -
+                60, // Center horizontally
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'deleteBtn',
+                  onPressed: deleteAllWaitTimes,
+                  tooltip: 'Delete All Wait Times',
+                  child: Icon(Icons.delete_forever),
+                ),
+                SizedBox(width: 16), // Space between buttons
+                FloatingActionButton(
+                  heroTag: 'saveBtn',
+                  onPressed: saveAllWaitTimes,
+                  tooltip: 'Save All Wait Times',
+                  child: Icon(CupertinoIcons.checkmark_alt),
+                ),
+              ],
+            ),
           ),
         ],
-      ),
-      body: ListView.builder(
-        itemCount: widget.providerList.length,
-        itemBuilder: (context, index) {
-          final provider = widget.providerList[index];
-          final providerLocations = provider.locations;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CheckboxListTile(
-                title: Text(provider.displayName),
-                subtitle: Text(provider.specialty),
-                value: selectedProviders.contains(provider),
-                onChanged: (isSelected) {
-                  setState(() {
-                    if (isSelected == true) {
-                      selectedProviders.add(provider);
-                      selectedLocations[provider] = providerLocations.first;
-                    } else {
-                      selectedProviders.remove(provider);
-                      selectedLocations.remove(provider);
-                      provider.selectedLocation = null; // Clear selection
-                    }
-                  });
-                  // Save the selected location immediately to Firestore
-                  if (isSelected == true) {
-                    FirebaseFirestore.instance
-                        .collection('providers')
-                        .doc(provider.docId)
-                        .update({
-                      'selectedLocation': provider.locations.first,
-                    });
-                  } else {
-                    FirebaseFirestore.instance
-                        .collection('providers')
-                        .doc(provider.docId)
-                        .update({
-                      'selectedLocation': FieldValue.delete(),
-                    });
-                  }
-                },
-              ),
-              if (selectedProviders.contains(provider))
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: DropdownButtonFormField<String>(
-                    value: selectedLocations[provider],
-                    items: providerLocations.map((location) {
-                      return DropdownMenuItem(
-                        value: location,
-                        child: Text(location),
-                      );
-                    }).toList(),
-                    onChanged: (selectedLocation) async {
-                      setState(() {
-                        selectedLocations[provider] = selectedLocation!;
-                        provider.selectedLocation =
-                            selectedLocation; // Update the selectedLocation locally
-                      });
-
-                      // Save the selectedLocation to Firestore
-                      await FirebaseFirestore.instance
-                          .collection('providers')
-                          .doc(provider.docId)
-                          .update({
-                        'selectedLocation': selectedLocation,
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Select Location',
-                      contentPadding: const EdgeInsets.symmetric(
-                          vertical: 10.0, horizontal: 12.0),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please select a location';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              const Divider(),
-            ],
-          );
-        },
       ),
     );
   }

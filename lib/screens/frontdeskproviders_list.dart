@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:waitingboard/model/provider_info.dart';
+import 'package:waitingboard/services/api_service.dart'; // Import the API service
 
 class FrontdeskprovidersList extends StatefulWidget {
   @override
-  _FrontdeskProviderListPageState createState() => _FrontdeskProviderListPageState();
+  _FrontdeskProviderListPageState createState() =>
+      _FrontdeskProviderListPageState();
 }
 
 class _FrontdeskProviderListPageState extends State<FrontdeskprovidersList> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _selectedLocation;
+  late Future<List<ProviderInfo>> _providerFuture;
 
   @override
   void initState() {
@@ -17,14 +19,17 @@ class _FrontdeskProviderListPageState extends State<FrontdeskprovidersList> {
     _loadSelectedLocation();
   }
 
+  // Load the selected location from SharedPreferences
   Future<void> _loadSelectedLocation() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _selectedLocation = prefs.getString('selectedLocation');
+      // Trigger the API call once the location is loaded
+      if (_selectedLocation != null) {
+        _providerFuture = ApiService.fetchProvidersByLocation(_selectedLocation!);
+      }
     });
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -37,11 +42,8 @@ class _FrontdeskProviderListPageState extends State<FrontdeskprovidersList> {
       ),
       body: _selectedLocation == null
           ? Center(child: CircularProgressIndicator())
-          : StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('providers')
-                  .where('locations', arrayContains: _selectedLocation)
-                  .snapshots(),
+          : FutureBuilder<List<ProviderInfo>>(
+              future: _providerFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
@@ -49,24 +51,23 @@ class _FrontdeskProviderListPageState extends State<FrontdeskprovidersList> {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return Center(child: Text('No providers available for this location.'));
                 }
 
-                final providerDocs = snapshot.data!.docs;
+                final providers = snapshot.data!;
 
                 return ListView.builder(
-                  itemCount: providerDocs.length,
+                  itemCount: providers.length,
                   itemBuilder: (context, index) {
-                    final provider = providerDocs[index];
-                    final providerData = provider.data() as Map<String, dynamic>;
+                    final provider = providers[index];
 
                     return ListTile(
-                      title: Text('${providerData['firstName']} ${providerData['lastName']}'),
+                      title: Text('${provider.firstName} ${provider.lastName}'),
                       subtitle: Text(
-                        '${providerData['specialty'] ?? "N/A"} - ${providerData['title'] ?? "N/A"}',
+                        '${provider.specialty } - ${provider.title }',
                       ),
-                      );
+                    );
                   },
                 );
               },
@@ -74,3 +75,5 @@ class _FrontdeskProviderListPageState extends State<FrontdeskprovidersList> {
     );
   }
 }
+
+

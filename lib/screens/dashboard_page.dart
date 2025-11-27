@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/intl.dart';
-import 'package:waitingboard/screens/fullscreendashboard.dart'; 
+import 'package:waitingboard/model/provider_info.dart' as model;
+import 'package:waitingboard/services/api_service.dart'; // Import the API service
+import 'dart:async'; // Import dart:async for Timer
+
+//------------------------------------------------------- Dashboard Page ----------------------------------------------
 class DashboardPage extends StatefulWidget {
   final String selectedLocation; // Accept location as a parameter
 
@@ -13,28 +13,70 @@ class DashboardPage extends StatefulWidget {
   _DashboardPageState createState() => _DashboardPageState();
 }
 
+//------------------------------------------------------- timestamp farmat ----------------------------------------------
+
 class _DashboardPageState extends State<DashboardPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   // Method to format the lastChanged timestamp
-  String formatTimestamp(Timestamp? timestamp) {
-    if (timestamp == null) return "N/A";
+  String formatTimestamp(DateTime? dateTime) {
+    if (dateTime == null) return "N/A";
 
-    final dateTime = timestamp.toDate();
-    final formattedDate = DateFormat('hh:mm a, MM/dd').format(dateTime);
-    return formattedDate;
+    // Logic to show time change
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+    } else {
+      return 'Just now';
+    }
   }
 
-  // Stream to fetch providers with a non-null wait time
-  Stream<List<ProviderInfo>> getProvidersStream() {
-    return _firestore.collection('providers').snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ProviderInfo.fromFirestore(doc))
-          .where((provider) => provider.waitTime != null)
-          .toList();
-    });
+  // Method to format wait time inputted
+  String _formatWaitTime(String waitTimeStr) {
+    if (waitTimeStr == 'On Time' || waitTimeStr == 'Delayed') {
+      return waitTimeStr;
+    }
+
+    final int? mins = int.tryParse(waitTimeStr);
+    if (mins == null) return 'N/A';
+
+    if (mins >= 60) {
+      final hours = mins ~/ 60;
+      final remainingMins = mins % 60;
+      if (remainingMins == 0) {
+        return '$hours hour${hours > 1 ? 's' : ''}';
+      } else {
+        return '$hours hour${hours > 1 ? 's' : ''} $remainingMins min${remainingMins > 1 ? 's' : ''}';
+      }
+    } else {
+      return '$mins min${mins != 1 ? 's' : ''}';
+    }
   }
 
+  // Method to fetch providers data from the API
+  Future<List<model.ProviderInfo>> _fetchProviders() async {
+    try {
+      final List<model.ProviderInfo> providers =
+          await ApiService.fetchProvidersByLocation(widget.selectedLocation);
+
+      // Filter providers by current_location
+      final filteredProviders = providers.where((provider) {
+        return provider.current_location == widget.selectedLocation;
+      }).toList();
+      ;
+
+      return filteredProviders;
+    } catch (e) {
+      print('Error fetching providers: $e');
+      throw Exception('Error fetching providers: $e');
+    }
+  }
+
+//------------------------------------------------------- Dashboard build ----------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,143 +91,212 @@ class _DashboardPageState extends State<DashboardPage> {
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (kIsWeb) {
-                    final url = Uri.base.origin + '/#/fullscreendashboard';
-                    await launchUrl(Uri.parse(url),
-                        webOnlyWindowName: '_blank');
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => FullScreenDashboardPage(
-                          selectedLocation: widget.selectedLocation,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Full Screen'),
-              ),
-            ),
           ],
         ),
       ),
-      body: StreamBuilder<List<ProviderInfo>>(
-        stream: getProvidersStream(),
+      body: FutureBuilder<List<model.ProviderInfo>>(
+        future: _fetchProviders(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
+            print('Error in FutureBuilder: ${snapshot.error}');
             return const Center(child: Text('Error loading providers'));
           }
 
           final providers = snapshot.data ?? [];
 
+          const rightPanelSpecialties = {'ANC', 'INFUSION', 'RHEUMATOLOGY'};
+
+          final rightPanelProviders = providers
+              .where((p) =>
+                  rightPanelSpecialties.contains(p.specialty.toUpperCase()))
+              .toList();
+
           return SingleChildScrollView(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                int crossAxisCount = (constraints.maxWidth / 200).floor();
-                crossAxisCount = crossAxisCount > 0 ? crossAxisCount : 1;
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ---------------Main Dashboard Grid - Left Panel-------------------------
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (providers.isEmpty)
+                        Center(
+                          child: Text(
+                            'No active times in ${widget.selectedLocation}',
+                            style: TextStyle(fontStyle: FontStyle.italic),
+                          ),
+                        )
+                      else
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            int crossAxisCount =
+                                (constraints.maxWidth / 200).floor();
+                            crossAxisCount =
+                                crossAxisCount > 0 ? crossAxisCount : 1;
 
-                return GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    childAspectRatio: 1,
-                    crossAxisSpacing: 16.0,
-                    mainAxisSpacing: 16.0,
-                  ),
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: providers.length,
-                  itemBuilder: (context, index) {
-                    final provider = providers[index];
+                            final nonRightPanelProviders = providers
+                                .where((p) => !rightPanelSpecialties
+                                    .contains(p.specialty.toUpperCase()))
+                                .toList();
 
-                    return Card(
-                      elevation: 4.0,
-                      child: Padding(
-                        padding: const EdgeInsets.all(6.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              provider.displayName,
-                              style: const TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              provider.specialty,
-                              style: const TextStyle(fontSize: 16),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            const Text('Wait Time:',
-                                style: TextStyle(fontSize: 16)),
-                            Text(
-                              '${provider.waitTime} mins',
-                              style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text('Last Changed:',
-                                style: TextStyle(fontSize: 16)),
-                            Text(
-                              formatTimestamp(provider.lastChanged),
-                              style: const TextStyle(fontSize: 14),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                            return GridView.builder(
+                              physics: NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              padding: EdgeInsets.only(right: 16),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                childAspectRatio: 1,
+                                crossAxisSpacing: 16.0,
+                                mainAxisSpacing: 16.0,
+                              ),
+                              itemCount: nonRightPanelProviders.length,
+                              itemBuilder: (context, index) {
+                                final provider = nonRightPanelProviders[index];
+                                return Card(
+                                  elevation: 4.0,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(6.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          provider.specialty.toUpperCase() ==
+                                                  'GENERAL'
+                                              ? provider.lastName
+                                              : provider.dashboardName,
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          provider.specialty,
+                                          style: TextStyle(fontSize: 16),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        SizedBox(height: 8),
+                                        if (_formatWaitTime(provider
+                                                    .formattedWaitTime) !=
+                                                'On Time' &&
+                                            _formatWaitTime(provider
+                                                    .formattedWaitTime) !=
+                                                'Delayed')
+                                          Text('Wait Time:',
+                                              style: TextStyle(fontSize: 16)),
+                                        Text(
+                                          _formatWaitTime(
+                                              provider.formattedWaitTime),
+                                          style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text('Last Changed:',
+                                            style: TextStyle(fontSize: 16)),
+                                        Text(
+                                          formatTimestamp(
+                                              provider.last_changed),
+                                          style: TextStyle(fontSize: 14),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
+                    ],
+                  ),
+                ),
+
+                // -----------------Right Panel — Only shown if there are ANC wait times---------------------
+                if (rightPanelProviders.isNotEmpty)
+                  Container(
+                    margin: EdgeInsets.only(left: 16),
+                    width: 300,
+                    color: Colors.grey.shade200,
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ancillary Services',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 16),
+
+                        // ANC Specialty Cards
+                        ...rightPanelProviders.map((p) => Card(
+                              margin: EdgeInsets.only(bottom: 12),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      p.lastName,
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Builder(
+                                      builder: (_) {
+                                        final formatted = _formatWaitTime(
+                                            p.formattedWaitTime);
+                                        return formatted == 'On Time' ||
+                                                formatted == 'Delayed'
+                                            ? Text(
+                                                formatted,
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14),
+                                              )
+                                            : Text.rich(
+                                                TextSpan(
+                                                  text: 'Wait Time: ',
+                                                  style:
+                                                      TextStyle(fontSize: 14),
+                                                  children: [
+                                                    TextSpan(
+                                                      text: formatted,
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                      },
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                        'Updated: ${formatTimestamp(p.last_changed)}'),
+                                  ],
+                                ),
+                              ),
+                            )),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           );
         },
       ),
     );
   }
-}
-
-// ProviderInfo model
-class ProviderInfo {
-  final String firstName;
-  final String lastName;
-  final String specialty;
-  final String title;
-  final int? waitTime;
-  final Timestamp? lastChanged;
-
-  ProviderInfo({
-    required this.firstName,
-    required this.lastName,
-    required this.specialty,
-    required this.title,
-    this.waitTime,
-    this.lastChanged,
-  });
-
-  factory ProviderInfo.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return ProviderInfo(
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      specialty: data['specialty'] ?? '',
-      title: data['title'] ?? '',
-      waitTime: data['waitTime'],
-      lastChanged:
-          data['lastChanged'] as Timestamp?, // Convert from Firestore Timestamp
-    );
-  }
-
-  String get displayName => '$lastName, ${firstName[0]}. | $title';
 }

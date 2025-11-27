@@ -1,6 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:crypto/crypto.dart';
+import 'package:waitingboard/services/api_service.dart';
 
 class CreateAccountPage extends StatefulWidget {
   @override
@@ -9,90 +10,71 @@ class CreateAccountPage extends StatefulWidget {
 
 class _CreateAccountPageState extends State<CreateAccountPage> {
   final _usernameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   String? _selectedRole; // Selected role (Front desk or Clinic)
+
+  String hashPassword(String password) {
+    final bytes = utf8.encode(password); // Convert password to bytes
+    final digest = sha256.convert(bytes); // Perform hashing
+    return digest.toString();
+  }
 
   Future<void> _createAccount() async {
     try {
       final username = _usernameController.text.trim();
-      final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
-      if (username.isEmpty || email.isEmpty || password.isEmpty || _selectedRole == null) {
+      if (username.isEmpty || password.isEmpty || _selectedRole == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("All fields are required.")),
         );
         return;
       }
 
-      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$').hasMatch(email)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter a valid email address.")),
-        );
-        return;
-      }
-
       if (password.length < 5) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Password must be at least 5 characters.")),
+          const SnackBar(
+              content: Text("Password must be at least 5 characters.")),
         );
         return;
       }
 
-      // Check if username already exists
-      var usernameCheck = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username)
-          .get();
+      final hashedPassword = hashPassword(password);
 
-      if (usernameCheck.docs.isNotEmpty) {
+      try {
+        await ApiService.createUser(
+          username,
+          hashedPassword,
+          _selectedRole!,
+        );
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Username already exists. Please choose another.")),
+          const SnackBar(content: Text("Account created successfully!")),
         );
-        return;
+        Navigator.pop(context);
+      } catch (e) {
+        String errorMessage = e.toString();
+        if (errorMessage.contains("Username already created")) {
+          ScaffoldMessenger.of(context).showMaterialBanner(
+            MaterialBanner(
+              content: Text("Username already created"),
+              backgroundColor: Colors.red.shade200,
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                  },
+                  child: const Text("Dismiss", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to create account: $errorMessage")),
+          );
+        }
       }
-
-      // Create a new user in Firebase Authentication
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      // Add user details to Firestore with uid as the document ID
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
-        'username': username,
-        'email': email,
-        'role': _selectedRole, // Save selected role
-        'admin': false, // Hidden field defaulted to false
-        'created_at': Timestamp.now(),
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Account created successfully!")),
-      );
-
-      // Navigate back to the Login page
-      Navigator.pop(context);
-    } on FirebaseAuthException catch (e) {
-      String errorMessage;
-      switch (e.code) {
-        case 'email-already-in-use':
-          errorMessage = "This email is already registered.";
-          break;
-        case 'weak-password':
-          errorMessage = "The password provided is too weak.";
-          break;
-        default:
-          errorMessage = "Failed to create account: ${e.message}";
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("An error occurred: ${e.toString()}")),
@@ -103,25 +85,21 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Container(
-        alignment: Alignment.center,child: Text('Create Account'))),
+      appBar: AppBar(
+        title: const Center(child: Text('Create Account')),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: <Widget>[
             TextField(
               controller: _usernameController,
-              decoration: InputDecoration(labelText: 'Username'),
-            ),
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Username'),
             ),
             TextField(
               controller: _passwordController,
               obscureText: true,
-              decoration: InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(labelText: 'Password'),
             ),
             DropdownButtonFormField<String>(
               value: _selectedRole,
@@ -136,12 +114,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                   _selectedRole = value;
                 });
               },
-              decoration: InputDecoration(labelText: 'Role'),
+              decoration: const InputDecoration(labelText: 'Role'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _createAccount,
-              child: Text('Create Account'),
+              child: const Text('Create Account'),
             ),
           ],
         ),
