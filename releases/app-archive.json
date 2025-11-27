@@ -8,7 +8,7 @@
       "changes": [
         {
           "type": "feat",
-          "message": "Added auto-update functionality"
+          "message": "Added auto-update functionality. Enter now allows you to login. Dashboard auto-refreshes times"
         }
       ],
       "date": "2025-03-26",
