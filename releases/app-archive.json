@@ -3,7 +3,7 @@
   "description": "An cross platform app used to update and monitor provider wait times.",
   "items": [
     {
-      "_hiddenVersion": "1.5.0",
+      "version": "1.5.0",
       "shortVersion": 5,
       "changes": [
         {
