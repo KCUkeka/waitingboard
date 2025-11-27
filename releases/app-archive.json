@@ -13,7 +13,7 @@
       ],
       "date": "2025-03-26",
       "mandatory": false,
-      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.4/waitingboard.exe",
+      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.4/waitboard.exe",
       "platform": "windows"
     },
     {
@@ -27,7 +27,7 @@
       ],
       "date": "2025-08-26",
       "mandatory": false,
-      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.3/waitingboard.exe",
+      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.3/waitboard.exe",
       "platform": "windows"
     },
     {
@@ -41,7 +41,7 @@
       ],
       "date": "2025-03-26",
       "mandatory": false,
-      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.2/waitingboard.exe",
+      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.2/waitboard.exe",
       "platform": "windows"
     }
   ]
