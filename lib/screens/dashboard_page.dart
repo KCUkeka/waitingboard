@@ -16,6 +16,77 @@ class DashboardPage extends StatefulWidget {
 //------------------------------------------------------- timestamp farmat ----------------------------------------------
 
 class _DashboardPageState extends State<DashboardPage> {
+  Timer? _refreshTimer;
+  List<model.ProviderInfo> _providers = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProviders();
+    _startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    _stopAutoRefresh();
+    super.dispose();
+  }
+
+  // Start the auto-refresh timer
+  void _startAutoRefresh() {
+    _refreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
+      _loadProviders();
+    });
+  }
+
+  // Stop the auto-refresh timer
+  void _stopAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+  }
+
+  // Manual refresh method
+  Future<void> _manualRefresh() async {
+    await _loadProviders();
+  }
+
+  // Load providers data
+  Future<void> _loadProviders() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
+
+    try {
+      final List<model.ProviderInfo> providers =
+          await ApiService.fetchProvidersByLocation(widget.selectedLocation);
+
+      // Filter providers by current_location
+      final filteredProviders = providers.where((provider) {
+        return provider.current_location == widget.selectedLocation;
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _providers = filteredProviders;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching providers: $e');
+      if (mounted) {
+        setState(() {
+          _error = 'Error loading providers: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   // Method to format the lastChanged timestamp
   String formatTimestamp(DateTime? dateTime) {
     if (dateTime == null) return "N/A";
@@ -57,25 +128,6 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // Method to fetch providers data from the API
-  Future<List<model.ProviderInfo>> _fetchProviders() async {
-    try {
-      final List<model.ProviderInfo> providers =
-          await ApiService.fetchProvidersByLocation(widget.selectedLocation);
-
-      // Filter providers by current_location
-      final filteredProviders = providers.where((provider) {
-        return provider.current_location == widget.selectedLocation;
-      }).toList();
-      ;
-
-      return filteredProviders;
-    } catch (e) {
-      print('Error fetching providers: $e');
-      throw Exception('Error fetching providers: $e');
-    }
-  }
-
 //------------------------------------------------------- Dashboard build ----------------------------------------------
   @override
   Widget build(BuildContext context) {
@@ -93,209 +145,223 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ],
         ),
+        actions: [
+          // Refresh button in app bar
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: _isLoading ? null : _manualRefresh,
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
-      body: FutureBuilder<List<model.ProviderInfo>>(
-        future: _fetchProviders(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            print('Error in FutureBuilder: ${snapshot.error}');
-            return const Center(child: Text('Error loading providers'));
-          }
-
-          final providers = snapshot.data ?? [];
-
-          const rightPanelSpecialties = {'ANC', 'INFUSION', 'RHEUMATOLOGY'};
-
-          final rightPanelProviders = providers
-              .where((p) =>
-                  rightPanelSpecialties.contains(p.specialty.toUpperCase()))
-              .toList();
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ---------------Main Dashboard Grid - Left Panel-------------------------
-                Expanded(
-                  flex: 3,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (providers.isEmpty)
-                        Center(
-                          child: Text(
-                            'No active times in ${widget.selectedLocation}',
-                            style: TextStyle(fontStyle: FontStyle.italic),
-                          ),
-                        )
-                      else
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            int crossAxisCount =
-                                (constraints.maxWidth / 200).floor();
-                            crossAxisCount =
-                                crossAxisCount > 0 ? crossAxisCount : 1;
-
-                            final nonRightPanelProviders = providers
-                                .where((p) => !rightPanelSpecialties
-                                    .contains(p.specialty.toUpperCase()))
-                                .toList();
-
-                            return GridView.builder(
-                              physics: NeverScrollableScrollPhysics(),
-                              shrinkWrap: true,
-                              padding: EdgeInsets.only(right: 16),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                childAspectRatio: 1,
-                                crossAxisSpacing: 16.0,
-                                mainAxisSpacing: 16.0,
-                              ),
-                              itemCount: nonRightPanelProviders.length,
-                              itemBuilder: (context, index) {
-                                final provider = nonRightPanelProviders[index];
-                                return Card(
-                                  elevation: 4.0,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(6.0),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          provider.specialty.toUpperCase() ==
-                                                  'GENERAL'
-                                              ? provider.lastName
-                                              : provider.dashboardName,
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        SizedBox(height: 8),
-                                        Text(
-                                          provider.specialty,
-                                          style: TextStyle(fontSize: 16),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        SizedBox(height: 8),
-                                        if (_formatWaitTime(provider
-                                                    .formattedWaitTime) !=
-                                                'On Time' &&
-                                            _formatWaitTime(provider
-                                                    .formattedWaitTime) !=
-                                                'Delayed')
-                                          Text('Wait Time:',
-                                              style: TextStyle(fontSize: 16)),
-                                        Text(
-                                          _formatWaitTime(
-                                              provider.formattedWaitTime),
-                                          style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        SizedBox(height: 8),
-                                        Text('Last Changed:',
-                                            style: TextStyle(fontSize: 16)),
-                                        Text(
-                                          formatTimestamp(
-                                              provider.last_changed),
-                                          style: TextStyle(fontSize: 14),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
+                      Text(
+                        'Error loading providers',
+                        style: TextStyle(fontSize: 16, color: Colors.red),
+                      ),
+                      SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _manualRefresh,
+                        child: Text('Retry'),
+                      ),
                     ],
                   ),
+                )
+              : RefreshIndicator(
+                  // Pull-to-refresh functionality
+                  onRefresh: _manualRefresh,
+                  child: _buildDashboardContent(),
                 ),
+    );
+  }
 
-                // -----------------Right Panel — Only shown if there are ANC wait times---------------------
-                if (rightPanelProviders.isNotEmpty)
-                  Container(
-                    margin: EdgeInsets.only(left: 16),
-                    width: 300,
-                    color: Colors.grey.shade200,
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Ancillary Services',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 16),
+  Widget _buildDashboardContent() {
+    final providers = _providers;
 
-                        // ANC Specialty Cards
-                        ...rightPanelProviders.map((p) => Card(
-                              margin: EdgeInsets.only(bottom: 12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      p.lastName,
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Builder(
-                                      builder: (_) {
-                                        final formatted = _formatWaitTime(
-                                            p.formattedWaitTime);
-                                        return formatted == 'On Time' ||
-                                                formatted == 'Delayed'
-                                            ? Text(
-                                                formatted,
-                                                style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14),
-                                              )
-                                            : Text.rich(
-                                                TextSpan(
-                                                  text: 'Wait Time: ',
-                                                  style:
-                                                      TextStyle(fontSize: 14),
-                                                  children: [
-                                                    TextSpan(
-                                                      text: formatted,
-                                                      style: TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.bold),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                      },
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                        'Updated: ${formatTimestamp(p.last_changed)}'),
-                                  ],
-                                ),
-                              ),
-                            )),
-                      ],
+    const rightPanelSpecialties = {'ANC', 'INFUSION', 'RHEUMATOLOGY'};
+
+    final rightPanelProviders = providers
+        .where((p) => rightPanelSpecialties.contains(p.specialty.toUpperCase()))
+        .toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      physics: AlwaysScrollableScrollPhysics(), // Required for RefreshIndicator
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ---------------Main Dashboard Grid - Left Panel-------------------------
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (providers.isEmpty)
+                  Center(
+                    child: Text(
+                      'No active times in ${widget.selectedLocation}',
+                      style: TextStyle(fontStyle: FontStyle.italic),
                     ),
+                  )
+                else
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      int crossAxisCount = (constraints.maxWidth / 200).floor();
+                      crossAxisCount = crossAxisCount > 0 ? crossAxisCount : 1;
+
+                      final nonRightPanelProviders = providers
+                          .where((p) => !rightPanelSpecialties
+                              .contains(p.specialty.toUpperCase()))
+                          .toList();
+
+                      return GridView.builder(
+                        physics: NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        padding: EdgeInsets.only(right: 16),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          childAspectRatio: 1,
+                          crossAxisSpacing: 16.0,
+                          mainAxisSpacing: 16.0,
+                        ),
+                        itemCount: nonRightPanelProviders.length,
+                        itemBuilder: (context, index) {
+                          final provider = nonRightPanelProviders[index];
+                          return Card(
+                            elevation: 4.0,
+                            child: Padding(
+                              padding: const EdgeInsets.all(6.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    provider.specialty.toUpperCase() ==
+                                            'GENERAL'
+                                        ? provider.lastName
+                                        : provider.dashboardName,
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    provider.specialty,
+                                    style: TextStyle(fontSize: 16),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 8),
+                                  if (_formatWaitTime(
+                                              provider.formattedWaitTime) !=
+                                          'On Time' &&
+                                      _formatWaitTime(
+                                              provider.formattedWaitTime) !=
+                                          'Delayed')
+                                    Text('Wait Time:',
+                                        style: TextStyle(fontSize: 16)),
+                                  Text(
+                                    _formatWaitTime(provider.formattedWaitTime),
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text('Last Changed:',
+                                      style: TextStyle(fontSize: 16)),
+                                  Text(
+                                    formatTimestamp(provider.last_changed),
+                                    style: TextStyle(fontSize: 14),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
               ],
             ),
-          );
-        },
+          ),
+
+          // -----------------Right Panel — Only shown if there are ANC wait times---------------------
+          if (rightPanelProviders.isNotEmpty)
+            Container(
+              margin: EdgeInsets.only(left: 16),
+              width: 300,
+              color: Colors.grey.shade200,
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ancillary Services',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 16),
+
+                  // ANC Specialty Cards
+                  ...rightPanelProviders.map((p) => Card(
+                        margin: EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                p.lastName,
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 4),
+                              Builder(
+                                builder: (_) {
+                                  final formatted =
+                                      _formatWaitTime(p.formattedWaitTime);
+                                  return formatted == 'On Time' ||
+                                          formatted == 'Delayed'
+                                      ? Text(
+                                          formatted,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14),
+                                        )
+                                      : Text.rich(
+                                          TextSpan(
+                                            text: 'Wait Time: ',
+                                            style: TextStyle(fontSize: 14),
+                                            children: [
+                                              TextSpan(
+                                                text: formatted,
+                                                style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                },
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                  'Updated: ${formatTimestamp(p.last_changed)}'),
+                            ],
+                          ),
+                        ),
+                      )),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
