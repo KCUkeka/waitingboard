@@ -3,12 +3,30 @@
   "description": "An cross platform app used to update and monitor provider wait times.",
   "items": [
     {
+      "version": "1.5.1",
+      "shortVersion": 6,
+      "changes": [
+        {
+          "type": "feat",
+          "message": "Admins have ability to toggle between locations"
+        }
+      ],
+      "date": "2025-12-01",
+      "mandatory": false,
+      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.5.1/waitboard.exe",
+      "platform": "windows"
+    },
+{
+  "appName": "Waitboard",
+  "description": "An cross platform app used to update and monitor provider wait times.",
+  "items": [
+    {
       "version": "1.5.0",
       "shortVersion": 5,
       "changes": [
         {
           "type": "feat",
-          "message": "Ability to save password. Pressing enter logs you into account."
+          "message": "Ability to save password. Pressing enter logs you into account. Admins have ability to toggle between locations"
         }
       ],
       "date": "2025-11-27",
