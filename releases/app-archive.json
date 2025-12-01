@@ -8,7 +8,7 @@
       "changes": [
         {
           "type": "feat",
-          "message": "Ability to save password. Pressing enter logs you into account. Admins have ability to toggle between locations"
+          "message": "Ability to save password. Pressing enter logs you into account."
         }
       ],
       "date": "2025-11-27",
