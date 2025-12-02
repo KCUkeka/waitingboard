@@ -2,7 +2,7 @@ name: waitingboard
 description: "An cross platform app used to update and monitor provider wait times."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.5.1+6
+version: 1.5.0+5
 
 environment:
   sdk: ^3.5.3
