@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:waitingboard/screens/homepage/clinic_home_page.dart';
 import 'package:waitingboard/screens/homepage/front_desk_home_page.dart';
 import 'package:waitingboard/services/api_service.dart';
+import 'package:waitingboard/services/update_service.dart';
 import 'signup_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -24,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _rememberPassword = false; // Checkbox state
   
   // Update checker variables
-  String _currentVersion = '1.3';
+  String _currentVersion = '1.5';
   bool _checkingForUpdates = false;
   
   List<Map<String, dynamic>> _users = [];
@@ -101,6 +102,94 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void _showUpdateDialogWithInstall(String downloadUrl, String version, List changes) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: const Text('Update Available'),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Version $version is available!',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            const Text('What\'s new:'),
+            const SizedBox(height: 5),
+            ...changes
+                .map(
+                  (change) => Padding(
+                    padding: const EdgeInsets.only(left: 8.0, bottom: 4),
+                    child: Text('• ${change['message']}'),
+                  ),
+                )
+                .toList(),
+            const SizedBox(height: 10),
+            const Text(
+              'The app will automatically restart after the update is installed.',
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Later'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            Navigator.pop(context);
+            
+            // Show installing dialog
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const AlertDialog(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Installing update...'),
+                    SizedBox(height: 8),
+                    Text(
+                      'The app will restart automatically.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            );
+            
+            // Download and install update
+            final success = await UpdateService.downloadAndInstallUpdate(downloadUrl);
+            
+            if (!success && mounted) {
+              Navigator.pop(context); // Close installing dialog
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Update failed. Please try again.'),
+                  action: SnackBarAction(
+                    label: 'Retry',
+                    onPressed: () => _showUpdateDialogWithInstall(downloadUrl, version, changes),
+                  ),
+                ),
+              );
+            }
+          },
+          child: const Text('Install Update'),
+        ),
+      ],
+    ),
+  );
+}
+
+
   Future<void> _autoCheckForUpdates() async {
     try {
       await _checkForUpdates(showDialogIfUpToDate: false);
@@ -114,51 +203,43 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _checkForUpdates({bool showDialogIfUpToDate = true}) async {
-    if (_checkingForUpdates) return;
+  if (_checkingForUpdates) return;
+  
+  setState(() {
+    _checkingForUpdates = true;
+  });
+  
+  try {
+    final updateInfo = await UpdateService.checkForUpdate();
     
-    setState(() {
-      _checkingForUpdates = true;
-    });
-    try {
-      final client = HttpClient();
-      final request = await client.getUrl(
-        Uri.parse('https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/app-archive.json'),
+    if (updateInfo != null) {
+      // Update available
+      _showUpdateDialogWithInstall(
+        updateInfo['url'],
+        updateInfo['version'],
+        updateInfo['changes'],
       );
-      final response = await request.close();
-      
-      if (response.statusCode != 200) {
-        throw HttpException('Failed to fetch update info: ${response.statusCode}');
-      }
-      
-      final jsonStr = await response.transform(utf8.decoder).join();
-      final jsonData = jsonDecode(jsonStr);
-      
-      final latestVersion = jsonData['items'][0]['version'];
-      
-      if (_isNewerVersion(latestVersion, _currentVersion)) {
-        final downloadUrl = jsonData['items'][0]['url'];
-        final changes = jsonData['items'][0]['changes'] as List;
-        _showUpdateDialog(downloadUrl, latestVersion, changes);
-      } else {
-        if (showDialogIfUpToDate && mounted) {
-          _showUpToDateDialog();
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Update check failed: $e")),
-        );
-      }
-      debugPrint("Update check failed: $e");
-    } finally {
-      if (mounted) {
-        setState(() {
-          _checkingForUpdates = false;
-        });
+    } else {
+      // No update available
+      if (showDialogIfUpToDate && mounted) {
+        _showUpToDateDialog();
       }
     }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Update check failed: $e")),
+      );
+    }
+    debugPrint("Update check failed: $e");
+  } finally {
+    if (mounted) {
+      setState(() {
+        _checkingForUpdates = false;
+      });
+    }
   }
+}
 
   bool _isNewerVersion(String latest, String current) {
     try {
