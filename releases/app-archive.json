@@ -13,7 +13,7 @@
       ],
       "date": "2025-12-01",
       "mandatory": false,
-      "url": "https://api.github.com/repos/KCUkeka/waitingboard/contents/releases/download/v1.5.1/update",
+      "url": "https://raw.githubusercontent.com/KCUkeka/waitingboard/main/releases/download/v1.5.1/update",
       "platform": "windows"
     },
     {
