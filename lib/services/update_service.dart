@@ -409,45 +409,74 @@ Start-Sleep -Seconds 3
 Write-Log "Stopping waitboard processes..."
 
 # --- Prevent accidental uninstall confirmation popup ---
-Write-Log "Checking for uninstall confirmation popup..."
+Write-Log "Starting uninstall popup suppressor..."
 
-# Runs in background while update continues
-Start-Job -ScriptBlock {
-    Add-Type @"
+Add-Type @"
 using System;
+using System.Text;
 using System.Runtime.InteropServices;
 
 public class WinAPI {
-    [DllImport("user32.dll")]
-    public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     [DllImport("user32.dll")]
-    public static extern IntPtr SetForegroundWindow(IntPtr hWnd);
+    public static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int maxLength);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+}
+"@
+
+Start-Job -ScriptBlock {
+    param()
+
+    Add-Type @"
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+
+public class WinAPI {
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int maxLength);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
 }
 "@
 
     while (\$true) {
-        # Look for uninstall window by partial text match
-        \$windows = Get-Process | Where-Object {
-            \$_.MainWindowTitle -like "*remove Ortho Waitboard*"
-        }
+        [WinAPI]::EnumWindows({
+            param(\$hWnd, \$lParam)
 
-        foreach (\$w in \$windows) {
-            \$h = \$w.MainWindowHandle
-            if (\$h -ne 0) {
-                [WinAPI]::SetForegroundWindow(\$h) | Out-Null
+            \$title = New-Object System.Text.StringBuilder 1024
+            [WinAPI]::GetWindowText(\$hWnd, \$title, 1024) | Out-Null
 
-                # Send "N" then ENTER (No)
-                Start-Sleep -Milliseconds 200
+            \$t = \$title.ToString()
+            if (\$t -like "*remove Ortho Waitboard*" -or
+                \$t -like "*completely remove*" -or
+                \$t -like "*uninstall*") {
+
                 Add-Type -AssemblyName System.Windows.Forms
                 [System.Windows.Forms.SendKeys]::SendWait("n~")
             }
-        }
+
+            return \$true
+        }, [IntPtr]::Zero)
+
         Start-Sleep -Milliseconds 300
     }
 } | Out-Null
 
-Write-Log "Uninstall prompt auto-dismiss enabled"
+Write-Log "Uninstall suppressor active"
+
 
 \$processes = Get-Process -Name "waitboard" -ErrorAction SilentlyContinue
 if (\$processes) {
@@ -503,7 +532,7 @@ foreach (\$filePath in \$filesToUpdate) {
 Write-Log "Update results: \$successCount successful, \$failCount failed"
 
 # Start application
-\$exePath = "$escapedInstallDir\\waitboard.exe"
+\$exePath = "$escapedInstallDir\\waitingboard.exe"
 Write-Log "Starting application: \$exePath"
 
 if (Test-Path \$exePath) {
