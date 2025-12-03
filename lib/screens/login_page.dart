@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
 import 'package:waitingboard/screens/admin/admin_home_page.dart';
@@ -23,11 +24,11 @@ class _LoginPageState extends State<LoginPage> {
   String? _selectedUsername;
   String? _selectedLocation;
   bool _rememberPassword = false; // Checkbox state
-  
+
   // Update checker variables
-  String _currentVersion = '1.5';
+  String _currentVersion = '1.4';
   bool _checkingForUpdates = false;
-  
+
   List<Map<String, dynamic>> _users = [];
   List<String> _locations = [];
 
@@ -48,11 +49,15 @@ class _LoginPageState extends State<LoginPage> {
     _initializePackageInfo();
     _fetchData();
     _loadSavedCredentials(); // Load saved credentials
-    
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _autoCheckForUpdates();
-    });
-  }
+
+// ---------------------------Disabled auto updater----------------------------
+
+  //   WidgetsBinding.instance.addPostFrameCallback((_) async {
+  //   // Debug first
+  //   await UpdateService.debugGitHubStructure();
+  //   _autoCheckForUpdates();
+  // });
+}
 
   @override
   void dispose() {
@@ -87,7 +92,7 @@ class _LoginPageState extends State<LoginPage> {
   // Save credentials to SharedPreferences
   Future<void> _saveCredentials() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    
+
     if (_rememberPassword) {
       await prefs.setString('savedUsername', _selectedUsername ?? '');
       await prefs.setString('savedPassword', _passwordController.text);
@@ -102,93 +107,134 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _showUpdateDialogWithInstall(String downloadUrl, String version, List changes) {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      title: const Text('Update Available'),
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Version $version is available!',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const Text('What\'s new:'),
-            const SizedBox(height: 5),
-            ...changes
-                .map(
-                  (change) => Padding(
-                    padding: const EdgeInsets.only(left: 8.0, bottom: 4),
-                    child: Text('• ${change['message']}'),
-                  ),
-                )
-                .toList(),
-            const SizedBox(height: 10),
-            const Text(
-              'The app will automatically restart after the update is installed.',
-              style: TextStyle(fontStyle: FontStyle.italic),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Later'),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            Navigator.pop(context);
-            
-            // Show installing dialog
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => const AlertDialog(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Installing update...'),
-                    SizedBox(height: 8),
-                    Text(
-                      'The app will restart automatically.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
+  // In your _LoginPageState class, replace _showUpdateDialogWithInstall with this:
+
+  // ⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄ Disabled auto updater ⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄
+/*
+  void _showUpdateDialogWithInstall(
+      String downloadUrl, String version, List changes) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Update Available'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Version $version is available!',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-            );
-            
-            // Download and install update
-            final success = await UpdateService.downloadAndInstallUpdate(downloadUrl);
-            
-            if (!success && mounted) {
-              Navigator.pop(context); // Close installing dialog
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Update failed. Please try again.'),
-                  action: SnackBarAction(
-                    label: 'Retry',
-                    onPressed: () => _showUpdateDialogWithInstall(downloadUrl, version, changes),
-                  ),
+              const SizedBox(height: 10),
+              const Text('What\'s new:'),
+              const SizedBox(height: 5),
+              ...changes
+                  .map(
+                    (change) => Padding(
+                      padding: const EdgeInsets.only(left: 8.0, bottom: 4),
+                      child: Text('• ${change['message']}'),
+                    ),
+                  )
+                  .toList(),
+              const SizedBox(height: 10),
+              const Text(
+                'The app will automatically restart after the update is installed.',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Later'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              // Show progress dialog
+              List<String> progressMessages = [];
+
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => StatefulBuilder(
+                  builder: (context, setState) {
+                    return AlertDialog(
+                      title: const Text('Installing Update'),
+                      content: Container(
+                        width: double.maxFinite,
+                        constraints: BoxConstraints(maxHeight: 400),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Expanded(
+                              child: ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: progressMessages.length,
+                                itemBuilder: (context, index) {
+                                  final message = progressMessages[index];
+                                  return Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 2),
+                                    child: Text(
+                                      message,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               );
-            }
-          },
-          child: const Text('Install Update'),
-        ),
-      ],
-    ),
-  );
-}
 
+              // Download and install with progress updates
+              final success = await UpdateService.downloadAndInstallUpdate(
+                downloadUrl,
+                onProgress: (message) {
+                  if (mounted) {
+                    setState(() {
+                      // Optional: Show progress in UI
+                      print('Update: $message');
+                      progressMessages.add(message);
+                    });
+                  }
+                },
+              );
+
+              if (!success && mounted) {
+                Navigator.pop(context); // Close progress dialog
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Update failed. Please try again.'),
+                    action: SnackBarAction(
+                      label: 'Retry',
+                      onPressed: () => _showUpdateDialogWithInstall(
+                          downloadUrl, version, changes),
+                    ),
+                  ),
+                );
+              }
+            },
+            child: const Text('Install Update'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _autoCheckForUpdates() async {
     try {
@@ -203,43 +249,43 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _checkForUpdates({bool showDialogIfUpToDate = true}) async {
-  if (_checkingForUpdates) return;
-  
-  setState(() {
-    _checkingForUpdates = true;
-  });
-  
-  try {
-    final updateInfo = await UpdateService.checkForUpdate();
-    
-    if (updateInfo != null) {
-      // Update available
-      _showUpdateDialogWithInstall(
-        updateInfo['url'],
-        updateInfo['version'],
-        updateInfo['changes'],
-      );
-    } else {
-      // No update available
-      if (showDialogIfUpToDate && mounted) {
-        _showUpToDateDialog();
+    if (_checkingForUpdates) return;
+
+    setState(() {
+      _checkingForUpdates = true;
+    });
+
+    try {
+      final updateInfo = await UpdateService.checkForUpdate();
+
+      if (updateInfo != null) {
+        // Update available
+        _showUpdateDialogWithInstall(
+          updateInfo['url'],
+          updateInfo['version'],
+          updateInfo['changes'],
+        );
+      } else {
+        // No update available
+        if (showDialogIfUpToDate && mounted) {
+          _showUpToDateDialog();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Update check failed: $e")),
+        );
+      }
+      debugPrint("Update check failed: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _checkingForUpdates = false;
+        });
       }
     }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Update check failed: $e")),
-      );
-    }
-    debugPrint("Update check failed: $e");
-  } finally {
-    if (mounted) {
-      setState(() {
-        _checkingForUpdates = false;
-      });
-    }
   }
-}
 
   bool _isNewerVersion(String latest, String current) {
     try {
@@ -267,31 +313,31 @@ class _LoginPageState extends State<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-            Text(
-              'Version $version is available!',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const Text('What\'s new:'),
-            const SizedBox(height: 5),
-            ...changes.expand((change) {
-              // Split the 'message' into sentences based on punctuation (.!?)
-              List<String> sentences = change['message']
-                  .split(RegExp(r'(?<=[.!?])\s+')); // Split on sentence-ending punctuation
+              Text(
+                'Version $version is available!',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              const Text('What\'s new:'),
+              const SizedBox(height: 5),
+              ...changes.expand((change) {
+                // Split the 'message' into sentences based on punctuation (.!?)
+                List<String> sentences = change['message'].split(RegExp(
+                    r'(?<=[.!?])\s+')); // Split on sentence-ending punctuation
 
-              // Create a bullet point for each sentence
-              return sentences.map(
-                (sentence) => Padding(
-                  padding: const EdgeInsets.only(left: 8.0, bottom: 4),
-                  child: Text('• $sentence'),
-                ),
-              );
-            }).toList(),
-            const SizedBox(height: 10),
-            const Text(
-              'Click "Download Update" to get the latest version.',
-            ),
-          ],
+                // Create a bullet point for each sentence
+                return sentences.map(
+                  (sentence) => Padding(
+                    padding: const EdgeInsets.only(left: 8.0, bottom: 4),
+                    child: Text('• $sentence'),
+                  ),
+                );
+              }).toList(),
+              const SizedBox(height: 10),
+              const Text(
+                'Click "Download Update" to get the latest version.',
+              ),
+            ],
           ),
         ),
         actions: [
@@ -357,6 +403,44 @@ class _LoginPageState extends State<LoginPage> {
       }
     }
   }
+
+  // Add this method to help you check the log
+  Future<void> _showUpdateLog() async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final logPath = '${tempDir.path}\\update_log.txt';
+      final logFile = File(logPath);
+
+      if (await logFile.exists()) {
+        final logContent = await logFile.readAsString();
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Update Log'),
+            content: SingleChildScrollView(
+              child: SelectableText(logContent),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Close'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No log file found at: $logPath')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error reading log: $e')),
+      );
+    }
+  }
+  */
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^Disabled auto updater^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
   Future<void> _requireAdminBeforeCreateAccount() async {
     final TextEditingController usernameController = TextEditingController();
@@ -532,7 +616,9 @@ class _LoginPageState extends State<LoginPage> {
                 final locationName = locationNameController.text.trim();
                 final username = usernameController.text.trim();
                 final password = passwordController.text.trim();
-                if (locationName.isEmpty || username.isEmpty || password.isEmpty) {
+                if (locationName.isEmpty ||
+                    username.isEmpty ||
+                    password.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("All fields are required.")),
                   );
@@ -548,7 +634,8 @@ class _LoginPageState extends State<LoginPage> {
                   );
                   return;
                 }
-                final isAdmin = user['admin'] == true || user['admin'] == 'true';
+                final isAdmin =
+                    user['admin'] == true || user['admin'] == 'true';
                 if (!isAdmin) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Only admins can add locations.")),
@@ -713,14 +800,17 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login() async {
     final username = _selectedUsername;
     final enteredPassword = _passwordController.text.trim();
-    if (username == null || _selectedLocation == null || enteredPassword.isEmpty) {
+    if (username == null ||
+        _selectedLocation == null ||
+        enteredPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please complete all fields.")),
       );
       return;
     }
     try {
-      final user = _users.firstWhere((user) => user['username'] == username, orElse: () => {});
+      final user = _users.firstWhere((user) => user['username'] == username,
+          orElse: () => {});
       if (user.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Invalid username.")),
@@ -735,12 +825,11 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
       final loginSuccess = await ApiService.loginUser(
-          username,
-          hashPassword(enteredPassword),
-          _selectedLocation!);
+          username, hashPassword(enteredPassword), _selectedLocation!);
       if (!loginSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to update login time and location.")),
+          const SnackBar(
+              content: Text("Failed to update login time and location.")),
         );
         return;
       }
@@ -757,7 +846,8 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => AdminHomePage(selectedLocation: _selectedLocation!),
+            builder: (context) =>
+                AdminHomePage(selectedLocation: _selectedLocation!),
           ),
         );
         return;
@@ -766,14 +856,16 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => FrontHomePage(selectedLocation: _selectedLocation!),
+            builder: (context) =>
+                FrontHomePage(selectedLocation: _selectedLocation!),
           ),
         );
       } else if (user['role'] == 'Clinic') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => ClinicHomePage(selectedLocation: _selectedLocation!),
+            builder: (context) =>
+                ClinicHomePage(selectedLocation: _selectedLocation!),
           ),
         );
       } else {
@@ -804,9 +896,11 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
         ),
+        // Removed auto updater
+        /*
         actions: [
           IconButton(
-            icon: _checkingForUpdates 
+            icon: _checkingForUpdates
                 ? const SizedBox(
                     width: 20,
                     height: 20,
@@ -817,6 +911,7 @@ class _LoginPageState extends State<LoginPage> {
             onPressed: _checkingForUpdates ? null : _manualCheckForUpdates,
           ),
         ],
+        */
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

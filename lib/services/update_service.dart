@@ -371,9 +371,8 @@ Write-Log "Update process completed"
 
     final script = '''
 # Waitboard Complete Directory Updater
-
+\$Host.UI.RawUI.WindowTitle = ""
 \$ErrorActionPreference = "SilentlyContinue"
-\$ErrorActionPreference = "Continue"
 \$logFile = "$escapedLogPath"
 
 function Write-Log {
@@ -574,8 +573,6 @@ try {
 
 
 Write-Log "Update process completed"
-Write-Host "Update completed. Check log at: \$logFile"
-Write-Host "This window will close in 5 seconds..."
 Start-Sleep -Seconds 5
 exit 0
 ''';
@@ -589,28 +586,32 @@ exit 0
 
   // Run PowerShell updater script
   static Future<void> _runUpdaterScript(
-      String scriptPath, String logPath) async {
-    print('Launching PowerShell updater...');
+    String scriptPath, String logPath) async {
 
-    final batchContent = '''@echo off
-echo Starting Waitboard updater...
-echo Log file: $logPath
-echo.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$scriptPath"
-timeout /t 2 /nobreak >nul
+  print('Launching silent PowerShell updater...');
+
+  final batchContent = '''
+@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$scriptPath"
 ''';
 
-    final tempDir = await getTemporaryDirectory();
-    final batchPath = '${tempDir.path}\\run_update.bat';
-    await File(batchPath).writeAsString(batchContent);
+  final tempDir = await getTemporaryDirectory();
+  final batchPath = '${tempDir.path}\\run_update.bat';
 
-    await Process.start('cmd.exe', ['/c', 'start', '', batchPath],
-        mode: ProcessStartMode.detached, runInShell: true);
+  await File(batchPath).writeAsString(batchContent);
 
-    print('Updater launched. App will exit now.');
-    await Future.delayed(Duration(seconds: 1));
-    exit(0);
-  }
+  // Start hidden
+  await Process.start(
+    'cmd.exe',
+    ['/c', 'start', '/min', batchPath],
+    mode: ProcessStartMode.detached,
+    runInShell: true,
+  );
+
+  await Future.delayed(Duration(seconds: 1));
+  exit(0);
+}
+
 
   // For single file updates
   static Future<void> _runSimpleUpdaterScript(

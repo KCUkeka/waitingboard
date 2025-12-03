@@ -58,6 +58,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   Future<void> _checkLoginStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool? isLoggedIn = prefs.getBool('isLoggedIn');
+
     if (isLoggedIn == null || !isLoggedIn) {
       Navigator.pushReplacement(
         context,
@@ -137,11 +138,14 @@ class _AdminHomePageState extends State<AdminHomePage>
     String? loginId = prefs.getString('loginId');
     if (loginId != null) {
       try {
+        // Call the logout API
         await ApiService.logout(loginId);
       } catch (e) {
         print('Error during logout: $e');
       }
     }
+
+    // Clear local preferences
     await prefs.clear();
     Navigator.pushReplacement(
       context,
