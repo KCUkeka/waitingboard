@@ -27,6 +27,12 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
     super.dispose();
   }
 
+  // Helper function to check if provider has full access specialty
+  bool _isFullAccessSpecialty(String specialty) {
+    const allowed = ['ANC', 'General', 'Infusion', 'Rheumatology'];
+    return allowed.contains(specialty);
+  }
+
   Future<bool?> _showConfirmationDialog(
       BuildContext context, String title, String content) {
     return showDialog<bool>(
@@ -93,37 +99,37 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
   }
 
   Future<void> _saveAllWaitTimes() async {
-  bool? confirmed = await _showConfirmationDialog(
-    context,
-    'Confirm Save',
-    'Are you sure you want to update all wait times?',
-  );
-  if (confirmed != true) return;
+    bool? confirmed = await _showConfirmationDialog(
+      context,
+      'Confirm Save',
+      'Are you sure you want to update all wait times?',
+    );
+    if (confirmed != true) return;
 
-  bool errorOccurred = false;
+    bool errorOccurred = false;
 
-  // Only update providers with a valid wait time
-  final validProviders = widget.providers.where((provider) {
-    final waitTime = _getWaitTimeText(provider.docId);
-    return waitTime != null && waitTime.isNotEmpty;
-  }).toList();
+    // Only update providers with a valid wait time
+    final validProviders = widget.providers.where((provider) {
+      final waitTime = _getWaitTimeText(provider.docId);
+      return waitTime != null && waitTime.isNotEmpty;
+    }).toList();
 
-  for (var provider in validProviders) {
-    final waitTime = _getWaitTimeText(provider.docId);
-    
-    // Optional: print debug info
-    print('Saving ${provider.displayName} with waitTime: $waitTime');
+    for (var provider in validProviders) {
+      final waitTime = _getWaitTimeText(provider.docId);
+      
+      // Optional: print debug info
+      print('Saving ${provider.displayName} with waitTime: $waitTime');
 
-    try {
-      await ApiService.updateProvider(provider.docId, {
-        'waitTime': waitTime,
-        'currentLocation': widget.selectedLocation,
-      });
-    } catch (e) {
-      errorOccurred = true;
-      print('Error saving ${provider.displayName}: $e');
+      try {
+        await ApiService.updateProvider(provider.docId, {
+          'waitTime': waitTime,
+          'currentLocation': widget.selectedLocation,
+        });
+      } catch (e) {
+        errorOccurred = true;
+        print('Error saving ${provider.displayName}: $e');
+      }
     }
-  }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -152,6 +158,8 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
         itemBuilder: (context, index) {
           final provider = widget.providers[index];
           final docId = provider.docId;
+          final isFullAccess = _isFullAccessSpecialty(provider.specialty);
+          
           _waitTimeControllers.putIfAbsent(
               docId, () => TextEditingController());
           _statusMap.putIfAbsent(docId, () => ProviderStatus.time);
@@ -184,32 +192,12 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
                         ],
                       ),
                     ),
-                    // Toggle Buttons
+                    // Toggle Buttons 
                     Expanded(
                       flex: 4,
-                      child: ToggleButtons(
-                        isSelected: [
-                          status == ProviderStatus.time,
-                          status == ProviderStatus.onTime,
-                          status == ProviderStatus.delayed,
-                        ],
-                        onPressed: (i) {
-                          final selected = ProviderStatus.values[i];
-                          setState(() {
-                            _statusMap[docId] = selected;
-                            if (selected != ProviderStatus.time) {
-                              _waitTimeControllers[docId]?.clear();
-                            }
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        constraints: BoxConstraints(minHeight: 36, minWidth: 60),
-                        children: [
-                          Text("Time"),
-                          Text("On Time"),
-                          Text("Delay"),
-                        ],
-                      ),
+                      child: isFullAccess
+                          ? _buildFullAccessToggleButtons(docId, status)
+                          : _buildLimitedAccessToggleButtons(docId, status),
                     ),
                     SizedBox(width: 6),
                     // Min Input if applicable
@@ -241,6 +229,56 @@ class _ProviderSelectionPageState extends State<ProviderSelectionPage> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildFullAccessToggleButtons(String docId, ProviderStatus status) {
+    return ToggleButtons(
+      isSelected: [
+        status == ProviderStatus.time,
+        status == ProviderStatus.onTime,
+        status == ProviderStatus.delayed,
+      ],
+      onPressed: (i) {
+        final selected = ProviderStatus.values[i];
+        setState(() {
+          _statusMap[docId] = selected;
+          if (selected != ProviderStatus.time) {
+            _waitTimeControllers[docId]?.clear();
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      constraints: BoxConstraints(minHeight: 36, minWidth: 60),
+      children: [
+        Text("Time"),
+        Text("On Time"),
+        Text("Delay"),
+      ],
+    );
+  }
+
+  Widget _buildLimitedAccessToggleButtons(String docId, ProviderStatus status) {
+    return ToggleButtons(
+      isSelected: [
+        status == ProviderStatus.time,
+        status == ProviderStatus.onTime,
+      ],
+      onPressed: (i) {
+        final selected = i == 0 ? ProviderStatus.time : ProviderStatus.onTime;
+        setState(() {
+          _statusMap[docId] = selected;
+          if (selected != ProviderStatus.time) {
+            _waitTimeControllers[docId]?.clear();
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      constraints: BoxConstraints(minHeight: 36, minWidth: 60),
+      children: [
+        Text("Time"),
+        Text("On Time"),
+      ],
     );
   }
 }

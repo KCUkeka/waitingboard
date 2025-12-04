@@ -73,8 +73,8 @@ class _ClinicHomePageState extends State<ClinicHomePage>
       print('Login ID not found in SharedPreferences.');
     }
 
-    // Clear session data
-    await prefs.clear();
+    // Clear login state but keep saved credentials
+  await prefs.setBool('isLoggedIn', false);
 
     // Navigate back to the login page
     Navigator.pushReplacement(
@@ -127,7 +127,7 @@ class _ClinicHomePageState extends State<ClinicHomePage>
                     MaterialPageRoute(builder: (context) => ProviderListPage()),
                   );
                 } else if (value == 'Logout') {
-                  _logout(); // Call the logout function
+                  _logout(); 
                 }
               },
               itemBuilder: (context) => [

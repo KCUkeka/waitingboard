@@ -40,11 +40,8 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     super.dispose();
   }
 
- 
-  
-  // -------------------- Frefresh logic -----------------------
+  // -------------------- Refresh logic -----------------------
   void _setupTabRefresh() {
-    // Refresh when tab becomes active
     widget.tabController.addListener(_onTabChanged);
   }
 
@@ -59,7 +56,15 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
     await _loadProvidersFromApi();
   }
   
-  // ------------------------------------------ Define functions   ------------------------------------------------------
+  // Check if specialty supports Delay option
+  bool _supportsDelayOption(String specialty) {
+    return specialty == 'ANC' ||
+           specialty == 'General' ||
+           specialty == 'Infusion' ||
+           specialty == 'Rheumatology';
+  }
+  
+  // ------------------------------------------ Define functions ------------------------------------------------------
   Future<void> _loadProvidersFromApi() async {
     if (!mounted) return;
     
@@ -85,14 +90,14 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                 return ProviderInfo.fromWaitTimeApi(providerData,
                     providerData['id']?.toString() ?? '', locations);
               } else if (providerData is ProviderInfo) {
-                return providerData; // If it's already a ProviderInfo object, just return it
+                return providerData;
               } else {
                 throw Exception(
                     'Unexpected data type: ${providerData.runtimeType}');
               }
             })
             .where((provider) => provider.locations
-                .contains(widget.selectedLocation)) // Filter providers
+                .contains(widget.selectedLocation))
             .toList();
 
         selectedProviders = providerList
@@ -376,7 +381,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                   tooltip: 'Delete All Wait Times',
                   child: Icon(Icons.delete_forever),
                 ),
-                SizedBox(width: 16), // Space between buttons
+                SizedBox(width: 16),
                 FloatingActionButton(
                   heroTag: 'saveBtn',
                   onPressed: saveAllWaitTimes,
@@ -404,6 +409,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                   final provider = currentlocationProviders[index];
                   final docId = provider.docId;
                   final status = _statusMap[docId] ?? ProviderStatus.time;
+                  final hasDelayOption = _supportsDelayOption(provider.specialty);
 
                   return Column(
                     children: [
@@ -414,10 +420,9 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (provider.specialty == 'ANC' ||
-                                provider.specialty == 'General' ||
-                                provider.specialty == 'Infusion' ||
-                                provider.specialty == 'Rheumatology') ...[
+                            // Toggle buttons - different options based on specialty
+                            if (hasDelayOption) ...[
+                              // Three options: Time, On Time, Delay
                               ToggleButtons(
                                 isSelected: [
                                   status == ProviderStatus.time,
@@ -442,9 +447,35 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                                   Text("Delay")
                                 ],
                               ),
-                              SizedBox(width: 6),
+                            ] else ...[
+                              // Two options: Time, On Time (no Delay)
+                              ToggleButtons(
+                                isSelected: [
+                                  status == ProviderStatus.time,
+                                  status == ProviderStatus.onTime,
+                                ],
+                                onPressed: (i) {
+                                  final selected = i == 0 
+                                      ? ProviderStatus.time 
+                                      : ProviderStatus.onTime;
+                                  setState(() {
+                                    _statusMap[docId] = selected;
+                                    if (selected != ProviderStatus.time) {
+                                      _waitTimeControllers[docId]?.clear();
+                                    }
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                constraints: BoxConstraints(
+                                    minHeight: 36, minWidth: 60),
+                                children: [
+                                  Text("Time"),
+                                  Text("On Time"),
+                                ],
+                              ),
                             ],
                             SizedBox(width: 6),
+                            // Text input for time (only shown when Time is selected)
                             if (status == ProviderStatus.time)
                               SizedBox(
                                 width: 50,

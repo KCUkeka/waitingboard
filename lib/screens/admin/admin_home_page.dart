@@ -145,8 +145,8 @@ class _AdminHomePageState extends State<AdminHomePage>
       }
     }
 
-    // Clear local preferences
-    await prefs.clear();
+    // Clear login state but keep saved credentials
+    await prefs.setBool('isLoggedIn', false);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => LoginPage()),
