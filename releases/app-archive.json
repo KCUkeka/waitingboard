@@ -8,7 +8,7 @@
       "changes": [
         {
           "type": "feat",
-          "message": "Added auto-update functionality. Dashboard auto-refreshes times. Ability to save password. Pressing enter logs you into account. Admins have ability to toggle between locations"
+          "message": "Refresh botton added. Dashboard auto-refreshes times. Ability to save password. Pressing enter logs you into account. Admins have ability to toggle between locations. Select location first to filter for users."
         }
       ],
       "date": "2025-11-26",
