@@ -99,12 +99,44 @@ class _EditProvidersListState extends State<EditProvidersList> {
               itemCount: providerData.length,
               itemBuilder: (context, index) {
                 final provider = providerData[index];
+                final firstName = provider['first_name']?.toString() ?? '';
+                final lastName = provider['last_name']?.toString() ?? '';
+                final specialty = provider['specialty']?.toString() ?? '';
+                final title = provider['title']?.toString() ?? '';
+                
                 return Column(
                   children: [
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text('${provider['first_name']}, ${provider['last_name'][0]}'),
-                      subtitle: Text(provider['specialty']),
+                      title: Text(
+                        '$lastName, $firstName',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 4),
+                          Text(
+                            specialty,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          if (title.isNotEmpty)
+                            Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                        ],
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

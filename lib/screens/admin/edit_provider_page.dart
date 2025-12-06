@@ -29,17 +29,18 @@ class _EditProviderPageState extends State<EditProviderPage> {
     'Hip',
     'Knee',
     'Podiatry',
-    'Rheumatology',
+    'Rheumatology', 
     'Pain Management',
     'Urgent Care',
     'Sports Medicine',
     'Trauma',
     'Pediatrics',
+    'Infusion',
     'ANC',
     'General',
   ];
 
-  final List<String> titles = ['', 'Dr.', 'PA', 'PA-C', 'DPM', 'DPM Fellow'];
+  final List<String> titles = ['', 'Dr', 'PA', 'PA-C', 'DPM', 'DPM Fellow', 'NP'];
 
   @override
   void initState() {

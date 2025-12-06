@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:waitingboard/model/provider_info.dart' as model;
-import 'package:waitingboard/services/api_service.dart'; // Import the API service
-import 'dart:async'; // Import dart:async for Timer
+import 'package:waitingboard/services/api_service.dart';
+import 'dart:async';
 
 //------------------------------------------------------- Dashboard Page ----------------------------------------------
 class DashboardPage extends StatefulWidget {
-  final String selectedLocation; // Accept location as a parameter
-
-  DashboardPage({required this.selectedLocation}); // Require the location
+  final String selectedLocation;
+  DashboardPage({required this.selectedLocation});
 
   @override
   _DashboardPageState createState() => _DashboardPageState();
 }
 
-//------------------------------------------------------- timestamp farmat ----------------------------------------------
-
+//------------------------------------------------------- timestamp format ----------------------------------------------
 class _DashboardPageState extends State<DashboardPage> {
   Timer? _refreshTimer;
   List<model.ProviderInfo> _providers = [];
@@ -34,25 +32,21 @@ class _DashboardPageState extends State<DashboardPage> {
     super.dispose();
   }
 
-  // Start the auto-refresh timer
   void _startAutoRefresh() {
     _refreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
       _loadProviders();
     });
   }
 
-  // Stop the auto-refresh timer
   void _stopAutoRefresh() {
     _refreshTimer?.cancel();
     _refreshTimer = null;
   }
 
-  // Manual refresh method
   Future<void> _manualRefresh() async {
     await _loadProviders();
   }
 
-  // Load providers data
   Future<void> _loadProviders() async {
     if (mounted) {
       setState(() {
@@ -60,12 +54,10 @@ class _DashboardPageState extends State<DashboardPage> {
         _error = null;
       });
     }
-
     try {
       final List<model.ProviderInfo> providers =
           await ApiService.fetchProvidersByLocation(widget.selectedLocation);
 
-      // Filter providers by current_location
       final filteredProviders = providers.where((provider) {
         return provider.current_location == widget.selectedLocation;
       }).toList();
@@ -87,14 +79,11 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // Method to format the lastChanged timestamp
   String formatTimestamp(DateTime? dateTime) {
     if (dateTime == null) return "N/A";
 
-    // Logic to show time change
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-
     if (difference.inDays > 0) {
       return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
     } else if (difference.inHours > 0) {
@@ -106,15 +95,12 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // Method to format wait time inputted
   String _formatWaitTime(String waitTimeStr) {
     if (waitTimeStr == 'On Time' || waitTimeStr == 'Delayed') {
       return waitTimeStr;
     }
-
     final int? mins = int.tryParse(waitTimeStr);
     if (mins == null) return 'N/A';
-
     if (mins >= 60) {
       final hours = mins ~/ 60;
       final remainingMins = mins % 60;
@@ -128,6 +114,55 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+// General specialty or missing first name
+  String _formatProviderName(
+      String lastName, String firstName, String specialty) {
+    if (firstName.isEmpty || firstName.trim().isEmpty) {
+      return lastName;
+    } else {
+      if (specialty.toUpperCase() == 'GENERAL') {
+        return lastName;
+      }
+      return '$lastName, $firstName';
+    }
+  }
+
+// Formatting for card with title consideration
+  String _formatProviderNameWithTitle(
+      String lastName, String firstName, String title, String specialty) {
+    final normalizedTitle = title.toUpperCase().trim();
+    final normalizedSpecialty = specialty.toUpperCase().trim();
+
+    // Check if title is PA, PA-C NP
+    final isPhysicianAssistant = normalizedTitle == 'PA' ||
+        normalizedTitle == 'PA-C' ||
+        normalizedTitle == 'NP';
+
+    // For ANC, General, or Infusion specialties
+    if (normalizedSpecialty == 'ANC' ||
+        normalizedSpecialty == 'GENERAL' ||
+        normalizedSpecialty == 'INFUSION') {
+      return lastName; // Just show last name
+    }
+
+    // For PA/PA-C: show "Last Name, First Name"
+    if (isPhysicianAssistant) {
+      if (firstName.isEmpty || firstName.trim().isEmpty) {
+        return lastName;
+      } else {
+        return '$lastName, $firstName';
+      }
+    }
+
+    // For other titles (Dr., Fellow, DPM etc.)
+    if (firstName.isEmpty || firstName.trim().isEmpty) {
+      return 'Dr. $lastName';
+    } else {
+      final firstInitial = firstName[0].toUpperCase();
+      return 'Dr. $lastName, $firstInitial';
+    }
+  }
+
 //------------------------------------------------------- Dashboard build ----------------------------------------------
   @override
   Widget build(BuildContext context) {
@@ -138,7 +173,7 @@ class _DashboardPageState extends State<DashboardPage> {
             Align(
               alignment: Alignment.center,
               child: Text(
-                '${widget.selectedLocation} Dashboard', // Include the location
+                '${widget.selectedLocation} Dashboard',
                 style:
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
@@ -146,7 +181,6 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
         actions: [
-          // Refresh button in app bar
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: _isLoading ? null : _manualRefresh,
@@ -174,7 +208,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 )
               : RefreshIndicator(
-                  // Pull-to-refresh functionality
                   onRefresh: _manualRefresh,
                   child: _buildDashboardContent(),
                 ),
@@ -183,16 +216,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildDashboardContent() {
     final providers = _providers;
-
-    const rightPanelSpecialties = {'ANC', 'INFUSION', 'RHEUMATOLOGY'};
-
+    const rightPanelSpecialties = {'ANC', 'INFUSION'};
     final rightPanelProviders = providers
         .where((p) => rightPanelSpecialties.contains(p.specialty.toUpperCase()))
         .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      physics: AlwaysScrollableScrollPhysics(), // Required for RefreshIndicator
+      physics: AlwaysScrollableScrollPhysics(),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -214,12 +245,10 @@ class _DashboardPageState extends State<DashboardPage> {
                     builder: (context, constraints) {
                       int crossAxisCount = (constraints.maxWidth / 200).floor();
                       crossAxisCount = crossAxisCount > 0 ? crossAxisCount : 1;
-
                       final nonRightPanelProviders = providers
                           .where((p) => !rightPanelSpecialties
                               .contains(p.specialty.toUpperCase()))
                           .toList();
-
                       return GridView.builder(
                         physics: NeverScrollableScrollPhysics(),
                         shrinkWrap: true,
@@ -233,6 +262,13 @@ class _DashboardPageState extends State<DashboardPage> {
                         itemCount: nonRightPanelProviders.length,
                         itemBuilder: (context, index) {
                           final provider = nonRightPanelProviders[index];
+                          final normalizedTitle =
+                              provider.title.toUpperCase().trim();
+                          final isPhysicianAssistant =
+                              normalizedTitle == 'PA' ||
+                                  normalizedTitle == 'PA-C' ||
+                                  normalizedTitle == 'NP';
+
                           return Card(
                             elevation: 4.0,
                             child: Padding(
@@ -241,44 +277,102 @@ class _DashboardPageState extends State<DashboardPage> {
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  // Display the formatted name
                                   Text(
-                                    provider.specialty.toUpperCase() ==
-                                            'GENERAL'
-                                        ? provider.lastName
-                                        : provider.dashboardName,
+                                    _formatProviderNameWithTitle(
+                                        provider.lastName,
+                                        provider.firstName,
+                                        provider.title,
+                                        provider.specialty),
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    provider.specialty,
-                                    style: TextStyle(fontSize: 16),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  SizedBox(height: 8),
+
+                                  // Display Full name and gray text for PA/PA-C
+                                  if (isPhysicianAssistant &&
+                                      provider.title.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4.0),
+                                      child: RichText(
+                                        textAlign: TextAlign.center,
+                                        text: TextSpan(
+                                          children: [
+                                            TextSpan(
+                                              text: provider.title,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                            TextSpan(
+                                              text: ' | ',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                            TextSpan(
+                                              text: provider.specialty,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                  SizedBox(
+                                      height: isPhysicianAssistant ? 4 : 8),
+
+                                  // Display specialty for non-PA providers
+                                  if (!isPhysicianAssistant)
+                                    Text(
+                                      provider.specialty,
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey[600]),
+                                      textAlign: TextAlign.center,
+                                    ),
+
+                                  if (!isPhysicianAssistant)
+                                    SizedBox(height: 8),
+
                                   if (_formatWaitTime(
                                               provider.formattedWaitTime) !=
                                           'On Time' &&
                                       _formatWaitTime(
                                               provider.formattedWaitTime) !=
                                           'Delayed')
-                                    Text('Wait Time:',
+                                    Text('Wait time:',
                                         style: TextStyle(fontSize: 16)),
+
                                   Text(
                                     _formatWaitTime(provider.formattedWaitTime),
                                     style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold),
                                   ),
+
                                   SizedBox(height: 8),
-                                  Text('Last Changed:',
-                                      style: TextStyle(fontSize: 16)),
+
+                                  Text('Updated:',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey[600],
+                                      )),
+
                                   Text(
                                     formatTimestamp(provider.last_changed),
-                                    style: TextStyle(fontSize: 14),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -292,8 +386,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
-
-          // -----------------Right Panel — Only shown if there are ANC wait times---------------------
+          // -----------------Right Panel ---------------------
           if (rightPanelProviders.isNotEmpty)
             Container(
               margin: EdgeInsets.only(left: 16),
@@ -308,8 +401,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 16),
-
-                  // ANC Specialty Cards
+                  // Simplified Cards - Only Last Name, Wait Time, Last Updated
                   ...rightPanelProviders.map((p) => Card(
                         margin: EdgeInsets.only(bottom: 12),
                         child: Padding(
@@ -317,43 +409,32 @@ class _DashboardPageState extends State<DashboardPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Last Name Only
                               Text(
                                 p.lastName,
                                 style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               SizedBox(height: 4),
-                              Builder(
-                                builder: (_) {
-                                  final formatted =
-                                      _formatWaitTime(p.formattedWaitTime);
-                                  return formatted == 'On Time' ||
-                                          formatted == 'Delayed'
-                                      ? Text(
-                                          formatted,
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14),
-                                        )
-                                      : Text.rich(
-                                          TextSpan(
-                                            text: 'Wait Time: ',
-                                            style: TextStyle(fontSize: 14),
-                                            children: [
-                                              TextSpan(
-                                                text: formatted,
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                },
-                              ),
-                              SizedBox(height: 4),
+                              // Wait Time
                               Text(
-                                  'Updated: ${formatTimestamp(p.last_changed)}'),
+                                _formatWaitTime(p.formattedWaitTime),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              // Last Updated
+                              Text(
+                                'Updated: ${formatTimestamp(p.last_changed)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
                             ],
                           ),
                         ),

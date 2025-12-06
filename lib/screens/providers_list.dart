@@ -32,20 +32,22 @@ class _ProviderListPageState extends State<ProviderListPage> {
 
   // API call to fetch provider data
   Future<List<ProviderInfo>> fetchProviders() async {
-    final String url = '${ApiService.baseUrl}/providers?location_id=$_selectedLocation'; 
+    final String url =
+        '${ApiService.baseUrl}/providers?location_id=$_selectedLocation';
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        
+
         final providers = data.map<ProviderInfo>((provider) {
           List<String> locations = (provider['provider_locations'] ?? '')
               .toString()
               .split(',')
               .map((e) => e.trim())
               .toList();
-          
-          return ProviderInfo.fromWaitTimeApi(provider, provider['id']?.toString() ?? '', locations);
+
+          return ProviderInfo.fromWaitTimeApi(
+              provider, provider['id']?.toString() ?? '', locations);
         }).toList();
         return providers;
       } else {
@@ -118,7 +120,8 @@ class _ProviderListPageState extends State<ProviderListPage> {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text('No providers available for this location.'));
+                  return Center(
+                      child: Text('No providers available for this location.'));
                 }
 
                 final filteredProviders = snapshot.data!
@@ -132,8 +135,36 @@ class _ProviderListPageState extends State<ProviderListPage> {
                     return Column(
                       children: [
                         ListTile(
-                          title: Text('${provider.firstName} ${provider.lastName}'),
-                          subtitle: Text('${provider.specialty} - ${provider.title}'),
+                          title: Text(
+                            '${provider.lastName}, ${provider.firstName}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 4),
+                              Text(
+                                provider.specialty,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              if (provider.title != null &&
+                                  provider.title!.isNotEmpty)
+                                Text(
+                                  provider.title!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                         Divider(),
                       ],

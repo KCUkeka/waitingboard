@@ -27,23 +27,25 @@ class _AddProviderPageState extends State<AddProviderPage> {
     'Hip',
     'Knee',
     'Podiatry',
-    'Rheumatology',
+    'Rheumatology', 
     'Pain Management',
     'Urgent Care',
     'Sports Medicine',
     'Trauma',
     'Pediatrics',
+    'Infusion',
     'ANC',
     'General',
   ];
 
   final List<String> titles = [
     '',
-    'Dr.',
+    'Dr',
     'PA',
     'PA-C',
     'DPM',
     'DPM Fellow',
+    'NP',
     'N/A',
   ];
 

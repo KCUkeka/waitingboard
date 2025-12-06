@@ -61,7 +61,7 @@ class _LoginPageState extends State<LoginPage> {
 
     await _fetchData();
 
-    // Restore saved values if "Remember Login" was checked
+    // Restore saved values if "Remember Password" was checked
     if (tempRemember && tempLocation != null) {
       setState(() {
         _selectedLocation = tempLocation;
@@ -88,9 +88,11 @@ class _LoginPageState extends State<LoginPage> {
   // This map is to store location-to-username patterns
   final Map<String, List<String>> _locationPatterns = {
     'Riverside': ['Riverside'],
-    'IE Riverside': ['Riverside'],
+    'IE Riverside': ['IE Riverside'],
     'Algonquin': ['Algonquin'],
+    'IE Algonquin': ['IE Algonquin'],
     'Elgin': ['Elgin'],
+    'IE Elgin': ['IE Elgin'],
     'Roxbury': ['Roxbury'],
     'McHenry': ['McHenry'],
     'Perryville': ['Perryville'],
@@ -147,7 +149,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _fetchData();
     _loadSavedCredentials(); // Load saved credentials
     _fetchData();
 
@@ -554,26 +555,88 @@ class _LoginPageState extends State<LoginPage> {
 
   // Filter usernames based on selected location
   void _filterUsernamesByLocation(String location) {
-    final patterns = _locationPatterns[location];
+    // Check if location starts with "IE "
+    final isIESite = location.toUpperCase().startsWith('IE ');
 
     setState(() {
-      _filteredUsers = _users.where((user) {
-        final username = user['username'] as String;
-        final isSpecialUser = _isSpecialRoleUser(user);
+      if (isIESite) {
+        // For IE sites: look for exact location match in username
+        _filteredUsers = _users.where((user) {
+          final username = user['username'] as String;
+          final isSpecialUser = _isSpecialRoleUser(user);
 
-        // ALWAYS include Admin, Manager, and ViewOnly users
-        if (isSpecialUser) {
-          return true;
-        }
+          // ALWAYS include Admin, Manager, and ViewOnly users
+          if (isSpecialUser) {
+            return true;
+          }
 
-        // For non-special users, check if they match the location pattern
-        if (patterns == null) {
-          return false;
-        }
+          // For IE sites: check if username exactly contains the IE location name
+          // Example: if location is "IE Riverside", look for "IE Riverside" in username
+          return username.contains(location);
+        }).toList();
+      } else {
+        // For non-IE sites: use the existing pattern matching
+        final patterns = _locationPatterns[location];
 
-        // Check if username contains any location pattern
-        return patterns.any((pattern) => username.contains(pattern));
-      }).toList();
+        _filteredUsers = _users.where((user) {
+          final username = user['username'] as String;
+          final isSpecialUser = _isSpecialRoleUser(user);
+
+          // ALWAYS include Admin, Manager, and ViewOnly users
+          if (isSpecialUser) {
+            return true;
+          }
+
+          // For Riverside location: include only usernames with "Riverside"
+          // but EXCLUDE usernames with "IE Riverside"
+          if (location == 'Riverside') {
+            return username.contains('Riverside') &&
+                !username.toUpperCase().contains('IE RIVERSIDE') &&
+                !username.toUpperCase().contains('IERIVERSIDE');
+          }
+
+          // For IE Riverside location: include only IE Riverside usernames
+          if (location == 'IE Riverside') {
+            return username.toUpperCase().contains('IE RIVERSIDE') ||
+                username.toUpperCase().contains('IERIVERSIDE');
+          }
+
+          // For Elgin location: include only usernames with "Elgin"
+          // but EXCLUDE usernames with "IE Elgin"
+          if (location == 'Riverside') {
+            return username.contains('Elgin') &&
+                !username.toUpperCase().contains('IE ELGIN') &&
+                !username.toUpperCase().contains('IEELGIN');
+          }
+
+          // For IE Elgin location: include only IE Elgin usernames
+          if (location == 'IE Elgin') {
+            return username.toUpperCase().contains('IE ELGIN') ||
+                username.toUpperCase().contains('IEELGIN');
+          }
+          // For Algonquin location: include only usernames with "Algonquin"
+          // but EXCLUDE usernames with "IE Algonquin"
+          if (location == 'Algonquin') {
+            return username.contains('Algonquin') &&
+                !username.toUpperCase().contains('IE ALGONQUIN') &&
+                !username.toUpperCase().contains('IEALGONQUIN');
+          }
+
+          // For IE Algonquin location: include only IE Algonquin usernames
+          if (location == 'IE Algonquin') {
+            return username.toUpperCase().contains('IE ALGONQUIN') ||
+                username.toUpperCase().contains('IEALGONQUIN');
+          }
+
+          // For non-IE users, check if they match the location pattern
+          if (patterns == null) {
+            return false;
+          }
+
+          // Check if username contains any location pattern
+          return patterns.any((pattern) => username.contains(pattern));
+        }).toList();
+      }
 
       // Sort: location-specific users first, then special users at the bottom
       _filteredUsers.sort((a, b) {
@@ -628,11 +691,13 @@ class _LoginPageState extends State<LoginPage> {
           // Sort locations to put main locations first
           _locations.sort((a, b) {
             final mainLocations = [
+              'Roxbury',
               'Riverside',
               'IE Riverside',
               'Algonquin',
+              'IE Algonquin',
               'Elgin',
-              'Roxbury',
+              'IE Elgin',
               'McHenry',
               'Perryville'
             ];
@@ -679,6 +744,7 @@ class _LoginPageState extends State<LoginPage> {
     final TextEditingController usernameController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
     String? selectedAdminUsername;
+    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
     // Filter ONLY Admin/Manager users (exclude ViewOnly)
     final adminManagerUsers = _users
@@ -701,34 +767,44 @@ class _LoginPageState extends State<LoginPage> {
           builder: (context, setState) {
             return AlertDialog(
               title: Text("Admin Authorization Required"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: selectedAdminUsername,
-                    items: _users
-                        .where((user) =>
-                            user['admin'] == true || user['admin'] == 'true')
-                        .map<DropdownMenuItem<String>>(
-                            (user) => DropdownMenuItem<String>(
-                                  value: user['username'] as String,
-                                  child: Text(user['username'] as String),
-                                ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedAdminUsername = value;
-                        usernameController.text = value!;
-                      });
-                    },
-                    decoration: InputDecoration(labelText: "Admin Username"),
-                  ),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(labelText: "Admin Password"),
-                  ),
-                ],
+              content: Form(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedAdminUsername,
+                      items: _users
+                          .where((user) =>
+                              user['admin'] == true || user['admin'] == 'true')
+                          .map<DropdownMenuItem<String>>(
+                              (user) => DropdownMenuItem<String>(
+                                    value: user['username'] as String,
+                                    child: Text(user['username'] as String),
+                                  ))
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedAdminUsername = value;
+                          usernameController.text = value!;
+                        });
+                      },
+                      decoration: InputDecoration(labelText: "Admin Username"),
+                    ),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(labelText: "Admin Password"),
+                      onSubmitted: (_) {
+                        _performAdminAuth(
+                            selectedAdminUsername, passwordController.text);
+                      },
+                      onEditingComplete: () {
+                        _performAdminAuth(
+                            selectedAdminUsername, passwordController.text);
+                      },
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -737,31 +813,8 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    final user =
-                        _findUserByUsername(selectedAdminUsername ?? '');
-                    if (user == null ||
-                        hashPassword(passwordController.text.trim()) !=
-                            user['password']) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Invalid admin credentials.")),
-                      );
-                      return;
-                    }
-                    final isAdmin =
-                        user['admin'] == true || user['admin'] == 'true';
-                    if (!isAdmin) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text("Only admins can create accounts.")),
-                      );
-                      return;
-                    }
-                    Navigator.of(context).pop();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => CreateAccountPage()),
-                    );
+                    _performAdminAuth(
+                        selectedAdminUsername, passwordController.text);
                   },
                   child: Text("Continue"),
                 ),
@@ -773,123 +826,202 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+// Helper function for admin auth
+  void _performAdminAuth(String? selectedAdminUsername, String password) {
+    final user = _findUserByUsername(selectedAdminUsername ?? '');
+    if (user == null || hashPassword(password.trim()) != user['password']) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Invalid admin credentials.")),
+      );
+      return;
+    }
+    final isAdmin = user['admin'] == true || user['admin'] == 'true';
+    if (!isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Only admins can create accounts.")),
+      );
+      return;
+    }
+    Navigator.of(context).pop();
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CreateAccountPage()),
+    );
+  }
+
   Future<void> _addNewLocation() async {
     final TextEditingController locationNameController =
         TextEditingController();
     final TextEditingController usernameController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
+    String? selectedUsername;
+
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          title: Text("Add New Location"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: usernameController.text.isEmpty
-                    ? null
-                    : usernameController.text,
-                items: _users
-                    .where((user) =>
-                        user['admin'] == true || user['admin'] == 'true')
-                    .map((user) {
-                  return DropdownMenuItem(
-                    value: user['username']?.toString() ?? '',
-                    child: Text('${user['username']}'),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    usernameController.text = value!;
-                  });
-                },
-                decoration: InputDecoration(labelText: "Select Username"),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("Add New Location"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedUsername,
+                      items: _users
+                          .where((user) =>
+                              user['admin'] == true || user['admin'] == 'true')
+                          .map((user) {
+                        return DropdownMenuItem(
+                          value: user['username']?.toString() ?? '',
+                          child: Text('${user['username']}'),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedUsername = value;
+                          usernameController.text = value!;
+                        });
+                      },
+                      decoration: InputDecoration(labelText: "Select Username"),
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(labelText: "Password"),
+                      onSubmitted: (_) {
+                        _performAddLocation(
+                            selectedUsername,
+                            passwordController.text,
+                            locationNameController.text);
+                      },
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: locationNameController,
+                      decoration: InputDecoration(labelText: "Location Name"),
+                      onSubmitted: (_) {
+                        _performAddLocation(
+                            selectedUsername,
+                            passwordController.text,
+                            locationNameController.text);
+                      },
+                    ),
+                  ],
+                ),
               ),
-              SizedBox(height: 10),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: InputDecoration(labelText: "Password"),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                controller: locationNameController,
-                decoration: InputDecoration(labelText: "Location Name"),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final locationName = locationNameController.text.trim();
-                final username = usernameController.text.trim();
-                final password = passwordController.text.trim();
-                if (locationName.isEmpty ||
-                    username.isEmpty ||
-                    password.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("All fields are required.")),
-                  );
-                  return;
-                }
-                final user = _findUserByUsername(username);
-                if (user == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Invalid username.")),
-                  );
-                  return;
-                }
-                final isAdmin =
-                    user['admin'] == true || user['admin'] == 'true';
-                if (!isAdmin) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Only admins can add locations.")),
-                  );
-                  return;
-                }
-                final hashedPassword = user['password'];
-                if (hashPassword(password) != hashedPassword) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Invalid password.")),
-                  );
-                  return;
-                }
-                try {
-                  await ApiService.addLocation(locationName);
-                  await _fetchData();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Location added successfully.")),
-                  );
-                  Navigator.of(context).pop();
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Failed to add location: $e")),
-                  );
-                }
-              },
-              child: Text("Add"),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    // Clear focus and dispose controllers when canceling
+                    FocusScope.of(context).unfocus();
+                    locationNameController.dispose();
+                    usernameController.dispose();
+                    passwordController.dispose();
+                    Navigator.of(context).pop();
+                  },
+                  child: Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await _performAddLocation(selectedUsername,
+                        passwordController.text, locationNameController.text);
+                  },
+                  child: Text("Add"),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
+// Helper function for adding location
+  Future<void> _performAddLocation(
+      String? username, String password, String locationName) async {
+    final trimmedUsername = username?.trim() ?? '';
+    final trimmedPassword = password.trim();
+    final trimmedLocationName = locationName.trim();
+
+    // Basic validation
+    if (trimmedLocationName.isEmpty ||
+        trimmedUsername.isEmpty ||
+        trimmedPassword.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("All fields are required.")),
+      );
+      return;
+    }
+
+    // Check if location already exists
+    final locationExists = _locations.any((location) =>
+        location.trim().toLowerCase() == trimmedLocationName.toLowerCase());
+
+    if (locationExists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text("Location '$trimmedLocationName' already exists.")),
+      );
+      return;
+    }
+
+    final user = _findUserByUsername(trimmedUsername);
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Invalid username.")),
+      );
+      return;
+    }
+
+    final isAdmin = user['admin'] == true || user['admin'] == 'true';
+    if (!isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Only admins can add locations.")),
+      );
+      return;
+    }
+
+    final hashedPassword = user['password'];
+    if (hashPassword(trimmedPassword) != hashedPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Invalid password.")),
+      );
+      return;
+    }
+
+    try {
+      await ApiService.addLocation(trimmedLocationName);
+      await _fetchData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Location added successfully.")),
+      );
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to add location: $e")),
+      );
+    }
+  }
+
   Future<void> _resetPassword() async {
+    FocusScope.of(context).unfocus();
     final TextEditingController newPasswordController = TextEditingController();
     final TextEditingController adminUsernameController =
         TextEditingController();
     final TextEditingController adminPasswordController =
         TextEditingController();
     String? selectedTargetUsername;
+    String? selectedAdminUsername;
 
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -919,12 +1051,17 @@ class _LoginPageState extends State<LoginPage> {
                       controller: newPasswordController,
                       obscureText: true,
                       decoration: InputDecoration(labelText: "New Password"),
+                      onSubmitted: (_) {
+                        _performResetPassword(
+                            selectedTargetUsername,
+                            newPasswordController.text,
+                            selectedAdminUsername,
+                            adminPasswordController.text);
+                      },
                     ),
                     Divider(height: 20),
                     DropdownButtonFormField<String>(
-                      value: adminUsernameController.text.isNotEmpty
-                          ? adminUsernameController.text
-                          : null,
+                      value: selectedAdminUsername,
                       items: _users
                           .where((user) =>
                               user['admin'] == true || user['admin'] == 'true')
@@ -936,7 +1073,10 @@ class _LoginPageState extends State<LoginPage> {
                         );
                       }).toList(),
                       onChanged: (value) {
-                        adminUsernameController.text = value!;
+                        setState(() {
+                          selectedAdminUsername = value;
+                          adminUsernameController.text = value!;
+                        });
                       },
                       decoration:
                           InputDecoration(labelText: "Select Admin Username"),
@@ -945,6 +1085,13 @@ class _LoginPageState extends State<LoginPage> {
                       controller: adminPasswordController,
                       obscureText: true,
                       decoration: InputDecoration(labelText: "Admin Password"),
+                      onSubmitted: (_) {
+                        _performResetPassword(
+                            selectedTargetUsername,
+                            newPasswordController.text,
+                            selectedAdminUsername,
+                            adminPasswordController.text);
+                      },
                     ),
                   ],
                 ),
@@ -956,47 +1103,11 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    final targetUsername = selectedTargetUsername?.trim();
-                    final newPassword = newPasswordController.text.trim();
-                    final adminUsername = adminUsernameController.text.trim();
-                    final adminPassword = adminPasswordController.text.trim();
-                    if ([
-                      targetUsername,
-                      newPassword,
-                      adminUsername,
-                      adminPassword
-                    ].any((v) => v == null || v.isEmpty)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("All fields are required.")));
-                      return;
-                    }
-                    final adminUser = _users.firstWhere(
-                      (user) => user['username'] == adminUsername,
-                      orElse: () => {},
-                    );
-                    if (adminUser.isEmpty ||
-                        hashPassword(adminPassword) != adminUser['password']) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text("Invalid admin credentials.")));
-                      return;
-                    }
-                    final isAdmin = adminUser['admin'] == true ||
-                        adminUser['admin'] == 'true';
-                    if (!isAdmin) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text("Only admins can reset passwords.")));
-                      return;
-                    }
-                    try {
-                      await ApiService.resetPassword(
-                          targetUsername!, hashPassword(newPassword));
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text("Password reset successfully.")));
-                      Navigator.of(context).pop();
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text("Failed to reset password: $e")));
-                    }
+                    await _performResetPassword(
+                        selectedTargetUsername,
+                        newPasswordController.text,
+                        selectedAdminUsername,
+                        adminPasswordController.text);
                   },
                   child: Text("Reset"),
                 ),
@@ -1006,6 +1117,58 @@ class _LoginPageState extends State<LoginPage> {
         );
       },
     );
+  }
+
+// Helper function for resetting password
+  Future<void> _performResetPassword(String? targetUsername, String newPassword,
+      String? adminUsername, String adminPassword) async {
+    final trimmedTargetUsername = targetUsername?.trim() ?? '';
+    final trimmedNewPassword = newPassword.trim();
+    final trimmedAdminUsername = adminUsername?.trim() ?? '';
+    final trimmedAdminPassword = adminPassword.trim();
+
+    if ([
+      trimmedTargetUsername,
+      trimmedNewPassword,
+      trimmedAdminUsername,
+      trimmedAdminPassword
+    ].any((v) => v.isEmpty)) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("All fields are required.")));
+      return;
+    }
+
+    final adminUser = _users.firstWhere(
+      (user) => user['username'] == trimmedAdminUsername,
+      orElse: () => {},
+    );
+
+    if (adminUser.isEmpty ||
+        hashPassword(trimmedAdminPassword) != adminUser['password']) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Invalid admin credentials.")));
+      return;
+    }
+
+    final isAdmin = adminUser['admin'] == true || adminUser['admin'] == 'true';
+    if (!isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Only admins can reset passwords.")));
+      return;
+    }
+
+    try {
+      await ApiService.resetPassword(
+          trimmedTargetUsername, hashPassword(trimmedNewPassword));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Password reset successfully.")));
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to reset password: $e")));
+    }
   }
 
   Future<void> _login() async {
@@ -1044,7 +1207,7 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // Save credentials if remember login is checked
+      // Save credentials if remember password is checked
       await _saveCredentials();
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -1116,136 +1279,147 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Image.asset(
-              'assets/icons/waitboard.png',
-              width: 200,
-              height: 200,
-            ),
-            SizedBox(height: 20),
+      body: GestureDetector(
+        onTap: () {
+          // Unfocus when tapping outside
+          FocusScope.of(context).unfocus();
+        },
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Image.asset(
+                'assets/icons/waitboard.png',
+                width: 200,
+                height: 200,
+              ),
+              SizedBox(height: 20),
 
-            // LOCATION FIELD (FIRST)
-            DropdownButtonFormField<String>(
-              value: _selectedLocation,
-              items: _locations.map((location) {
-                return DropdownMenuItem(
-                  value: location,
-                  child: Text(location),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedLocation = value;
-                  // Only clear username if the current username isn't valid for the new location
-                  if (_selectedUsername != null && value != null) {
-                    // Check if current username would be in filtered list for new location
-                    _filterUsernamesByLocation(value);
-                    if (!_filteredUsernames.contains(_selectedUsername)) {
+              // LOCATION FIELD (FIRST)
+              DropdownButtonFormField<String>(
+                value: _selectedLocation,
+                items: _locations.map((location) {
+                  return DropdownMenuItem(
+                    value: location,
+                    child: Text(location),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedLocation = value;
+                    // Only clear username if the current username isn't valid for the new location
+                    if (_selectedUsername != null && value != null) {
+                      // Check if current username would be in filtered list for new location
+                      _filterUsernamesByLocation(value);
+                      if (!_filteredUsernames.contains(_selectedUsername)) {
+                        _selectedUsername = null;
+                      }
+                    } else {
                       _selectedUsername = null;
                     }
-                  } else {
-                    _selectedUsername = null;
-                  }
-                  if (value != null) {
-                    _filterUsernamesByLocation(value);
-                  }
-                });
-              },
-              decoration: InputDecoration(
-                labelText: 'Location',
-                prefixIcon: Icon(Icons.location_on),
+                    if (value != null) {
+                      _filterUsernamesByLocation(value);
+                    }
+                  });
+                },
+                decoration: InputDecoration(
+                  labelText: 'Location',
+                  prefixIcon: Icon(Icons.location_on),
+                ),
               ),
-            ),
-            SizedBox(height: 20),
+              SizedBox(height: 20),
 
-            // USERNAME FIELD (SECOND - FILTERED)
-            DropdownButtonFormField<String>(
-              value: _selectedUsername,
-              items: _filteredUsernames.map((username) {
-                // Simple Text widget without role in parentheses
-                return DropdownMenuItem(
-                  value: username,
-                  child: Text(username),
-                );
-              }).toList(),
-              onChanged:
-                  _selectedLocation != null && _filteredUsernames.isNotEmpty
-                      ? (value) {
-                          setState(() {
-                            _selectedUsername = value;
-                          });
-                        }
-                      : null,
-              decoration: InputDecoration(
-                labelText: _selectedLocation == null
-                    ? 'Select location first'
-                    : 'Username',
-                prefixIcon: Icon(Icons.person),
+              // USERNAME FIELD (SECOND - FILTERED)
+              DropdownButtonFormField<String>(
+                value: _selectedUsername,
+                items: _filteredUsernames.map((username) {
+                  // Simple Text widget without role in parentheses
+                  return DropdownMenuItem(
+                    value: username,
+                    child: Text(username),
+                  );
+                }).toList(),
+                onChanged:
+                    _selectedLocation != null && _filteredUsernames.isNotEmpty
+                        ? (value) {
+                            setState(() {
+                              _selectedUsername = value;
+                            });
+                          }
+                        : null,
+                decoration: InputDecoration(
+                  labelText: _selectedLocation == null
+                      ? 'Select location first'
+                      : 'Username',
+                  prefixIcon: Icon(Icons.person),
+                ),
               ),
-            ),
 
-            // Show message if no usernames available for selected location
-            if (_selectedLocation != null && _filteredUsernames.isEmpty)
+              // Show message if no usernames available for selected location
+              if (_selectedLocation != null && _filteredUsernames.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'No users found for $_selectedLocation',
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                ),
+              SizedBox(height: 20),
+
+              // PASSWORD FIELD
+              TextField(
+                controller: _passwordController,
+                focusNode: _passwordFocusNode,
+                obscureText: true,
+                textInputAction: TextInputAction.done,
+                enableInteractiveSelection: true,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: Icon(Icons.lock),
+                ),
+                onSubmitted: (_) {
+                  FocusScope.of(context).unfocus(); // Unfocus before login
+                  _login();
+                },
+              ),
+              Row(
+                children: [
+                  Checkbox(
+                    value: _rememberPassword,
+                    onChanged: (value) {
+                      setState(() {
+                        _rememberPassword = value ?? false;
+                      });
+                    },
+                  ),
+                  Text('Remember Password'),
+                ],
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _login,
+                child: Text('Login'),
+              ),
               Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  'No users found for $_selectedLocation',
-                  style: TextStyle(color: Colors.orange),
+                padding: const EdgeInsets.only(top: 12.0),
+                child: TextButton(
+                  onPressed: _resetPassword,
+                  child: Text('Reset Password'),
                 ),
               ),
-            SizedBox(height: 20),
-
-            // PASSWORD FIELD
-            TextField(
-              controller: _passwordController,
-              focusNode: _passwordFocusNode,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                prefixIcon: Icon(Icons.lock),
+              SizedBox(height: 10),
+              TextButton(
+                onPressed: _requireAdminBeforeCreateAccount,
+                child: Text('Create Account'),
               ),
-              onSubmitted: (_) => _login(),
-            ),
-            Row(
-              children: [
-                Checkbox(
-                  value: _rememberPassword,
-                  onChanged: (value) {
-                    setState(() {
-                      _rememberPassword = value ?? false;
-                    });
-                  },
-                ),
-                Text('Remember Login'),
-              ],
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _login,
-              child: Text('Login'),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 12.0),
-              child: TextButton(
-                onPressed: _resetPassword,
-                child: Text('Reset Password'),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _addNewLocation,
+                child: Text('New Location'),
               ),
-            ),
-            SizedBox(height: 10),
-            TextButton(
-              onPressed: _requireAdminBeforeCreateAccount,
-              child: Text('Create Account'),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _addNewLocation,
-              child: Text('New Location'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

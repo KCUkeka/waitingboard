@@ -60,9 +60,46 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
   bool _supportsDelayOption(String specialty) {
     return specialty == 'ANC' ||
            specialty == 'General' ||
-           specialty == 'Infusion' ||
-           specialty == 'Rheumatology';
+           specialty == 'Infusion' ;
   }
+
+ // Method to format provider name based on specialty
+String _formatProviderName(String title, String lastName, String firstName, String specialty) {
+  final normalizedSpecialty = specialty.toUpperCase().trim();
+  final normalizedTitle = title.toUpperCase().trim();
+  
+  // Check if title is PA or PA-C
+  final isPhysicianAssistant = normalizedTitle == 'PA' || normalizedTitle == 'PA-C' || normalizedTitle == 'NP';
+  
+  if (normalizedSpecialty == 'ANC' || 
+      normalizedSpecialty == 'GENERAL' || 
+      normalizedSpecialty == 'INFUSION') {
+    // For ANC, General, or Infusion: Display only Last name
+    return lastName;
+  } else {
+    // For Other Specialties
+    if (firstName.isEmpty || firstName.trim().isEmpty) {
+      // If first name is empty
+      if (isPhysicianAssistant) {
+        // For PA/PA-C with no first name: just show last name
+        return lastName;
+      } else {
+        // For other titles with no first name: show title and last name
+        return '$title $lastName';
+      }
+    } else {
+      // First name is available
+      if (isPhysicianAssistant) {
+        // For PA/PA-C: show "Last Name, First Name"
+        return '$title $lastName, $firstName';
+      } else {
+        // For other titles: show "Title Last Name, First Initial"
+        final firstInitial = firstName[0].toUpperCase();
+        return 'Dr. $lastName, $firstInitial';
+      }
+    }
+  }
+}
   
   // ------------------------------------------ Define functions ------------------------------------------------------
   Future<void> _loadProvidersFromApi() async {
@@ -345,7 +382,7 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
         title: Align(
           alignment: Alignment.center,
           child: Text('${widget.selectedLocation} Wait Times',
-              style: TextStyle(fontSize: 20)),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         ),
         actions: [
           // Refresh button
@@ -415,7 +452,14 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                     children: [
                       ListTile(
                         title: Text(
-                            provider.displayName.split('|').first.trim()),
+                          _formatProviderName(
+                            provider.title,
+                            provider.lastName, 
+                            provider.firstName, 
+                            provider.specialty
+                          ),
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         subtitle: Text(provider.specialty),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -487,7 +531,15 @@ class _WaitTimesPageState extends State<WaitTimesPage> {
                                     FilteringTextInputFormatter.digitsOnly
                                   ],
                                   textAlign: TextAlign.center,
+                                  textInputAction: TextInputAction.done,
                                   onChanged: (_) => setState(() {}),
+                                  onSubmitted: (_) {
+                                    // When user presses Enter/Done
+                                    final waitTimeText = _getWaitTimeText(docId);
+                                    if (waitTimeText != null && waitTimeText.isNotEmpty) {
+                                      _updateWaitTime(provider, waitTimeText);
+                                    }
+                                  },
                                   decoration: InputDecoration(
                                     hintText: 'Min',
                                     contentPadding:
