@@ -133,34 +133,42 @@ class _DashboardPageState extends State<DashboardPage> {
     final normalizedTitle = title.toUpperCase().trim();
     final normalizedSpecialty = specialty.toUpperCase().trim();
 
-    // Check if title is PA, PA-C NP
+    final hasFirstName = firstName.trim().isNotEmpty;
+    final hasTitle = title.trim().isNotEmpty;
+
+    // Titles that should show "Last, First"
     final isPhysicianAssistant = normalizedTitle == 'PA' ||
         normalizedTitle == 'PA-C' ||
         normalizedTitle == 'NP';
 
-    // For ANC, General, or Infusion specialties
+    // --- RULE 1: If BOTH title and first name are missing → only last name ---
+    if (!hasFirstName && !hasTitle) {
+      return lastName;
+    }
+
+    // --- RULE 2: ANC, GENERAL, INFUSION always show last name ---
     if (normalizedSpecialty == 'ANC' ||
         normalizedSpecialty == 'GENERAL' ||
         normalizedSpecialty == 'INFUSION') {
-      return lastName; // Just show last name
+      return lastName;
     }
 
-    // For PA/PA-C: show "Last Name, First Name"
-    if (isPhysicianAssistant) {
-      if (firstName.isEmpty || firstName.trim().isEmpty) {
+    // --- RULE 3: If first name missing but title exists ---
+    if (!hasFirstName) {
+      if (isPhysicianAssistant) {
         return lastName;
-      } else {
-        return '$lastName, $firstName';
       }
+      return '$title $lastName';
     }
 
-    // For other titles (Dr., Fellow, DPM etc.)
-    if (firstName.isEmpty || firstName.trim().isEmpty) {
-      return 'Dr. $lastName';
-    } else {
-      final firstInitial = firstName[0].toUpperCase();
-      return 'Dr. $lastName, $firstInitial';
+    // --- RULE 4: First name exists ---
+    if (isPhysicianAssistant) {
+      return '$lastName, $firstName';
     }
+
+    // --- RULE 5: Default Dr. format ---
+    final firstInitial = firstName[0].toUpperCase();
+    return 'Dr. $lastName, $firstInitial';
   }
 
 //------------------------------------------------------- Dashboard build ----------------------------------------------
